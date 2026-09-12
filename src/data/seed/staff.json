@@ -1,0 +1,153 @@
+{
+  "staff": [
+    {
+      "id": "staff-001",
+      "name": "Rajesh Deshmukh",
+      "email": "rajesh.deshmukh@apexbank.example",
+      "role": "ceo",
+      "department": "Executive",
+      "employeeCode": "CEO-001",
+      "joinedDate": "2020-04-01",
+      "qualification": "MBA, CAIIB",
+      "experience": "25 years",
+      "status": "active"
+    },
+    {
+      "id": "staff-002",
+      "name": "Subhash Jadhav",
+      "email": "subhash.jadhav@apexbank.example",
+      "role": "director",
+      "department": "Board",
+      "employeeCode": "DIR-001",
+      "joinedDate": "2020-04-01",
+      "qualification": "PhD, Commerce",
+      "experience": "30 years",
+      "status": "active"
+    },
+    {
+      "id": "staff-003",
+      "name": "Priya Sharma",
+      "email": "priya.sharma@apexbank.example",
+      "role": "auditor",
+      "department": "Audit",
+      "employeeCode": "AUD-001",
+      "joinedDate": "2018-07-15",
+      "qualification": "CA, DISA",
+      "experience": "12 years",
+      "status": "active"
+    },
+    {
+      "id": "staff-004",
+      "name": "Amit Joshi",
+      "email": "amit.joshi@apexbank.example",
+      "role": "officer",
+      "department": "Compliance",
+      "employeeCode": "CMP-001",
+      "joinedDate": "2019-03-10",
+      "qualification": "CAIIB, LLB",
+      "experience": "15 years",
+      "status": "active"
+    },
+    {
+      "id": "staff-005",
+      "name": "Suresh Patil",
+      "email": "suresh.patil@apexbank.example",
+      "role": "manager",
+      "department": "Credit",
+      "employeeCode": "CRD-001",
+      "joinedDate": "2016-09-01",
+      "qualification": "MBA Finance, CAIIB",
+      "experience": "18 years",
+      "status": "active"
+    },
+    {
+      "id": "staff-006",
+      "name": "Vikram Kulkarni",
+      "email": "vikram.kulkarni@apexbank.example",
+      "role": "manager",
+      "department": "IT",
+      "employeeCode": "IT-001",
+      "joinedDate": "2017-06-15",
+      "qualification": "B.Tech, CISA",
+      "experience": "14 years",
+      "status": "active"
+    },
+    {
+      "id": "staff-007",
+      "name": "Meena Naik",
+      "email": "meena.naik@apexbank.example",
+      "role": "manager",
+      "department": "Treasury",
+      "employeeCode": "TRS-001",
+      "joinedDate": "2015-04-01",
+      "qualification": "M.Com, CAIIB",
+      "experience": "20 years",
+      "status": "active"
+    },
+    {
+      "id": "staff-008",
+      "name": "Rahul Joshi",
+      "email": "rahul.joshi@apexbank.example",
+      "role": "manager",
+      "department": "Operations",
+      "employeeCode": "OPS-001",
+      "joinedDate": "2018-01-10",
+      "qualification": "MBA, CAIIB",
+      "experience": "10 years",
+      "status": "active"
+    },
+    {
+      "id": "staff-009",
+      "name": "Deepak Ghorpade",
+      "email": "deepak.ghorpade@apexbank.example",
+      "role": "manager",
+      "department": "Operations",
+      "employeeCode": "OPS-002",
+      "joinedDate": "2014-08-15",
+      "qualification": "M.Com, CAIIB",
+      "experience": "22 years",
+      "status": "active"
+    },
+    {
+      "id": "staff-010",
+      "name": "Sanjay More",
+      "email": "sanjay.more@apexbank.example",
+      "role": "clerk",
+      "department": "Credit",
+      "employeeCode": "CRD-002",
+      "joinedDate": "2020-02-01",
+      "qualification": "B.Com",
+      "experience": "5 years",
+      "status": "active"
+    },
+    {
+      "id": "staff-011",
+      "name": "Preeti Kale",
+      "email": "preeti.kale@apexbank.example",
+      "role": "clerk",
+      "department": "Operations",
+      "employeeCode": "OPS-003",
+      "joinedDate": "2021-05-15",
+      "qualification": "B.Com",
+      "experience": "4 years",
+      "status": "active"
+    },
+    {
+      "id": "staff-012",
+      "name": "Mahesh Thorat",
+      "email": "mahesh.thorat@apexbank.example",
+      "role": "clerk",
+      "department": "IT",
+      "employeeCode": "IT-002",
+      "joinedDate": "2022-03-01",
+      "qualification": "BCA",
+      "experience": "3 years",
+      "status": "active"
+    }
+  ],
+  "metadata": {
+    "totalStaff": 12,
+    "departments": 7,
+    "lastUpdated": "2025-02-07"
+  }
+}

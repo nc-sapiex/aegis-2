@@ -1,0 +1,68 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files (NEVER commit secrets)
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Prisma generated client
+/src/generated/prisma
+
+# Build artifacts
+tsconfig.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+
+# Package manager (use pnpm-lock.yaml)
+package-lock.json
+
+# Playwright
+playwright/.auth/
+playwright-report/
+test-results/
+blob-report/
+
+# Auto Claude data directory
+.auto-claude/
+.gemini/
+.opencode/
+.paul/
+.claude/worktrees/
+.claude/agents/
+.claude/skills/**/__pycache__/
+.claude/settings.local.json
+.codex/
+**/__pycache__/
+.planning/STATE.md.bak-*
+
+# Auto Claude generated files
+.auto-claude-security.json
+.auto-claude-status
+.claude_settings.json
+.worktrees/
+.security-key
+logs/security/
+
+# Production env (never commit)
+.env.production
+
+# Temp / local docs
+Project Doc/~$*
+.gstack/
+
+# pnpm content-addressable store (created by local installs)
+.pnpm-store/
+
+# claude-security scan marker (per-machine state)
+.claude/.security-scan

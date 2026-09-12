@@ -1,0 +1,168 @@
+[
+  {
+    "id": "b0000000-0000-0000-0000-000000000011",
+    "name": "Standard Audit Report",
+    "category": "REPORT_HEADER",
+    "versionNumber": 1,
+    "isActive": true,
+    "templateData": {
+      "sections": [
+        {
+          "id": "executive-summary",
+          "title": "Executive Summary",
+          "order": 1,
+          "required": true,
+          "fields": ["overallRating", "keyFindings", "criticalObservations"]
+        },
+        {
+          "id": "scope-methodology",
+          "title": "Audit Scope & Methodology",
+          "order": 2,
+          "required": true,
+          "fields": [
+            "auditPeriod",
+            "auditType",
+            "samplingApproach",
+            "areasReviewed"
+          ]
+        },
+        {
+          "id": "detailed-findings",
+          "title": "Detailed Findings",
+          "order": 3,
+          "required": true,
+          "fields": ["observationsList", "severityBreakdown", "riskRatings"]
+        },
+        {
+          "id": "recommendations",
+          "title": "Recommendations & Action Plans",
+          "order": 4,
+          "required": true,
+          "fields": [
+            "recommendationsList",
+            "timelineSuggested",
+            "responsibleParties"
+          ]
+        },
+        {
+          "id": "annexures",
+          "title": "Annexures",
+          "order": 5,
+          "required": false,
+          "fields": ["supportingDocuments", "dataAnalysis", "complianceMatrix"]
+        }
+      ],
+      "formatting": {
+        "headerLogo": true,
+        "pageNumbers": true,
+        "confidentialityMark": "INTERNAL AUDIT - CONFIDENTIAL",
+        "approvalSignatures": ["CAE", "ACB_CHAIRMAN"]
+      }
+    }
+  },
+  {
+    "id": "b0000000-0000-0000-0000-000000000012",
+    "name": "Cash Verification Checklist",
+    "category": "CHECKLIST",
+    "versionNumber": 1,
+    "isActive": true,
+    "templateData": {
+      "checklistItems": [
+        {
+          "id": "cash-001",
+          "item": "Cash in hand matches book balance",
+          "responseType": "YES_NO_NA",
+          "mandatory": true,
+          "evidenceRequired": true
+        },
+        {
+          "id": "cash-002",
+          "item": "Denomination breakdown verified",
+          "responseType": "YES_NO_NA",
+          "mandatory": true,
+          "evidenceRequired": false
+        },
+        {
+          "id": "cash-003",
+          "item": "Retention limit compliance checked",
+          "responseType": "YES_NO_NA",
+          "mandatory": true,
+          "evidenceRequired": true
+        },
+        {
+          "id": "cash-004",
+          "item": "Mutilated notes segregated and reported",
+          "responseType": "YES_NO_NA",
+          "mandatory": false,
+          "evidenceRequired": false
+        },
+        {
+          "id": "cash-005",
+          "item": "ATM balances reconciled",
+          "responseType": "YES_NO_NA",
+          "mandatory": true,
+          "evidenceRequired": true
+        },
+        {
+          "id": "cash-006",
+          "item": "Cash transit insurance valid",
+          "responseType": "YES_NO_NA",
+          "mandatory": true,
+          "evidenceRequired": true
+        }
+      ],
+      "scoring": {
+        "totalItems": 6,
+        "passingScore": 5,
+        "criticalItems": ["cash-001", "cash-003", "cash-005"]
+      }
+    }
+  },
+  {
+    "id": "b0000000-0000-0000-0000-000000000013",
+    "name": "Examination Section Template",
+    "category": "AUDIT_SECTION",
+    "versionNumber": 1,
+    "isActive": true,
+    "templateData": {
+      "sections": [
+        {
+          "code": "CASH",
+          "name": "Cash & ATM",
+          "itemCount": 15,
+          "riskWeight": 1.2
+        },
+        {
+          "code": "CLEARING",
+          "name": "Clearing Operations",
+          "itemCount": 12,
+          "riskWeight": 1.0
+        },
+        {
+          "code": "ADVANCES",
+          "name": "Advances & Loan Portfolio",
+          "itemCount": 25,
+          "riskWeight": 1.5
+        },
+        {
+          "code": "DEPOSITS",
+          "name": "Deposits & Customer Accounts",
+          "itemCount": 18,
+          "riskWeight": 1.1
+        }
+      ],
+      "responseOptions": [
+        "COMPLIANT",
+        "PARTIAL",
+        "NON_COMPLIANT",
+        "NOT_APPLICABLE"
+      ],
+      "severityMapping": {
+        "CRITICAL": "Immediate action required, regulatory breach",
+        "HIGH": "Significant risk, corrective action within 30 days",
+        "MEDIUM": "Moderate risk, corrective action within 90 days",
+        "LOW": "Best practice improvement, corrective action within 180 days"
+      }
+    }
+  }
+]

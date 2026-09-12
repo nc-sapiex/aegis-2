@@ -1,0 +1,16 @@
+# AEGIS - Development Override
+# Runs PostgreSQL only (Next.js runs via pnpm dev locally)
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+
+services:
+  # Disable the app service in development — use pnpm dev instead
+  app:
+    profiles:
+      - production-only
+
+  postgres:
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    environment:
+      # Relaxed password requirement for local dev
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aegis_dev_password}

@@ -1,0 +1,146 @@
+{
+  "circulars": [
+    {
+      "id": "CIR-001",
+      "reference": "RBI/2023-24/117",
+      "date": "2023-10-20",
+      "title": "Revised Basel III Capital Guidelines for UCBs",
+      "category": "Risk Management",
+      "description": "Comprehensive guidelines on capital adequacy, capital conservation buffer, and disclosure requirements for Urban Co-operative Banks implementing Basel III framework.",
+      "keyRequirements": [
+        "Minimum CRAR of 9% for all UCBs",
+        "Tier 1 capital minimum of 6%",
+        "Capital Conservation Buffer: Tier 1 (1.5%), Tier 2 (1.0%)",
+        "Leverage ratio of 3.5% for Tier 1 and above UCBs",
+        "Pillar 3 disclosures for scheduled and Tier 1 UCBs"
+      ],
+      "applicability": "All UCBs",
+      "effectiveDate": "2024-01-01",
+      "implementationDate": "2024-04-01",
+      "pdfPath": null,
+      "requirementsExtracted": 6,
+      "relatedFindings": ["FND-001", "FND-010"]
+    },
+    {
+      "id": "CIR-002",
+      "reference": "RBI/2022-23/153",
+      "date": "2022-12-15",
+      "title": "Cyber Security Framework for UCBs",
+      "category": "IT",
+      "description": "Comprehensive cyber security framework requiring UCBs to implement robust information security measures, conduct annual cyber security audits, and maintain incident response capabilities.",
+      "keyRequirements": [
+        "Board-approved cyber security policy",
+        "Appointment of CISO for Tier 1 UCBs (recommended for others)",
+        "Annual cyber security audit by CERT-In empanelled auditor",
+        "Business Continuity Plan with annual testing",
+        "Cyber security incident reporting to RBI within timelines",
+        "Information security awareness training for staff"
+      ],
+      "applicability": "All UCBs",
+      "effectiveDate": "2023-01-01",
+      "implementationDate": "2023-04-01",
+      "pdfPath": null,
+      "requirementsExtracted": 5,
+      "relatedFindings": ["FND-003", "FND-006"]
+    },
+    {
+      "id": "CIR-003",
+      "reference": "RBI/2021-22/108",
+      "date": "2021-09-30",
+      "title": "Asset Liability Management Guidelines for UCBs",
+      "category": "Risk Management",
+      "description": "Guidelines for managing interest rate risk and liquidity risk through structured Asset Liability Management framework including ALCO constitution and gap analysis.",
+      "keyRequirements": [
+        "Board-approved ALM policy",
+        "Constitution of Asset Liability Committee (ALCO)",
+        "Monthly gap analysis for 1-3 years time buckets",
+        "Statement of interest rate sensitivity",
+        "Liquidity contingency funding plan",
+        "ALM returns submission to RBI"
+      ],
+      "applicability": "All UCBs",
+      "effectiveDate": "2022-01-01",
+      "implementationDate": "2022-04-01",
+      "pdfPath": null,
+      "requirementsExtracted": 3,
+      "relatedFindings": ["FND-002"]
+    },
+    {
+      "id": "CIR-004",
+      "reference": "RBI/2024-25/42",
+      "date": "2024-07-10",
+      "title": "Fit & Proper Norms for UCB Directors",
+      "category": "Governance",
+      "description": "Revised norms for fit and proper criteria for directors of Urban Co-operative Banks including background verification, qualification requirements, and disqualification criteria.",
+      "keyRequirements": [
+        "Background verification for all directors",
+        "No criminal history involving financial offenses",
+        "Minimum qualification and experience requirements",
+        "Declaration of related party interests",
+        "Annual fit and proper confirmation",
+        "Director rotation policy"
+      ],
+      "applicability": "All UCBs",
+      "effectiveDate": "2024-08-01",
+      "implementationDate": "2024-10-01",
+      "pdfPath": null,
+      "requirementsExtracted": 4,
+      "relatedFindings": []
+    },
+    {
+      "id": "CIR-005",
+      "reference": "RBI/2023-24/89",
+      "date": "2023-08-15",
+      "title": "Large Exposure Norms for UCBs",
+      "category": "Credit",
+      "description": "Guidelines on single borrower and group exposure limits for UCBs to ensure diversification of credit risk and prevent concentration risk.",
+      "keyRequirements": [
+        "Single borrower exposure limit: 25% of eligible capital",
+        "Group exposure limit: 55% of eligible capital",
+        "Exposure reporting for amounts above 10% of capital",
+        "Quarterly reporting to RBI through DAKSH",
+        "Board approval for exposures above 20%",
+        "Excess exposure regularization within specified time"
+      ],
+      "applicability": "All UCBs",
+      "effectiveDate": "2023-09-01",
+      "implementationDate": "2023-12-01",
+      "pdfPath": null,
+      "requirementsExtracted": 4,
+      "relatedFindings": ["FND-007"]
+    },
+    {
+      "id": "CIR-006",
+      "reference": "RBI/2022-23/76",
+      "date": "2022-08-20",
+      "title": "Risk Management Committee Guidelines for UCBs",
+      "category": "Governance",
+      "description": "Guidelines for constitution and functioning of Risk Management Committee including composition, meeting frequency, and responsibilities for overseeing risk management framework.",
+      "keyRequirements": [
+        "RMC with minimum 3 directors including Chairman",
+        "Quarterly meetings minimum",
+        "Oversight of risk management policies",
+        "Review of risk profile and capital adequacy",
+        "Reporting to Board on risk matters",
+        "Risk-based supervision implementation"
+      ],
+      "applicability": "All UCBs",
+      "effectiveDate": "2022-09-01",
+      "implementationDate": "2023-01-01",
+      "pdfPath": null,
+      "requirementsExtracted": 5,
+      "relatedFindings": []
+    }
+  ],
+  "metadata": {
+    "totalCirculars": 6,
+    "categories": {
+      "Risk Management": 2,
+      "IT": 1,
+      "Governance": 2,
+      "Credit": 1
+    },
+    "dateRange": "2021-09-30 to 2024-07-10",
+    "lastUpdated": "2025-02-07"
+  }
+}

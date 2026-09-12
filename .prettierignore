@@ -1,0 +1,19 @@
+# Lockfiles — pnpm rewrites these in its own canonical format;
+# letting Prettier reformat them produces 16k-line phantom diffs.
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Build artifacts
+*.tsbuildinfo
+
+# Generated reference docs — scripts/generate-reference-docs.mjs owns their
+# exact bytes and `docs:check` (a lint gate) asserts byte-equality with its
+# output. Prettier reformatting them makes the gate fail with no content
+# change, and regenerating undoes the formatting: the two rules fight.
+docs/reference/
+
+# Git worktrees live inside the repo, so a bare `prettier --write .` walks
+# into them and reformats another branch's checkout. Never format them.
+.claude/worktrees/
+.worktrees/

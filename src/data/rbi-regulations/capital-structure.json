@@ -1,0 +1,345 @@
+{
+  "tier1Capital": {
+    "title": "Tier 1 Capital (CET1 + Additional Tier 1)",
+    "description": "Core capital that absorbs losses without the bank being required to cease trading. Must be at least 6% of risk-weighted assets for UCBs.",
+    "components": {
+      "commonEquityTier1": {
+        "title": "Common Equity Tier 1 (CET1)",
+        "description": "Highest quality capital, primary loss absorber",
+        "components": [
+          {
+            "name": "Paid-up Capital",
+            "description": "Equity capital contributed by shareholders",
+            "eligibility": "Fully eligible",
+            "limits": "No limit on inclusion"
+          },
+          {
+            "name": "Statutory Reserves",
+            "description": "Reserves created under statutory requirements",
+            "eligibility": "Fully eligible",
+            "limits": "Created from profits, fully eligible"
+          },
+          {
+            "name": "Surplus",
+            "description": "Balance in profit and loss account",
+            "eligibility": "Fully eligible",
+            "limits": "After dividend declaration"
+          },
+          {
+            "name": "Revaluation Reserves",
+            "description": "Reserves from revaluation of assets",
+            "eligibility": "Eligible with discount",
+            "limits": "55% discount applied"
+          },
+          {
+            "name": "Disclosed Reserves",
+            "description": "General reserves disclosed in balance sheet",
+            "eligibility": "Fully eligible",
+            "limits": "Created from profits"
+          },
+          {
+            "name": "Innovative Instruments",
+            "description": "Perpetual non-cumulative preference shares",
+            "eligibility": "Limited inclusion",
+            "limits": "Maximum 40% of CET1"
+          }
+        ],
+        "deductions": [
+          "Goodwill and other intangible assets",
+          "Deferred tax assets arising from temporary differences",
+          "Deferred tax assets arising from unused tax losses",
+          "Investments in own financial instruments",
+          "Reciprocal cross holdings",
+          "Direct and indirect holdings in financial institutions",
+          "Securitization exposures",
+          "Other amounts as may be specified by RBI"
+        ],
+        "ucbMinimum": "3.5% of RWA"
+      },
+      "additionalTier1": {
+        "title": "Additional Tier 1 (AT1) Capital",
+        "description": "Supplementary core capital instruments that can absorb losses",
+        "components": [
+          {
+            "name": "Innovative Perpetual Instruments",
+            "description": "Perpetual debt instruments with loss absorption",
+            "eligibility": "Limited inclusion",
+            "limits": "Maximum 40% of CET1"
+          },
+          {
+            "name": "Perpetual Preference Shares",
+            "description": "Perpetual non-cumulative preference shares",
+            "eligibility": "Limited inclusion",
+            "limits": "Maximum 40% of CET1"
+          }
+        ],
+        "requirements": [
+          "Perpetual in nature",
+          "Loss absorption at point of non-viability",
+          "No incentive to redeem",
+          "Distributions from profit only"
+        ],
+        "ucbContext": "Limited usage in UCBs, primarily CET1"
+      }
+    },
+    "ucbMinimum": "6% of RWA (CET1 minimum 3.5%)",
+    "limits": {
+      "tier1Minimum": "6% of RWA",
+      "cet1Minimum": "3.5% of RWA",
+      "innovativeInstrumentsLimit": "40% of CET1"
+    }
+  },
+  "tier2Capital": {
+    "title": "Tier 2 Capital (Supplementary Capital)",
+    "description": "Supplementary capital that provides loss absorption capability after Tier 1 capital is depleted. Cannot exceed 100% of Tier 1 capital (50% for Tier 2 and below UCBs).",
+    "components": [
+      {
+        "name": "Revaluation Reserves",
+        "description": "Reserves from revaluation of assets (included in Tier 2 if not in CET1)",
+        "eligibility": "With discount",
+        "limits": "55% discount applied"
+      },
+      {
+        "name": "General Provisions",
+        "description": "General provisions and loss reserves not against specific identified impairment",
+        "eligibility": "Limited inclusion",
+        "limits": "Maximum 1.25% of RWA"
+      },
+      {
+        "name": "Hybrid Instruments",
+        "description": "Debt capital instruments with equity characteristics",
+        "eligibility": "Subject to conditions",
+        "limits": "Minimum 5 year original maturity required"
+      },
+      {
+        "name": "Subordinated Debt",
+        "description": "Unsecured debt that ranks below other debts",
+        "eligibility": "Limited inclusion",
+        "limits": "Minimum 5 year original maturity, amortized in last 5 years"
+      },
+      {
+        "name": "Perpetual Cumulative Preference Shares",
+        "description": "Perpetual preference shares with cumulative dividend",
+        "eligibility": "Limited inclusion",
+        "limits": "Subject to conditions"
+      },
+      {
+        "name": "Redeemable Preference Shares",
+        "description": "Redeemable preference shares",
+        "eligibility": "Limited inclusion",
+        "limits": "Minimum 5 year original maturity"
+      }
+    ],
+    "requirements": [
+      "Minimum 5 year original maturity for debt instruments",
+      "Amortization of principal in last 5 years",
+      "Loss absorption capability",
+      "Subordination to depositors and general creditors"
+    ],
+    "ucbLimits": {
+      "tier1AndAbove": "Cannot exceed 100% of Tier 1 capital",
+      "tier2AndBelow": "Cannot exceed 50% of Tier 1 capital"
+    }
+  },
+  "deductions": {
+    "title": "Deductions from Capital",
+    "description": "Items that must be deducted primarily from Tier 1 capital (CET1).",
+    "fromCET1": [
+      {
+        "item": "Goodwill",
+        "description": "Intangible assets representing business reputation",
+        "treatment": "100% deduction from CET1"
+      },
+      {
+        "item": "Other Intangible Assets",
+        "description": "Intangible assets other than goodwill (mortgage servicing rights, etc.)",
+        "treatment": "100% deduction from CET1"
+      },
+      {
+        "item": "Deferred Tax Assets (DTA)",
+        "description": "DTA arising from temporary differences",
+        "treatment": "100% deduction from CET1"
+      },
+      {
+        "item": "DTA from Unused Tax Losses",
+        "description": "DTA arising from unused tax losses",
+        "treatment": "100% deduction from CET1"
+      },
+      {
+        "item": "Investments in Own Instruments",
+        "description": "Bank's investments in its own capital instruments",
+        "treatment": "100% deduction from CET1"
+      },
+      {
+        "item": "Reciprocal Cross Holdings",
+        "description": "Cross holdings of capital instruments of financial institutions",
+        "treatment": "Deduction for reciprocal holdings"
+      },
+      {
+        "item": "Direct Holdings in Financial Institutions",
+        "description": "Direct holdings in capital instruments of banking/financial entities",
+        "treatment": "Deduction as per prescribed limits"
+      },
+      {
+        "item": "Indirect Holdings in Financial Institutions",
+        "description": "Indirect holdings through investments in subsidiaries",
+        "treatment": "Deduction as per prescribed limits"
+      },
+      {
+        "item": "Securitization Exposures",
+        "description": "Exposure to securitization structures",
+        "treatment": "Deduction as per securitization framework"
+      },
+      {
+        "item": "Other Specified Amounts",
+        "description": "Other amounts specified by RBI from time to time",
+        "treatment": "Deduction as per RBI guidelines"
+      }
+    ],
+    "ucbNotes": [
+      "UCBs with limited investments may have minimal deductions",
+      "Goodwill from amalgamation requires full deduction",
+      "Software development costs may be intangible requiring deduction"
+    ]
+  },
+  "capitalAdequacyRequirements": {
+    "title": "Minimum Capital Requirements",
+    "ucbRequirements": {
+      "allBanks": {
+        "minimumCRAR": "9%",
+        "tier1Minimum": "6%",
+        "cet1Minimum": "3.5%"
+      },
+      "tier1UCB": {
+        "applicability": "From April 1, 2026",
+        "ccb": "1.5%",
+        "totalMinimum": "10.5% (including CCB)"
+      },
+      "tier2UCB": {
+        "applicability": "From April 1, 2027",
+        "ccb": "1.0%",
+        "totalMinimum": "10% (including CCB)"
+      },
+      "tier3And4UCB": {
+        "applicability": "To be notified",
+        "ccb": "To be notified",
+        "totalMinimum": "9% (without CCB)"
+      }
+    },
+    "buffers": {
+      "capitalConservationBuffer": {
+        "title": "Capital Conservation Buffer (CCB)",
+        "description": "Additional capital to be built outside minimum requirements",
+        "tier1": "1.5% of RWA",
+        "tier2": "1.0% of RWA",
+        "tier3and4": "To be notified"
+      },
+      "countercyclicalBuffer": {
+        "title": "Countercyclical Capital Buffer (CCyB)",
+        "description": "Buffer activated during periods of high credit growth",
+        "range": "0-2.5% of RWA",
+        "applicability": "Applicable when activated by RBI"
+      },
+      "systemicallyImportantBuffer": {
+        "title": "Systemically Important Bank (SIB) Buffer",
+        "description": "Additional capital for systemically important UCBs",
+        "range": "0-0.8% of RWA",
+        "applicability": "To be notified by RBI"
+      }
+    }
+  },
+  "capitalCharges": {
+    "title": "Capital Charge Calculation",
+    "creditRisk": {
+      "approach": "Standardized Approach",
+      "method": "Risk Weight × Exposure",
+      "formula": "Credit RWA = Sum of (Risk Weight × Exposure) for all exposures",
+      "capitalCharge": "9% of Credit RWA"
+    },
+    "marketRisk": {
+      "approach": "Standardized Approach",
+      "applicability": "UCBs with significant trading portfolio",
+      "formula": "Market RWA = 12.5 × Market Risk Capital Charge",
+      "capitalCharge": "As per standardized approach"
+    },
+    "operationalRisk": {
+      "approach": "Standardized Approach",
+      "method": "Based on Business Indicator",
+      "formula": "Operational Risk Capital = BI × Coefficient",
+      "capitalCharge": "As per business indicator slabs"
+    },
+    "total": {
+      "formula": "Total RWA = Credit RWA + Market RWA + Operational RWA",
+      "capitalRequirement": "9% of Total RWA (for all UCBs)"
+    }
+  },
+  "limits": {
+    "title": "Capital Limits and Restrictions",
+    "tier2Limit": {
+      "general": "Tier 2 capital cannot exceed 100% of Tier 1 capital",
+      "tier2AndBelowUCBs": "Tier 2 capital cannot exceed 50% of Tier 1 capital",
+      "rationale": "To ensure core capital predominance"
+    },
+    "innovativeInstruments": {
+      "limit": "Maximum 40% of CET1 capital",
+      "applicability": "Innovative perpetual instruments"
+    },
+    "subordinatedDebt": {
+      "maturity": "Minimum 5 years original maturity",
+      "amortization": "Principal amortized in last 5 years",
+      "inclusion": "Included in Tier 2"
+    },
+    "generalProvisions": {
+      "limit": "Maximum 1.25% of RWA",
+      "applicability": "General provisions not against specific impairment"
+    },
+    "investmentLimit": {
+      "inSubsidiaries": "Actual investment deducted from capital",
+      "inOtherBanks": "Deduction as per prescribed limits"
+    }
+  },
+  "ucbSpecificNotes": {
+    "title": "UCB-Specific Capital Treatment",
+    "notes": [
+      {
+        "topic": "Statutory Reserves with RBI",
+        "treatment": "Not eligible for Tier 1 capital as it is held with RBI"
+      },
+      {
+        "topic": "Donations and Grants",
+        "treatment": "May be treated as capital if certain conditions met"
+      },
+      {
+        "topic": "Share Premium",
+        "treatment": "Eligible for CET1 capital"
+      },
+      {
+        "topic": "Capital Reserve from Amalgamation",
+        "treatment": "Requires careful evaluation for eligibility"
+      },
+      {
+        "topic": "Revaluation of Investments",
+        "treatment": "55% discount applied for inclusion in capital"
+      },
+      {
+        "topic": "Software Assets",
+        "treatment": "Intangible assets requiring deduction from capital"
+      },
+      {
+        "topic": "Deferred Tax Assets",
+        "treatment": "Generally deductible from CET1"
+      },
+      {
+        "topic": "Fluctuation in Reserves",
+        "treatment": "Can impact capital ratios; requires monitoring"
+      }
+    ]
+  },
+  "metadata": {
+    "document": "Basel III Capital Regulations",
+    "applicability": "UCBs as per tier-wise implementation",
+    "effectiveDate": "2026-04-01 for Tier 1 UCBs",
+    "lastUpdated": "2025-12-01",
+    "source": "UCB Guidelines by RBI - Comprehensive Compilation (December 2025)"
+  }
+}

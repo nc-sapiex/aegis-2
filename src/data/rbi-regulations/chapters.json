@@ -1,0 +1,541 @@
+{
+  "baselChapters": [
+    {
+      "chapterNumber": 1,
+      "title": "Short Title and Commencement",
+      "summary": "Defines the title of these regulations as the 'Basel III Capital Regulations' and specifies the commencement dates for different categories of UCBs.",
+      "keyTopics": [
+        "Short Title",
+        "Commencement Dates",
+        "Applicability by UCB Tier",
+        "Regulatory Authority"
+      ],
+      "category": "governance",
+      "sections": [
+        { "sectionNumber": "1.1", "title": "Short Title" },
+        { "sectionNumber": "1.2", "title": "Commencement" },
+        { "sectionNumber": "1.3", "title": "Applicability" }
+      ],
+      "ucbRelevance": "high",
+      "notes": "Establishes the legal framework and timeline for Basel III implementation in UCBs."
+    },
+    {
+      "chapterNumber": 2,
+      "title": "Commencement of Applicability",
+      "summary": "Specifies the phased implementation timeline for Basel III regulations based on UCB tiers (Tier 1, Tier 2, Tier 3/4) with specific dates and requirements.",
+      "keyTopics": [
+        "Tier-wise Implementation",
+        "Commencement Dates",
+        "Capital Requirements",
+        "Risk Management Requirements"
+      ],
+      "category": "governance",
+      "sections": [
+        { "sectionNumber": "2.1", "title": "Tier 1 UCB Applicability" },
+        { "sectionNumber": "2.2", "title": "Tier 2 UCB Applicability" },
+        { "sectionNumber": "2.3", "title": "Tier 3 & 4 UCB Applicability" },
+        { "sectionNumber": "2.4", "title": "Transitional Arrangements" }
+      ],
+      "ucbRelevance": "critical",
+      "notes": "Critical chapter defining when each tier of UCB must comply with Basel III requirements. Tier 1 UCBs commence from April 1, 2026."
+    },
+    {
+      "chapterNumber": 3,
+      "title": "Definitions",
+      "summary": "Provides comprehensive definitions of key terms used in the regulations including capital instruments, risk components, and regulatory terminology.",
+      "keyTopics": [
+        "Capital Definitions",
+        "Risk Components",
+        "Regulatory Terms",
+        "Banking Terminology"
+      ],
+      "category": "capital",
+      "sections": [
+        { "sectionNumber": "3.1", "title": "Capital Instrument Definitions" },
+        { "sectionNumber": "3.2", "title": "Tier 1 Capital Definitions" },
+        { "sectionNumber": "3.3", "title": "Tier 2 Capital Definitions" },
+        { "sectionNumber": "3.4", "title": "Risk-Weighted Assets" },
+        { "sectionNumber": "3.5", "title": "Exposure Definitions" },
+        { "sectionNumber": "3.6", "title": "Regulatory Definitions" }
+      ],
+      "ucbRelevance": "high",
+      "notes": "Contains 25+ key definitions essential for understanding and implementing Basel III."
+    },
+    {
+      "chapterNumber": 4,
+      "title": "Capital Structure",
+      "summary": "Defines the structure of regulatory capital including the components of Tier 1 and Tier 2 capital, eligibility criteria, and deductions from capital.",
+      "keyTopics": [
+        "Tier 1 Capital",
+        "Tier 2 Capital",
+        "Capital Instruments",
+        "Deductions from Capital",
+        "Capital Limits"
+      ],
+      "category": "capital",
+      "sections": [
+        { "sectionNumber": "4.1", "title": "Regulatory Capital Structure" },
+        { "sectionNumber": "4.2", "title": "Tier 1 Capital Components" },
+        { "sectionNumber": "4.3", "title": "Tier 2 Capital Components" },
+        { "sectionNumber": "4.4", "title": "Deductions from Capital" },
+        { "sectionNumber": "4.5", "title": "Limits on Capital Instruments" },
+        { "sectionNumber": "4.6", "title": "UCB-Specific Capital Treatment" }
+      ],
+      "ucbRelevance": "critical",
+      "notes": "Core chapter defining what qualifies as regulatory capital for UCBs."
+    },
+    {
+      "chapterNumber": 5,
+      "title": "Capital Adequacy Requirements",
+      "summary": "Specifies the minimum capital requirements including capital adequacy ratio, Tier 1 ratio, and capital conservation buffer requirements.",
+      "keyTopics": [
+        "Minimum Capital Requirements",
+        "Capital Conservation Buffer",
+        "Countercyclical Capital Buffer",
+        "Systemically Important Banks Buffer",
+        "Capital to Risk-Weighted Assets Ratio"
+      ],
+      "category": "capital",
+      "sections": [
+        {
+          "sectionNumber": "5.1",
+          "title": "Minimum Capital Ratio Requirements"
+        },
+        { "sectionNumber": "5.2", "title": "Tier 1 Capital Requirements" },
+        { "sectionNumber": "5.3", "title": "Capital Conservation Buffer" },
+        { "sectionNumber": "5.4", "title": "Countercyclical Buffer" },
+        { "sectionNumber": "5.5", "title": "Transitional Arrangements" }
+      ],
+      "ucbRelevance": "critical",
+      "notes": "Sets the CRAR minimum at 9% for all UCBs with Tier 1 minimum of 6%."
+    },
+    {
+      "chapterNumber": 6,
+      "title": "Risk-Weighted Assets",
+      "summary": "Provides the framework for calculating risk-weighted assets for credit, market, and operational risks.",
+      "keyTopics": [
+        "Credit Risk RWA",
+        "Market Risk RWA",
+        "Operational Risk RWA",
+        "Risk Weight Assignment",
+        "RWA Calculation Methods"
+      ],
+      "category": "risk",
+      "sections": [
+        { "sectionNumber": "6.1", "title": "Overview of Risk-Weighted Assets" },
+        { "sectionNumber": "6.2", "title": "Credit Risk RWA" },
+        { "sectionNumber": "6.3", "title": "Market Risk RWA" },
+        { "sectionNumber": "6.4", "title": "Operational Risk RWA" },
+        { "sectionNumber": "6.5", "title": "Total RWA" }
+      ],
+      "ucbRelevance": "high",
+      "notes": "Fundamental to calculating capital ratios."
+    },
+    {
+      "chapterNumber": 7,
+      "title": "Credit Risk - Standardized Approach",
+      "summary": "Defines the standardized approach for credit risk including risk weights for various asset classes and counterparties.",
+      "keyTopics": [
+        "Risk Weights for Claims",
+        "Sovereign Exposures",
+        "Bank Exposures",
+        "Corporate Exposures",
+        "Retail Exposures",
+        "Secured Lending",
+        "Off-Balance Sheet Items"
+      ],
+      "category": "risk",
+      "sections": [
+        { "sectionNumber": "7.1", "title": "Standardized Approach Overview" },
+        { "sectionNumber": "7.2", "title": "Claims on Sovereigns" },
+        { "sectionNumber": "7.3", "title": "Claims on Banks" },
+        { "sectionNumber": "7.4", "title": "Claims on Corporates" },
+        { "sectionNumber": "7.5", "title": "Retail Exposures" },
+        { "sectionNumber": "7.6", "title": "Secured by Collateral" },
+        { "sectionNumber": "7.7", "title": "Off-Balance Sheet Items" }
+      ],
+      "ucbRelevance": "high",
+      "notes": "Provides risk weights for different categories of loans and advances."
+    },
+    {
+      "chapterNumber": 8,
+      "title": "Securitization Framework",
+      "summary": "Outlines the regulatory framework for securitization exposures including the standardized approach.",
+      "keyTopics": [
+        "Securitization Exposures",
+        "Securitization Framework",
+        "Standardized Approach",
+        "Liquidity Facilities"
+      ],
+      "category": "risk",
+      "sections": [
+        {
+          "sectionNumber": "8.1",
+          "title": "Scope of Securitization Framework"
+        },
+        { "sectionNumber": "8.2", "title": "Definitions" },
+        { "sectionNumber": "8.3", "title": "Standardized Approach" }
+      ],
+      "ucbRelevance": "medium",
+      "notes": "Limited relevance for most UCBs as securitization activities are rare."
+    },
+    {
+      "chapterNumber": 9,
+      "title": "Counterparty Credit Risk",
+      "summary": "Addresses counterparty credit risk arising from derivatives, repos, and similar transactions.",
+      "keyTopics": [
+        "Counterparty Credit Risk",
+        "Derivatives Exposure",
+        "Securities Financing Transactions",
+        "Credit Valuation Adjustment Risk"
+      ],
+      "category": "risk",
+      "sections": [
+        { "sectionNumber": "9.1", "title": "Counterparty Risk Overview" },
+        { "sectionNumber": "9.2", "title": "Standardized Approach" }
+      ],
+      "ucbRelevance": "medium",
+      "notes": "Relevant for UCBs engaged in derivatives and securities financing."
+    },
+    {
+      "chapterNumber": 10,
+      "title": "Market Risk",
+      "summary": "Specifies the market risk capital requirements for trading book exposures and interest rate risk in the banking book.",
+      "keyTopics": [
+        "Trading Book Risk",
+        "Interest Rate Risk",
+        "Equity Risk",
+        "Foreign Exchange Risk",
+        "Commodity Risk"
+      ],
+      "category": "risk",
+      "sections": [
+        { "sectionNumber": "10.1", "title": "Market Risk Scope" },
+        { "sectionNumber": "10.2", "title": "Standardized Approach" }
+      ],
+      "ucbRelevance": "medium",
+      "notes": "Applicable to UCBs with significant trading portfolios."
+    },
+    {
+      "chapterNumber": 11,
+      "title": "Operational Risk",
+      "summary": "Defines operational risk capital requirements using the standardized approach based on business indicators.",
+      "keyTopics": [
+        "Operational Risk Definition",
+        "Business Indicator",
+        "Business Indicator Components",
+        "Capital Calculation"
+      ],
+      "category": "risk",
+      "sections": [
+        { "sectionNumber": "11.1", "title": "Operational Risk Definition" },
+        { "sectionNumber": "11.2", "title": "Standardized Approach" },
+        { "sectionNumber": "11.3", "title": "Business Indicator Calculation" },
+        { "sectionNumber": "11.4", "title": "Capital Requirement Computation" }
+      ],
+      "ucbRelevance": "high",
+      "notes": "Applicable to all UCBs based on their business activities."
+    },
+    {
+      "chapterNumber": 12,
+      "title": "Large Exposures Framework",
+      "summary": "Limits single borrower and group exposure concentrations to maintain diversification and manage credit concentration risk.",
+      "keyTopics": [
+        "Single Borrower Limit",
+        "Group Exposure Limit",
+        "Exempted Exposures",
+        "Reporting Requirements"
+      ],
+      "category": "risk",
+      "sections": [
+        { "sectionNumber": "12.1", "title": "Large Exposure Limit" },
+        { "sectionNumber": "12.2", "title": "Exposure Calculation" },
+        { "sectionNumber": "12.3", "title": "Exemptions" }
+      ],
+      "ucbRelevance": "high",
+      "notes": "Critical for managing credit concentration in UCB lending."
+    },
+    {
+      "chapterNumber": 13,
+      "title": "Disclosure Requirements (Pillar 3)",
+      "summary": "Specifies the disclosure requirements for market discipline including qualitative and quantitative disclosures.",
+      "keyTopics": [
+        "Pillar 3 Disclosures",
+        "Qualitative Disclosures",
+        "Quantitative Disclosures",
+        "Disclosure Frequency",
+        "Disclosure Locations"
+      ],
+      "category": "disclosure",
+      "sections": [
+        { "sectionNumber": "13.1", "title": "Disclosure Principles" },
+        { "sectionNumber": "13.2", "title": "Capital Structure Disclosures" },
+        { "sectionNumber": "13.3", "title": "Capital Adequacy Disclosures" },
+        { "sectionNumber": "13.4", "title": "Risk Management Disclosures" },
+        { "sectionNumber": "13.5", "title": "UCB Disclosure Requirements" }
+      ],
+      "ucbRelevance": "high",
+      "notes": "Required for scheduled UCBs and Tier 1 UCBs."
+    },
+    {
+      "chapterNumber": 14,
+      "title": "Reporting to Reserve Bank",
+      "summary": "Specifies the reporting requirements including frequency, format, and content of regulatory returns.",
+      "keyTopics": [
+        "Reporting Formats",
+        "Reporting Frequency",
+        "DAKSH Returns",
+        "Validation Rules"
+      ],
+      "category": "reporting",
+      "sections": [
+        { "sectionNumber": "14.1", "title": "Reporting Requirements" },
+        { "sectionNumber": "14.2", "title": "Submission Timeline" },
+        { "sectionNumber": "14.3", "title": "Reporting Formats" }
+      ],
+      "ucbRelevance": "high",
+      "notes": "Defines periodic reporting obligations to RBI."
+    },
+    {
+      "chapterNumber": 15,
+      "title": "Penal Provisions",
+      "summary": "Specifies penalties for non-compliance with the regulations.",
+      "keyTopics": [
+        "Penalty Structure",
+        "Non-compliance Actions",
+        "Regulatory Actions"
+      ],
+      "category": "governance",
+      "sections": [
+        { "sectionNumber": "15.1", "title": "Penalty for Non-compliance" },
+        { "sectionNumber": "15.2", "title": "Regulatory Actions" }
+      ],
+      "ucbRelevance": "high",
+      "notes": "Important for understanding consequences of non-compliance."
+    }
+  ],
+  "additionalGuidelines": [
+    {
+      "id": "RMC",
+      "title": "Risk Management Committee Guidelines",
+      "chapterNumber": "RMC-1",
+      "summary": "Guidelines for constitution and functioning of Risk Management Committee in UCBs including composition, meeting frequency, and responsibilities.",
+      "keyTopics": [
+        "RMC Constitution",
+        "Board Composition",
+        "Meeting Frequency",
+        "Responsibilities"
+      ],
+      "category": "governance",
+      "ucbRelevance": "high"
+    },
+    {
+      "id": "RM-IC",
+      "title": "Risk Management and Internal Control Guidelines",
+      "chapterNumber": "RM-1",
+      "summary": "Comprehensive risk management framework for UCBs including credit, market, and operational risk management systems.",
+      "keyTopics": [
+        "Risk Management Framework",
+        "Credit Risk",
+        "Market Risk",
+        "Operational Risk",
+        "Internal Controls"
+      ],
+      "category": "risk",
+      "ucbRelevance": "high"
+    },
+    {
+      "id": "ALM",
+      "title": "Asset Liability Management Guidelines",
+      "chapterNumber": "ALM-1",
+      "summary": "Framework for managing asset-liability mismatches including interest rate risk and liquidity risk management.",
+      "keyTopics": [
+        "ALM Structure",
+        "ALCO",
+        "Interest Rate Risk",
+        "Liquidity Risk",
+        "Monitoring and Reporting"
+      ],
+      "category": "alm",
+      "ucbRelevance": "high"
+    },
+    {
+      "id": "LM",
+      "title": "Liquidity Management Guidelines",
+      "chapterNumber": "LM-1",
+      "summary": "Guidelines for maintaining liquidity including LCR requirements, funding sources, and contingency funding plans.",
+      "keyTopics": [
+        "Liquidity Coverage Ratio",
+        "Stable Funding Ratio",
+        "Liquidity Monitoring",
+        "Contingency Funding Plan"
+      ],
+      "category": "alm",
+      "ucbRelevance": "high"
+    },
+    {
+      "id": "LEF",
+      "title": "Large Exposures Framework",
+      "chapterNumber": "LEF-1",
+      "summary": "Framework for limiting large exposures including single and group borrower limits.",
+      "keyTopics": [
+        "Single Borrower Limit",
+        "Group Borrower Limit",
+        "Exposure Measurement"
+      ],
+      "category": "risk",
+      "ucbRelevance": "high"
+    },
+    {
+      "id": "CSF",
+      "title": "Cyber Security Framework",
+      "chapterNumber": "CSF-1",
+      "summary": "Baseline cyber security controls and information security requirements for UCBs.",
+      "keyTopics": [
+        "Cyber Security Governance",
+        "Threat Monitoring",
+        "Incident Response",
+        "Vulnerability Management",
+        "Security Awareness"
+      ],
+      "category": "cyber",
+      "ucbRelevance": "high"
+    },
+    {
+      "id": "BCP",
+      "title": "Business Continuity Planning",
+      "chapterNumber": "BCP-1",
+      "summary": "Guidelines for business continuity planning and disaster recovery.",
+      "keyTopics": [
+        "BCP Policy",
+        "Risk Assessment",
+        "Recovery Strategy",
+        "Testing and Maintenance"
+      ],
+      "category": "cyber",
+      "ucbRelevance": "high"
+    },
+    {
+      "id": "CSS",
+      "title": "Customer Service Standards",
+      "chapterNumber": "CSS-1",
+      "summary": "Customer service standards including grievance redressal mechanism and complaint handling.",
+      "keyTopics": [
+        "Customer Service Standards",
+        "Grievance Redressal",
+        "Ombudsman Scheme",
+        "Compensation Policy"
+      ],
+      "category": "customer",
+      "ucbRelevance": "high"
+    },
+    {
+      "id": "FIT",
+      "title": "Fit and Proper Criteria",
+      "chapterNumber": "FIT-1",
+      "summary": "Fit and proper criteria for directors and senior management of UCBs.",
+      "keyTopics": [
+        "Director Eligibility",
+        "Background Verification",
+        "Disqualifications",
+        "Reporting Requirements"
+      ],
+      "category": "governance",
+      "ucbRelevance": "high"
+    },
+    {
+      "id": "ITSC",
+      "title": "IT Systems and Controls",
+      "chapterNumber": "ITSC-1",
+      "summary": "IT governance, systems security, and control requirements for UCBs.",
+      "keyTopics": [
+        "IT Governance",
+        "System Security",
+        "Access Controls",
+        "Change Management",
+        "IT Audit"
+      ],
+      "category": "cyber",
+      "ucbRelevance": "high"
+    },
+    {
+      "id": "RMB",
+      "title": "Risk Management Board Mandate",
+      "chapterNumber": "RMB-1",
+      "summary": "Mandate and responsibilities of the Risk Management Board/Committee.",
+      "keyTopics": [
+        "RMB Composition",
+        "Responsibilities",
+        "Reporting Structure",
+        "Meeting Requirements"
+      ],
+      "category": "governance",
+      "ucbRelevance": "high"
+    },
+    {
+      "id": "SUP",
+      "title": "Supervisory Returns",
+      "chapterNumber": "SUP-1",
+      "summary": "Format and frequency of supervisory returns to be submitted to RBI.",
+      "keyTopics": [
+        "DAKSH Returns",
+        "CRAR Returns",
+        "NPA Returns",
+        "ALM Returns"
+      ],
+      "category": "reporting",
+      "ucbRelevance": "high"
+    },
+    {
+      "id": "NBFC-UCB",
+      "title": "NBFC-UCB Interactions",
+      "chapterNumber": "NBFC-1",
+      "summary": "Guidelines for interactions between UCBs and NBFCs including co-lending arrangements.",
+      "keyTopics": ["Co-Lending", "Outsourcing Guidelines", "Due Diligence"],
+      "category": "operations",
+      "ucbRelevance": "medium"
+    }
+  ],
+  "appendices": [
+    {
+      "appendixNumber": 1,
+      "title": "Capital Conservation Buffer Requirements",
+      "summary": "Details of CCB requirements by bank tier."
+    },
+    {
+      "appendixNumber": 2,
+      "title": "Risk Weight Assignments",
+      "summary": "Comprehensive risk weight assignments for various asset classes."
+    },
+    {
+      "appendixNumber": 3,
+      "title": "Disclosure Templates",
+      "summary": "Templates for Pillar 3 disclosures."
+    },
+    {
+      "appendixNumber": 4,
+      "title": "Reporting Formats",
+      "summary": "Format of returns to be submitted to RBI."
+    },
+    {
+      "appendixNumber": 5,
+      "title": "Basel III Transition Arrangements",
+      "summary": "Phased implementation schedule."
+    }
+  ],
+  "metadata": {
+    "totalChapters": 15,
+    "totalAdditionalGuidelines": 13,
+    "totalAppendices": 12,
+    "categories": [
+      "governance",
+      "risk",
+      "capital",
+      "alm",
+      "disclosure",
+      "reporting",
+      "cyber",
+      "customer"
+    ]
+  }
+}

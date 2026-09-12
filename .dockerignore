@@ -1,0 +1,19 @@
+node_modules
+.next
+.git
+.planning
+.env
+.env.local
+.env.*.local
+!.env.example
+README.md
+docker-compose*.yml
+.DS_Store
+*.md
+.claude
+.worktrees
+.codex
+awesome-claude-code-subagents
+Project Doc
+UCB Guidelines by RBI.pdf
+tsconfig.tsbuildinfo

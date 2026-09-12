@@ -1,0 +1,275 @@
+[
+  {
+    "code": "CASH",
+    "name": "Cash",
+    "displayOrder": 1,
+    "sectionNumber": 1,
+    "itemCount": 36
+  },
+  {
+    "code": "ATM",
+    "name": "ATM",
+    "displayOrder": 2,
+    "sectionNumber": 2,
+    "itemCount": 13
+  },
+  {
+    "code": "DELIVERABLES_MANAGEMENT",
+    "name": "Deliverables Management",
+    "displayOrder": 3,
+    "sectionNumber": 3,
+    "itemCount": 12
+  },
+  {
+    "code": "SECURITY_STATIONERY",
+    "name": "Security Stationery",
+    "displayOrder": 4,
+    "sectionNumber": 4,
+    "itemCount": 5
+  },
+  {
+    "code": "CLEARING",
+    "name": "Clearing",
+    "displayOrder": 5,
+    "sectionNumber": 5,
+    "itemCount": 25
+  },
+  {
+    "code": "REMITTANCES",
+    "name": "Remittances",
+    "displayOrder": 6,
+    "sectionNumber": 6,
+    "itemCount": 4
+  },
+  {
+    "code": "DEPOSITS",
+    "name": "Deposits",
+    "displayOrder": 7,
+    "sectionNumber": 7,
+    "itemCount": 4
+  },
+  {
+    "code": "GOVERNMENT_TRANSACTIONS",
+    "name": "Government Transactions",
+    "displayOrder": 8,
+    "sectionNumber": 8,
+    "itemCount": 4
+  },
+  {
+    "code": "CUSTOMER_SERVICE",
+    "name": "Customer Service",
+    "displayOrder": 9,
+    "sectionNumber": 9,
+    "itemCount": 3
+  },
+  {
+    "code": "HOUSEKEEPING",
+    "name": "Housekeeping",
+    "displayOrder": 10,
+    "sectionNumber": 10,
+    "itemCount": 2
+  },
+  {
+    "code": "LOCKERS_SAFE_DEPOSIT",
+    "name": "Lockers/Safe Deposit",
+    "displayOrder": 11,
+    "sectionNumber": 11,
+    "itemCount": 2
+  },
+  {
+    "code": "KYC_AML_COMPLIANCE",
+    "name": "KYC/AML Compliance",
+    "displayOrder": 12,
+    "sectionNumber": 12,
+    "itemCount": 4
+  },
+  {
+    "code": "THIRD_PARTY_PRODUCTS",
+    "name": "Third Party Products",
+    "displayOrder": 13,
+    "sectionNumber": 13,
+    "itemCount": 3
+  },
+  {
+    "code": "STAFF_ACCOUNTABILITY",
+    "name": "Staff Accountability",
+    "displayOrder": 14,
+    "sectionNumber": 14,
+    "itemCount": 10
+  },
+  {
+    "code": "GENERAL_ADMINISTRATION",
+    "name": "General Administration",
+    "displayOrder": 15,
+    "sectionNumber": 15,
+    "itemCount": 4
+  },
+  {
+    "code": "CREDIT_PRE-SANCTION",
+    "name": "Credit Pre-Sanction",
+    "displayOrder": 16,
+    "sectionNumber": 16,
+    "itemCount": 11
+  },
+  {
+    "code": "CREDIT_POST-SANCTION",
+    "name": "Credit Post-Sanction",
+    "displayOrder": 17,
+    "sectionNumber": 17,
+    "itemCount": 24
+  },
+  {
+    "code": "NPA_MANAGEMENT",
+    "name": "NPA Management",
+    "displayOrder": 18,
+    "sectionNumber": 18,
+    "itemCount": 14
+  },
+  {
+    "code": "GOLD_LOANS",
+    "name": "Gold Loans",
+    "displayOrder": 19,
+    "sectionNumber": 19,
+    "itemCount": 12
+  },
+  {
+    "code": "PRIORITY_SECTOR_LENDING",
+    "name": "Priority Sector Lending",
+    "displayOrder": 20,
+    "sectionNumber": 20,
+    "itemCount": 11
+  },
+  {
+    "code": "NON_FUND_BASED",
+    "name": "Non Fund Based",
+    "displayOrder": 21,
+    "sectionNumber": 21,
+    "itemCount": 5
+  },
+  {
+    "code": "RETAIL_ASSETS",
+    "name": "Retail Assets",
+    "displayOrder": 22,
+    "sectionNumber": 22,
+    "itemCount": 13
+  },
+  {
+    "code": "INSURANCE",
+    "name": "Insurance",
+    "displayOrder": 23,
+    "sectionNumber": 23,
+    "itemCount": 2
+  },
+  {
+    "code": "PENSION",
+    "name": "Pension",
+    "displayOrder": 24,
+    "sectionNumber": 24,
+    "itemCount": 6
+  },
+  {
+    "code": "OTHER",
+    "name": "Other",
+    "displayOrder": 25,
+    "sectionNumber": 25,
+    "itemCount": 5
+  },
+  {
+    "code": "FEMA_COMPLIANCE",
+    "name": "FEMA Compliance",
+    "displayOrder": 26,
+    "sectionNumber": 26,
+    "itemCount": 2
+  },
+  {
+    "code": "KYC_AML_DETAILED",
+    "name": "KYC/AML Detailed",
+    "displayOrder": 27,
+    "sectionNumber": 27,
+    "itemCount": 68
+  },
+  {
+    "code": "RETAIL_LIABILITIES",
+    "name": "Retail Liabilities",
+    "displayOrder": 28,
+    "sectionNumber": 28,
+    "itemCount": 13
+  },
+  {
+    "code": "RETAIL_SERVICES",
+    "name": "Retail Services",
+    "displayOrder": 29,
+    "sectionNumber": 29,
+    "itemCount": 13
+  },
+  {
+    "code": "CREDIT_ADVANCES",
+    "name": "Credit/Advances",
+    "displayOrder": 30,
+    "sectionNumber": 30,
+    "itemCount": 96
+  },
+  {
+    "code": "INVESTMENT_TREASURY",
+    "name": "Investment/Treasury",
+    "displayOrder": 31,
+    "sectionNumber": 31,
+    "itemCount": 20
+  },
+  {
+    "code": "CREDIT_MONITORING_&_RECOVERY",
+    "name": "Credit Monitoring & Recovery",
+    "displayOrder": 32,
+    "sectionNumber": 32,
+    "itemCount": 73
+  },
+  {
+    "code": "FOREIGN_EXCHANGE",
+    "name": "Foreign Exchange",
+    "displayOrder": 33,
+    "sectionNumber": 33,
+    "itemCount": 33
+  },
+  {
+    "code": "TRADE_FINANCE",
+    "name": "Trade Finance",
+    "displayOrder": 34,
+    "sectionNumber": 34,
+    "itemCount": 5
+  },
+  {
+    "code": "PRIORITY_SECTOR_ADVANCES",
+    "name": "Priority Sector Advances",
+    "displayOrder": 35,
+    "sectionNumber": 35,
+    "itemCount": 2
+  },
+  {
+    "code": "GOVERNMENT_BUSINESS",
+    "name": "Government Business",
+    "displayOrder": 36,
+    "sectionNumber": 36,
+    "itemCount": 5
+  },
+  {
+    "code": "AREA_37",
+    "name": "Area 37",
+    "displayOrder": 37,
+    "sectionNumber": 37,
+    "itemCount": 1
+  },
+  {
+    "code": "AREA_38",
+    "name": "Area 38",
+    "displayOrder": 38,
+    "sectionNumber": 38,
+    "itemCount": 1
+  },
+  {
+    "code": "MISCELLANEOUS",
+    "name": "Miscellaneous",
+    "displayOrder": 39,
+    "sectionNumber": 39,
+    "itemCount": 2
+  }
+]

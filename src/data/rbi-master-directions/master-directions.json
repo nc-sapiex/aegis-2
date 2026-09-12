@@ -1,0 +1,72 @@
+[
+  {
+    "shortId": "MD-CAP",
+    "title": "Prudential Norms on Capital Adequacy",
+    "category": "Capital",
+    "rbiRef": "DBR.No.BC.104/08.13.002/2023-24",
+    "description": "Master Direction on minimum capital adequacy requirements for UCBs including CRAR computation, Tier 1/Tier 2 capital definitions, risk-weighted assets, and capital conservation buffer."
+  },
+  {
+    "shortId": "MD-IRAC",
+    "title": "Income Recognition, Asset Classification & Provisioning",
+    "category": "Credit Risk",
+    "rbiRef": "DBR.No.BP.BC.4/21.04.048/2023-24",
+    "description": "Master Direction on classification of advances into performing and non-performing categories, provisioning norms for NPAs, income recognition standards, and restructuring guidelines."
+  },
+  {
+    "shortId": "MD-KYC",
+    "title": "Know Your Customer Direction",
+    "category": "Customer Due Diligence",
+    "rbiRef": "DBR.No.AML.BC.4/14.01.001/2023-24",
+    "description": "Master Direction on customer identification, verification, ongoing due diligence, record keeping, and suspicious transaction reporting under Prevention of Money Laundering Act."
+  },
+  {
+    "shortId": "MD-PSL",
+    "title": "Priority Sector Lending — Targets & Classification",
+    "category": "Lending",
+    "rbiRef": "FIDD.CO.Plan.BC.5/04.09.01/2023-24",
+    "description": "Master Direction on targets for priority sector lending including agriculture, micro enterprises, weaker sections, and education loans as applicable to UCBs."
+  },
+  {
+    "shortId": "MD-ADV",
+    "title": "Management of Advances",
+    "category": "Credit Risk",
+    "rbiRef": "DBR.No.Dir.BC.10/13.03.00/2023-24",
+    "description": "Master Direction on prudent credit management including exposure norms, single and group borrower limits, collateral valuation, loan policy, and credit monitoring."
+  },
+  {
+    "shortId": "MD-BOD",
+    "title": "Board of Directors — UCBs",
+    "category": "Governance",
+    "rbiRef": "DBR.No.Leg.BC.15/09.81.002/2023-24",
+    "description": "Master Direction on board composition, fit and proper criteria, committee constitution, governance standards, related party transactions, and compliance culture for UCBs."
+  },
+  {
+    "shortId": "MD-FRM",
+    "title": "Fraud Risk Management",
+    "category": "Risk Management",
+    "rbiRef": "DBR.No.FrMC.BC.12/12.01.037/2023-24",
+    "description": "Master Direction on fraud risk management framework including fraud identification, reporting to RBI, investigation, staff accountability, and preventive measures."
+  },
+  {
+    "shortId": "MD-CSF",
+    "title": "Cyber Security Framework",
+    "category": "IT & Cyber Security",
+    "rbiRef": "DBR.No.FID.BC.09/12.01.004/2023-24",
+    "description": "Master Direction on cyber security framework for UCBs including IT governance, CISO appointment, incident reporting, business continuity, and security operations."
+  },
+  {
+    "shortId": "MD-IR",
+    "title": "Interest Rate on Deposits & Advances",
+    "category": "Treasury",
+    "rbiRef": "DBR.No.Dir.BC.11/13.03.00/2023-24",
+    "description": "Master Direction on interest rate regulations for deposits and advances, including ALCO functioning, ALM framework, base rate computation, and deposit rate ceilings."
+  },
+  {
+    "shortId": "MD-INV",
+    "title": "Investment Portfolio — Classification, Valuation & Operation",
+    "category": "Treasury",
+    "rbiRef": "DBR.No.Dir.BC.14/13.05.00/2023-24",
+    "description": "Master Direction on investment portfolio management including HTM/AFS/HFT classification, valuation norms, SLR maintenance, mark-to-market requirements, and dealing room operations."
+  }
+]

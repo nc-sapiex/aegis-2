@@ -1,0 +1,432 @@
+[
+  {
+    "code": "BR-01",
+    "name": "Deposit Growth Rate",
+    "category": "BUSINESS_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 1,
+    "scoringCriteria": {
+      "description": "Year-on-year deposit growth percentage",
+      "ranges": [
+        {
+          "min": null,
+          "max": 0,
+          "score": 5,
+          "label": "Negative growth — highest risk"
+        },
+        { "min": 0, "max": 5, "score": 4, "label": "Low growth" },
+        { "min": 5, "max": 10, "score": 3, "label": "Moderate growth" },
+        { "min": 10, "max": 20, "score": 2, "label": "Good growth" },
+        {
+          "min": 20,
+          "max": null,
+          "score": 1,
+          "label": "High growth — lowest risk"
+        }
+      ]
+    }
+  },
+  {
+    "code": "BR-02",
+    "name": "Advances Growth Rate",
+    "category": "BUSINESS_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 2,
+    "scoringCriteria": {
+      "description": "Year-on-year advances growth percentage",
+      "ranges": [
+        { "min": null, "max": 0, "score": 5, "label": "Negative growth" },
+        { "min": 0, "max": 5, "score": 4, "label": "Low growth" },
+        { "min": 5, "max": 15, "score": 3, "label": "Moderate growth" },
+        { "min": 15, "max": 25, "score": 2, "label": "Good growth" },
+        { "min": 25, "max": null, "score": 1, "label": "High growth" }
+      ]
+    }
+  },
+  {
+    "code": "BR-03",
+    "name": "CRAR (Capital to Risk-Weighted Assets Ratio)",
+    "category": "BUSINESS_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 3,
+    "scoringCriteria": {
+      "description": "Capital adequacy ratio — RBI minimum 9% for UCBs",
+      "ranges": [
+        {
+          "min": null,
+          "max": 9,
+          "score": 5,
+          "label": "Below regulatory minimum"
+        },
+        { "min": 9, "max": 10, "score": 4, "label": "Marginal compliance" },
+        { "min": 10, "max": 12, "score": 3, "label": "Adequate" },
+        { "min": 12, "max": 15, "score": 2, "label": "Well capitalised" },
+        { "min": 15, "max": null, "score": 1, "label": "Strongly capitalised" }
+      ]
+    }
+  },
+  {
+    "code": "BR-04",
+    "name": "Gross NPA to Gross Advances",
+    "category": "BUSINESS_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 4,
+    "scoringCriteria": {
+      "description": "Asset quality — lower is better",
+      "ranges": [
+        { "min": 10, "max": null, "score": 5, "label": "Critically high NPAs" },
+        { "min": 7, "max": 10, "score": 4, "label": "High NPAs" },
+        { "min": 5, "max": 7, "score": 3, "label": "Moderate NPAs" },
+        { "min": 3, "max": 5, "score": 2, "label": "Acceptable" },
+        { "min": null, "max": 3, "score": 1, "label": "Healthy" }
+      ]
+    }
+  },
+  {
+    "code": "BR-05",
+    "name": "Net NPA to Net Advances",
+    "category": "BUSINESS_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 5,
+    "scoringCriteria": {
+      "description": "Net asset quality after provisions",
+      "ranges": [
+        { "min": 5, "max": null, "score": 5, "label": "Critical" },
+        { "min": 3, "max": 5, "score": 4, "label": "High" },
+        { "min": 2, "max": 3, "score": 3, "label": "Moderate" },
+        { "min": 1, "max": 2, "score": 2, "label": "Acceptable" },
+        { "min": null, "max": 1, "score": 1, "label": "Healthy" }
+      ]
+    }
+  },
+  {
+    "code": "BR-06",
+    "name": "Provision Coverage Ratio",
+    "category": "BUSINESS_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 6,
+    "scoringCriteria": {
+      "description": "Provisions as % of gross NPAs — higher is better",
+      "ranges": [
+        {
+          "min": null,
+          "max": 40,
+          "score": 5,
+          "label": "Inadequate provisioning"
+        },
+        { "min": 40, "max": 50, "score": 4, "label": "Low coverage" },
+        { "min": 50, "max": 60, "score": 3, "label": "Moderate coverage" },
+        { "min": 60, "max": 70, "score": 2, "label": "Good coverage" },
+        { "min": 70, "max": null, "score": 1, "label": "Strong coverage" }
+      ]
+    }
+  },
+  {
+    "code": "BR-07",
+    "name": "Return on Assets (ROA)",
+    "category": "BUSINESS_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 7,
+    "scoringCriteria": {
+      "description": "Profitability indicator — higher is better",
+      "ranges": [
+        { "min": null, "max": 0, "score": 5, "label": "Loss-making" },
+        { "min": 0, "max": 0.25, "score": 4, "label": "Marginal profit" },
+        { "min": 0.25, "max": 0.5, "score": 3, "label": "Moderate" },
+        { "min": 0.5, "max": 1.0, "score": 2, "label": "Good" },
+        { "min": 1.0, "max": null, "score": 1, "label": "Strong profitability" }
+      ]
+    }
+  },
+  {
+    "code": "BR-08",
+    "name": "Business per Employee",
+    "category": "BUSINESS_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 8,
+    "scoringCriteria": {
+      "description": "Total business (deposits + advances) per employee in lakhs",
+      "ranges": [
+        {
+          "min": null,
+          "max": 200,
+          "score": 5,
+          "label": "Very low productivity"
+        },
+        { "min": 200, "max": 400, "score": 4, "label": "Low productivity" },
+        { "min": 400, "max": 600, "score": 3, "label": "Average" },
+        { "min": 600, "max": 800, "score": 2, "label": "Good" },
+        { "min": 800, "max": null, "score": 1, "label": "High productivity" }
+      ]
+    }
+  },
+  {
+    "code": "BR-09",
+    "name": "Cost to Income Ratio",
+    "category": "BUSINESS_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 9,
+    "scoringCriteria": {
+      "description": "Operating efficiency — lower is better",
+      "ranges": [
+        { "min": 70, "max": null, "score": 5, "label": "Very inefficient" },
+        { "min": 60, "max": 70, "score": 4, "label": "Inefficient" },
+        { "min": 50, "max": 60, "score": 3, "label": "Moderate" },
+        { "min": 40, "max": 50, "score": 2, "label": "Efficient" },
+        { "min": null, "max": 40, "score": 1, "label": "Highly efficient" }
+      ]
+    }
+  },
+  {
+    "code": "BR-10",
+    "name": "Priority Sector Lending Compliance",
+    "category": "BUSINESS_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 10,
+    "scoringCriteria": {
+      "description": "PSL as % of ANBC vs RBI target (40% for UCBs)",
+      "ranges": [
+        { "min": null, "max": 30, "score": 5, "label": "Severe shortfall" },
+        { "min": 30, "max": 35, "score": 4, "label": "Significant shortfall" },
+        { "min": 35, "max": 40, "score": 3, "label": "Minor shortfall" },
+        { "min": 40, "max": 45, "score": 2, "label": "Meets target" },
+        { "min": 45, "max": null, "score": 1, "label": "Exceeds target" }
+      ]
+    }
+  },
+  {
+    "code": "CR-01",
+    "name": "Previous Audit Rating",
+    "category": "CONTROL_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 11,
+    "scoringCriteria": {
+      "description": "Last RBIA audit rating for this branch",
+      "note": "Qualitative parameter — auditor selects score directly based on prior rating",
+      "ranges": [
+        {
+          "min": null,
+          "max": null,
+          "score": 5,
+          "label": "Poor / No prior audit"
+        },
+        { "min": null, "max": null, "score": 4, "label": "Moderate" },
+        { "min": null, "max": null, "score": 3, "label": "Satisfactory" },
+        { "min": null, "max": null, "score": 2, "label": "Good" },
+        { "min": null, "max": null, "score": 1, "label": "Very Good" }
+      ]
+    }
+  },
+  {
+    "code": "CR-02",
+    "name": "Compliance with RBI Inspection Findings",
+    "category": "CONTROL_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 12,
+    "scoringCriteria": {
+      "description": "Status of compliance with last RBI inspection observations",
+      "note": "Qualitative parameter — auditor selects score",
+      "ranges": [
+        { "min": null, "max": null, "score": 5, "label": "<50% compliance" },
+        { "min": null, "max": null, "score": 4, "label": "50-65% compliance" },
+        { "min": null, "max": null, "score": 3, "label": "65-80% compliance" },
+        { "min": null, "max": null, "score": 2, "label": "80-95% compliance" },
+        { "min": null, "max": null, "score": 1, "label": ">95% compliance" }
+      ]
+    }
+  },
+  {
+    "code": "CR-03",
+    "name": "IT / Cyber Security Controls",
+    "category": "CONTROL_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 13,
+    "scoringCriteria": {
+      "description": "Adequacy of IS/IT controls at the branch",
+      "note": "Qualitative parameter",
+      "ranges": [
+        {
+          "min": null,
+          "max": null,
+          "score": 5,
+          "label": "Critical gaps in IS controls"
+        },
+        { "min": null, "max": null, "score": 4, "label": "Major gaps" },
+        {
+          "min": null,
+          "max": null,
+          "score": 3,
+          "label": "Some gaps, being addressed"
+        },
+        { "min": null, "max": null, "score": 2, "label": "Adequate controls" },
+        { "min": null, "max": null, "score": 1, "label": "Strong IS controls" }
+      ]
+    }
+  },
+  {
+    "code": "CR-04",
+    "name": "KYC / AML Compliance",
+    "category": "CONTROL_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 14,
+    "scoringCriteria": {
+      "description": "Adherence to KYC/AML norms — deficiencies increase risk",
+      "note": "Qualitative parameter",
+      "ranges": [
+        {
+          "min": null,
+          "max": null,
+          "score": 5,
+          "label": "Serious KYC deficiencies"
+        },
+        {
+          "min": null,
+          "max": null,
+          "score": 4,
+          "label": "Multiple deficiencies"
+        },
+        { "min": null, "max": null, "score": 3, "label": "Minor lapses" },
+        { "min": null, "max": null, "score": 2, "label": "Largely compliant" },
+        { "min": null, "max": null, "score": 1, "label": "Fully compliant" }
+      ]
+    }
+  },
+  {
+    "code": "CR-05",
+    "name": "HR and Staff Accountability",
+    "category": "CONTROL_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 15,
+    "scoringCriteria": {
+      "description": "Staff discipline, rotation, leave policy compliance",
+      "note": "Qualitative parameter",
+      "ranges": [
+        {
+          "min": null,
+          "max": null,
+          "score": 5,
+          "label": "Serious staff accountability issues"
+        },
+        { "min": null, "max": null, "score": 4, "label": "Multiple HR lapses" },
+        { "min": null, "max": null, "score": 3, "label": "Minor lapses" },
+        { "min": null, "max": null, "score": 2, "label": "Good compliance" },
+        {
+          "min": null,
+          "max": null,
+          "score": 1,
+          "label": "Excellent HR controls"
+        }
+      ]
+    }
+  },
+  {
+    "code": "CR-06",
+    "name": "Treasury Operations Compliance",
+    "category": "CONTROL_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 16,
+    "scoringCriteria": {
+      "description": "Adherence to investment and treasury operation norms",
+      "note": "Qualitative parameter",
+      "ranges": [
+        { "min": null, "max": null, "score": 5, "label": "Major violations" },
+        {
+          "min": null,
+          "max": null,
+          "score": 4,
+          "label": "Significant deviations"
+        },
+        { "min": null, "max": null, "score": 3, "label": "Minor deviations" },
+        { "min": null, "max": null, "score": 2, "label": "Compliant" },
+        {
+          "min": null,
+          "max": null,
+          "score": 1,
+          "label": "Fully compliant with strong controls"
+        }
+      ]
+    }
+  },
+  {
+    "code": "CR-07",
+    "name": "Customer Complaints Ratio",
+    "category": "CONTROL_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 17,
+    "scoringCriteria": {
+      "description": "Complaints per 1000 accounts — lower is better",
+      "ranges": [
+        { "min": 5, "max": null, "score": 5, "label": "Very high complaints" },
+        { "min": 3, "max": 5, "score": 4, "label": "High complaints" },
+        { "min": 2, "max": 3, "score": 3, "label": "Moderate" },
+        { "min": 1, "max": 2, "score": 2, "label": "Low" },
+        { "min": null, "max": 1, "score": 1, "label": "Very low complaints" }
+      ]
+    }
+  },
+  {
+    "code": "CR-08",
+    "name": "Housekeeping Standards",
+    "category": "CONTROL_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 18,
+    "scoringCriteria": {
+      "description": "Record maintenance, reconciliation, suspense account management",
+      "note": "Qualitative parameter",
+      "ranges": [
+        {
+          "min": null,
+          "max": null,
+          "score": 5,
+          "label": "Chronic housekeeping failures"
+        },
+        { "min": null, "max": null, "score": 4, "label": "Significant lapses" },
+        { "min": null, "max": null, "score": 3, "label": "Some lapses" },
+        { "min": null, "max": null, "score": 2, "label": "Good standards" },
+        {
+          "min": null,
+          "max": null,
+          "score": 1,
+          "label": "Excellent housekeeping"
+        }
+      ]
+    }
+  },
+  {
+    "code": "CR-09",
+    "name": "Management Oversight and Governance",
+    "category": "CONTROL_RISK",
+    "weight": 0.0556,
+    "maxScore": 5,
+    "displayOrder": 19,
+    "scoringCriteria": {
+      "description": "Branch management quality, board oversight, governance practices",
+      "note": "Qualitative parameter",
+      "ranges": [
+        { "min": null, "max": null, "score": 5, "label": "Weak governance" },
+        { "min": null, "max": null, "score": 4, "label": "Below average" },
+        { "min": null, "max": null, "score": 3, "label": "Average" },
+        { "min": null, "max": null, "score": 2, "label": "Good governance" },
+        { "min": null, "max": null, "score": 1, "label": "Strong governance" }
+      ]
+    }
+  }
+]

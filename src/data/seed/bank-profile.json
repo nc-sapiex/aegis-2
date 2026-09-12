@@ -1,0 +1,102 @@
+{
+  "id": "apex-sahakari-bank",
+  "name": "Apex Sahakari Bank Ltd",
+  "shortName": "Apex Bank",
+  "established": "1985-03-15",
+  "location": "Pune, Maharashtra",
+  "tier": "Tier 2",
+  "paidUpCapital": "5.25",
+  "paidUpCapitalUnit": "crore",
+  "businessMix": "825",
+  "businessMixUnit": "crore",
+  "rbiLicenseNo": "UCB-MAH-1985-1234",
+  "pan": "AAACA1234F",
+  "cin": "U12345MH1985PTC012345",
+  "departments": [
+    {
+      "id": "dept-001",
+      "name": "Credit",
+      "head": "Suresh Patil",
+      "code": "CRD"
+    },
+    {
+      "id": "dept-002",
+      "name": "Operations",
+      "head": "Deepak Ghorpade",
+      "code": "OPS"
+    },
+    {
+      "id": "dept-003",
+      "name": "IT",
+      "head": "Vikram Kulkarni",
+      "code": "IT"
+    },
+    {
+      "id": "dept-004",
+      "name": "Compliance",
+      "head": "Amit Joshi",
+      "code": "CMP"
+    },
+    {
+      "id": "dept-005",
+      "name": "Audit",
+      "head": "Priya Sharma",
+      "code": "AUD"
+    },
+    {
+      "id": "dept-006",
+      "name": "HR",
+      "head": "Rajesh Deshmukh",
+      "code": "HR"
+    },
+    {
+      "id": "dept-007",
+      "name": "Treasury",
+      "head": "Meena Naik",
+      "code": "TRS"
+    }
+  ],
+  "boardOfDirectors": [
+    {
+      "id": "dir-001",
+      "name": "Subhash Jadhav",
+      "position": "Chairman",
+      "since": "2020-04-01"
+    },
+    {
+      "id": "dir-002",
+      "name": "Madhuri Kulkarni",
+      "position": "Vice Chairman",
+      "since": "2021-03-15"
+    },
+    {
+      "id": "dir-003",
+      "name": "Ramesh Iyer",
+      "position": "Director",
+      "since": "2019-04-01"
+    }
+  ],
+  "registrationDetails": {
+    "registeredWith": "Registrar of Co-operative Societies, Maharashtra",
+    "registrationDate": "1985-03-15",
+    "registrationNumber": "MCS/12345/PUNE/1985",
+    "ucbType": "Scheduled Urban Co-operative Bank",
+    "scheduledDate": "2015-07-01"
+  },
+  "supervisorDetails": {
+    "regionalOffice": "RBI, Pune Regional Office",
+    "department": "Department of Supervision",
+    "circle": "Maharashtra and Goa"
+  },
+  "lastFinancials": {
+    "year": "2024-25",
+    "totalAssets": "925",
+    "totalAdvances": "520",
+    "totalDeposits": "780",
+    "netProfit": "8.5",
+    "npaPercentage": "4.2",
+    "crar": "10.8"
+  },
+  "createdAt": "2025-01-01",
+  "updatedAt": "2025-02-07"
+}

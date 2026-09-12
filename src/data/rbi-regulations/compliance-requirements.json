@@ -1,0 +1,760 @@
+{
+  "requirements": [
+    {
+      "id": "CAP-001",
+      "title": "Minimum Capital Adequacy Ratio (CRAR)",
+      "description": "Maintain minimum Capital to Risk-weighted Assets Ratio of 9% at all times, comprising Tier 1 and Tier 2 capital relative to total risk-weighted assets.",
+      "category": "Capital",
+      "chapterReference": "Chapter 5",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "CRAR calculation report",
+        "Capital position statement",
+        "RWA computation",
+        "Board approval of capital position"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "minimumRequirement": "9%",
+      "reporting": "Monthly/Quarterly to RBI"
+    },
+    {
+      "id": "CAP-002",
+      "title": "Tier 1 Capital Minimum",
+      "description": "Maintain minimum Tier 1 capital of 6% of risk-weighted assets, ensuring adequate core capital for loss absorption.",
+      "category": "Capital",
+      "chapterReference": "Chapter 5",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "Tier 1 capital computation",
+        "Capital structure breakdown",
+        "Board approved capital plan"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "minimumRequirement": "6%",
+      "reporting": "Monthly/Quarterly to RBI"
+    },
+    {
+      "id": "CAP-003",
+      "title": "Common Equity Tier 1 (CET1) Minimum",
+      "description": "Maintain minimum CET1 capital of 3.5% of risk-weighted assets, representing the highest quality capital.",
+      "category": "Capital",
+      "chapterReference": "Chapter 5",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "CET1 calculation",
+        "Capital composition analysis",
+        "Share capital and reserves statement"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "minimumRequirement": "3.5%",
+      "reporting": "Monthly/Quarterly to RBI"
+    },
+    {
+      "id": "CAP-004",
+      "title": "Capital Conservation Buffer (CCB)",
+      "description": "Build and maintain capital conservation buffer as per UCB tier: Tier 1 (1.5%), Tier 2 (1.0%), Tier 3/4 (to be notified).",
+      "category": "Capital",
+      "chapterReference": "Chapter 5",
+      "ucbApplicability": "Tier 1 and Tier 2 UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "CCB calculation",
+        "Capital buffer utilization report",
+        "Distribution restrictions if buffer breached"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "tier1Requirement": "1.5%",
+      "tier2Requirement": "1.0%",
+      "reporting": "Monthly/Quarterly to RBI"
+    },
+    {
+      "id": "CAP-005",
+      "title": "Tier 2 Capital Limit",
+      "description": "Ensure Tier 2 capital does not exceed the prescribed limit relative to Tier 1 capital (100% for Tier 1, 50% for Tier 2 and below).",
+      "category": "Capital",
+      "chapterReference": "Chapter 4",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "Tier 1/Tier 2 ratio calculation",
+        "Capital structure report",
+        "Compliance certificate"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "tier1Limit": "100% of Tier 1",
+      "tier2BelowLimit": "50% of Tier 1",
+      "reporting": "Quarterly to RBI"
+    },
+    {
+      "id": "CAP-006",
+      "title": "Capital Plan",
+      "description": "Prepare and implement capital plan ensuring adequate capital for current and projected business activities.",
+      "category": "Capital",
+      "chapterReference": "Chapter 2",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Annual",
+      "evidenceRequired": [
+        "Board approved capital plan",
+        "Capital projection report",
+        "Capital raising strategy",
+        "Quarterly review of capital plan"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "reporting": "Annual to Board, Quarterly to RBI"
+    },
+    {
+      "id": "RISK-001",
+      "title": "Risk Management Committee Constitution",
+      "description": "Constitute Risk Management Committee with minimum 3 directors including Chairman to oversee risk management framework.",
+      "category": "Risk Management",
+      "chapterReference": "RMC Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "Board resolution constituting RMC",
+        "Committee composition and terms of reference",
+        "Meeting minutes (minimum quarterly)",
+        "Committee report to board"
+      ],
+      "regulatoryReference": "DBR.No.BP.BC.85/21.04.048/2023-24",
+      "minimumMeetings": "Quarterly",
+      "reporting": "To Board and RBI"
+    },
+    {
+      "id": "RISK-002",
+      "title": "Risk Management Policy",
+      "description": "Establish comprehensive risk management policy covering credit, market, and operational risks with Board approval.",
+      "category": "Risk Management",
+      "chapterReference": "RM Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Annual Review",
+      "evidenceRequired": [
+        "Board approved RM policy",
+        "Policy review documentation",
+        "Implementation status report",
+        "Annual update"
+      ],
+      "regulatoryReference": "DBR.No.BP.BC.84/21.04.048/2023-24",
+      "reporting": "Board and RBI"
+    },
+    {
+      "id": "RISK-003",
+      "title": "Independent Risk Management Function",
+      "description": "Establish independent risk management function with adequate resources, reporting directly to Risk Management Committee.",
+      "category": "Risk Management",
+      "chapterReference": "RM Guidelines",
+      "ucbApplicability": "Tier 1 UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "Organization chart showing RM function independence",
+        "RM officer appointment details",
+        "Reporting structure documentation",
+        "Competency framework"
+      ],
+      "regulatoryReference": "DBR.No.BP.BC.84/21.04.048/2023-24",
+      "reporting": "RMC and Board"
+    },
+    {
+      "id": "RISK-004",
+      "title": "Risk-Based Supervision Implementation",
+      "description": "Implement risk-based supervision framework including risk assessment, monitoring, and reporting.",
+      "category": "Risk Management",
+      "chapterReference": "RBS Framework",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Annual",
+      "evidenceRequired": [
+        "Risk profile assessment",
+        "Self-risk assessment report",
+        "Risk identification and mitigation",
+        "RBS return submission"
+      ],
+      "regulatoryReference": "RBS Framework",
+      "reporting": "To RBI via DAKSH"
+    },
+    {
+      "id": "RISK-005",
+      "title": "Risk Appetite Framework",
+      "description": "Document and implement risk appetite statement approved by Board, defining acceptable risk levels.",
+      "category": "Risk Management",
+      "chapterReference": "RM Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Annual Review",
+      "evidenceRequired": [
+        "Board approved risk appetite statement",
+        "Risk limits and thresholds",
+        "Monitoring against risk appetite",
+        "Breach reporting mechanisms"
+      ],
+      "regulatoryReference": "DBR.No.BP.BC.84/21.04.048/2023-24",
+      "reporting": "Board and RBI"
+    },
+    {
+      "id": "CR-001",
+      "title": "Standardized Approach for Credit Risk",
+      "description": "Calculate credit risk capital using standardized approach with appropriate risk weights for various asset classes.",
+      "category": "Credit Risk",
+      "chapterReference": "Chapter 7",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Monthly/Quarterly",
+      "evidenceRequired": [
+        "Credit RWA calculation",
+        "Risk weight application report",
+        "Asset classification review",
+        "RBI return submission"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "reporting": "Monthly/Quarterly to RBI"
+    },
+    {
+      "id": "CR-002",
+      "title": "NPA Classification and Reporting",
+      "description": "Classify NPAs as sub-standard, doubtful, or loss assets based on RBI norms and maintain adequate provisions.",
+      "category": "Credit Risk",
+      "chapterReference": "Chapter 7",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Monthly",
+      "evidenceRequired": [
+        "NPA register",
+        "Asset classification report",
+        "Provisioning calculation",
+        "NPA returns to RBI"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "reporting": "Monthly to RBI"
+    },
+    {
+      "id": "CR-003",
+      "title": "Provision Coverage Ratio",
+      "description": "Maintain adequate provisions against NPAs as per RBI norms ensuring true loss coverage.",
+      "category": "Credit Risk",
+      "chapterReference": "Chapter 7",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Monthly",
+      "evidenceRequired": [
+        "Provision calculation sheet",
+        "PCR report",
+        "Provisioning held in accounts",
+        "Audit verification"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "reporting": "Monthly to RBI"
+    },
+    {
+      "id": "CR-004",
+      "title": "Credit Risk Assessment",
+      "description": "Conduct comprehensive credit risk assessment for borrowers including financial analysis, security assessment, and rating.",
+      "category": "Credit Risk",
+      "chapterReference": "RM Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Per Credit",
+      "evidenceRequired": [
+        "Credit appraisal report",
+        "Borrower rating",
+        "Security valuation",
+        "Sanction documentation"
+      ],
+      "regulatoryReference": "RM Guidelines",
+      "reporting": "Internal records"
+    },
+    {
+      "id": "CR-005",
+      "title": "Large Exposure Monitoring",
+      "description": "Monitor and limit single and group borrower exposures within prescribed limits (25% single, 55% group).",
+      "category": "Credit Risk",
+      "chapterReference": "Chapter 12",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "Large exposure register",
+        "Exposure calculation against capital",
+        "Exception reports",
+        "Board reporting of overlimits"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "singleBorrowerLimit": "25% of eligible capital",
+      "groupBorrowerLimit": "55% of eligible capital",
+      "reporting": "Quarterly to RBI"
+    },
+    {
+      "id": "MR-001",
+      "title": "Interest Rate Risk Management",
+      "description": "Implement Asset Liability Management framework to manage interest rate risk in banking book.",
+      "category": "Market Risk",
+      "chapterReference": "ALM Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Monthly",
+      "evidenceRequired": [
+        "ALM policy",
+        "Gap analysis report",
+        "ALCO meeting minutes",
+        "Interest rate sensitivity analysis"
+      ],
+      "regulatoryReference": "DBR.No.LID.BC.10/22.02.009/2023-24",
+      "reporting": "ALCO, Board, RBI"
+    },
+    {
+      "id": "MR-002",
+      "title": "ALCO Constitution and Functioning",
+      "description": "Constitute Asset Liability Committee with defined responsibilities for managing balance sheet risks.",
+      "category": "Market Risk",
+      "chapterReference": "ALM Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Monthly Meetings",
+      "evidenceRequired": [
+        "ALCO constitution",
+        "Meeting minutes",
+        "Interest rate view",
+        "Action taken reports"
+      ],
+      "regulatoryReference": "DBR.No.LID.BC.10/22.02.009/2023-24",
+      "reporting": "To Board"
+    },
+    {
+      "id": "MR-003",
+      "title": "Liquidity Management",
+      "description": "Maintain adequate liquidity through liquidity coverage ratio monitoring and contingency funding plan.",
+      "category": "Market Risk",
+      "chapterReference": "LM Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Daily/Weekly",
+      "evidenceRequired": [
+        "Liquidity position report",
+        "LCR calculation",
+        "Contingency funding plan",
+        "Liquidity risk statement"
+      ],
+      "regulatoryReference": "DBR.No.LID.BC.09/22.02.009/2023-24",
+      "reporting": "Weekly to Board, Monthly to RBI"
+    },
+    {
+      "id": "OR-001",
+      "title": "Operational Risk Assessment",
+      "description": "Assess operational risk capital using standardized approach based on business indicator.",
+      "category": "Operational Risk",
+      "chapterReference": "Chapter 11",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Quarterly",
+      "evidenceRequired": [
+        "Business indicator calculation",
+        "Operational risk capital charge",
+        "Loss data collection",
+        "Risk control self-assessment"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "reporting": "Quarterly to RBI"
+    },
+    {
+      "id": "OR-002",
+      "title": "Operational Risk Management",
+      "description": "Implement operational risk management framework including risk identification, assessment, mitigation, and reporting.",
+      "category": "Operational Risk",
+      "chapterReference": "RM Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "Operational risk policy",
+        "Risk register",
+        "Incident reporting mechanism",
+        "Business continuity arrangements"
+      ],
+      "regulatoryReference": "RM Guidelines",
+      "reporting": "RMC and Board"
+    },
+    {
+      "id": "GOV-001",
+      "title": "Board Composition and Fit & Proper",
+      "description": "Ensure board composition complies with RBI norms and all directors meet fit and proper criteria.",
+      "category": "Governance",
+      "chapterReference": "Fit and Proper Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Annual",
+      "evidenceRequired": [
+        "Director profiles",
+        "Background verification reports",
+        "Fit and proper declaration",
+        "Board composition report to RBI"
+      ],
+      "regulatoryReference": "DBR.No.BP.BC.84/21.04.048/2023-24",
+      "reporting": "To RBI"
+    },
+    {
+      "id": "GOV-002",
+      "title": "Board Committees Constitution",
+      "description": "Constitute mandatory board committees including Audit Committee, Risk Management Committee, and Nomination Committee.",
+      "category": "Governance",
+      "chapterReference": "Governance Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "Committee formation resolutions",
+        "Terms of reference",
+        "Meeting minutes",
+        "Committee reports to board"
+      ],
+      "regulatoryReference": "Governance Guidelines",
+      "reporting": "Board and RBI"
+    },
+    {
+      "id": "GOV-003",
+      "title": "Audit Committee",
+      "description": "Constitute Audit Committee with majority independent directors and external experts to oversee audit and internal controls.",
+      "category": "Governance",
+      "chapterReference": "Governance Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Quarterly Meetings",
+      "evidenceRequired": [
+        "Audit committee composition",
+        "Meeting minutes",
+        "Internal audit reports reviewed",
+        "Action taken on audit findings"
+      ],
+      "regulatoryReference": "Governance Guidelines",
+      "reporting": "Board"
+    },
+    {
+      "id": "GOV-004",
+      "title": "Related Party Transactions",
+      "description": "Identify, approve, and disclose related party transactions as per RBI norms.",
+      "category": "Governance",
+      "chapterReference": "Governance Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "RPT policy",
+        "RPT register",
+        "Board approvals",
+        "Disclosure in financial statements"
+      ],
+      "regulatoryReference": "Governance Guidelines",
+      "reporting": "Board and RBI"
+    },
+    {
+      "id": "GOV-005",
+      "title": "Internal Audit Function",
+      "description": "Maintain independent internal audit function covering all areas of operations with adequate frequency.",
+      "category": "Governance",
+      "chapterReference": "Governance Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "As per RBI norms",
+      "evidenceRequired": [
+        "Internal audit plan",
+        "Audit reports",
+        "Audit committee review",
+        "Closure of audit findings"
+      ],
+      "regulatoryReference": "Governance Guidelines",
+      "reporting": "Audit Committee and Board"
+    },
+    {
+      "id": "DISC-001",
+      "title": "Pillar 3 Disclosures",
+      "description": "Make Pillar 3 disclosures on capital adequacy, risk exposures, and risk assessment processes.",
+      "category": "Disclosure",
+      "chapterReference": "Chapter 13",
+      "ucbApplicability": "Scheduled UCBs and Tier 1 UCBs",
+      "frequency": "Annual",
+      "evidenceRequired": [
+        "Pillar 3 disclosure document",
+        "Website publication",
+        "Disclosure verification",
+        "Board approval"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "reporting": "Public disclosure via website"
+    },
+    {
+      "id": "DISC-002",
+      "title": "Financial Statements Disclosures",
+      "description": "Ensure comprehensive disclosures in annual financial statements as per RBI format.",
+      "category": "Disclosure",
+      "chapterReference": "Disclosure Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Annual",
+      "evidenceRequired": [
+        "Annual financial statements",
+        "Notes to accounts",
+        "RBI format compliance",
+        "Auditor certification"
+      ],
+      "regulatoryReference": "Disclosure Guidelines",
+      "reporting": "To members and RBI"
+    },
+    {
+      "id": "REP-001",
+      "title": "CRAR Reporting",
+      "description": "Submit Capital to Risk-weighted Assets Ratio returns to RBI through DAKSH platform.",
+      "category": "Reporting",
+      "chapterReference": "Chapter 14",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Monthly/Quarterly",
+      "evidenceRequired": [
+        "CRAR return submission",
+        "DAKSH submission confirmation",
+        "Validated data",
+        "Exception reports if any"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "reporting": "Through DAKSH"
+    },
+    {
+      "id": "REP-002",
+      "title": "NPA Reporting",
+      "description": "Submit NPA returns including asset classification and provisioning details.",
+      "category": "Reporting",
+      "chapterReference": "Chapter 14",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Monthly",
+      "evidenceRequired": [
+        "NPA return submission",
+        "Asset classification details",
+        "Provisioning details",
+        "Validation"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "reporting": "Through DAKSH"
+    },
+    {
+      "id": "REP-003",
+      "title": "ALM Reporting",
+      "description": "Submit Asset Liability Management returns including gap analysis and liquidity position.",
+      "category": "Reporting",
+      "chapterReference": "Chapter 14",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Monthly/Quarterly",
+      "evidenceRequired": [
+        "ALM return submission",
+        "Gap analysis",
+        "Liquidity position",
+        "Interest rate sensitivity"
+      ],
+      "regulatoryReference": "DBR.No.LID.BC.10/22.02.009/2023-24",
+      "reporting": "Through DAKSH"
+    },
+    {
+      "id": "REP-004",
+      "title": "Large Exposure Reporting",
+      "description": "Report large exposures exceeding 10% of eligible capital to RBI.",
+      "category": "Reporting",
+      "chapterReference": "Chapter 12",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Quarterly",
+      "evidenceRequired": [
+        "Large exposure return",
+        "Single borrower exposure",
+        "Group exposure details",
+        "Exceptions if any"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "reporting": "Through DAKSH"
+    },
+    {
+      "id": "REP-005",
+      "title": "Basel III Supervisory Returns",
+      "description": "Submit all Basel III supervisory returns as per RBI format through DAKSH.",
+      "category": "Reporting",
+      "chapterReference": "Chapter 14",
+      "ucbApplicability": "Tier 1 and Tier 2 UCBs",
+      "frequency": "As per RBI schedule",
+      "evidenceRequired": [
+        "All applicable returns",
+        "DAKSH submission confirmation",
+        "Data validation",
+        "Timely submission proof"
+      ],
+      "regulatoryReference": "DBR.No.BC.104/08.13.002/2023-24",
+      "reporting": "Through DAKSH"
+    },
+    {
+      "id": "REP-006",
+      "title": "Risk-Based Supervision Returns",
+      "description": "Submit RBS returns including self-risk assessment and risk profile data.",
+      "category": "Reporting",
+      "chapterReference": "RBS Framework",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Annual",
+      "evidenceRequired": [
+        "RBS return submission",
+        "Self-risk assessment",
+        "Risk profile data",
+        "Compliance status"
+      ],
+      "regulatoryReference": "RBS Framework",
+      "reporting": "Through DAKSH"
+    },
+    {
+      "id": "CYB-001",
+      "title": "Cyber Security Policy",
+      "description": "Establish and implement comprehensive cyber security policy approved by Board.",
+      "category": "Cyber Security",
+      "chapterReference": "CSF Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Annual Review",
+      "evidenceRequired": [
+        "Board approved policy",
+        "Implementation status",
+        "Incident response procedures",
+        "Periodic review documentation"
+      ],
+      "regulatoryReference": "DBR.No.FID.BC.09/12.01.004/2017-18",
+      "reporting": "Board and RBI"
+    },
+    {
+      "id": "CYB-002",
+      "title": "Chief Information Security Officer (CISO)",
+      "description": "Appoint CISO responsible for information security governance and implementation.",
+      "category": "Cyber Security",
+      "chapterReference": "CSF Guidelines",
+      "ucbApplicability": "Tier 1 UCBs (Mandatory), Others (Recommended)",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "CISO appointment order",
+        "Role and responsibility document",
+        "Reporting to senior management",
+        "Training participation"
+      ],
+      "regulatoryReference": "DBR.No.FID.BC.09/12.01.004/2017-18",
+      "reporting": "Internal"
+    },
+    {
+      "id": "CYB-003",
+      "title": "Cyber Security Incident Reporting",
+      "description": "Report cyber security incidents to RBI within stipulated timelines.",
+      "category": "Cyber Security",
+      "chapterReference": "CSF Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Event-based",
+      "evidenceRequired": [
+        "Incident report to RBI",
+        "Incident log",
+        "Root cause analysis",
+        "Remediation actions"
+      ],
+      "regulatoryReference": "DBR.No.FID.BC.09/12.01.004/2017-18",
+      "reporting": "To RBI within specified timelines"
+    },
+    {
+      "id": "CYB-004",
+      "title": "Business Continuity Plan",
+      "description": "Maintain tested Business Continuity Plan for critical operations including disaster recovery.",
+      "category": "Cyber Security",
+      "chapterReference": "BCP Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Annual testing",
+      "evidenceRequired": [
+        "Board approved BCP",
+        "BCP document",
+        "DR site details",
+        "Test reports"
+      ],
+      "regulatoryReference": "BCP Guidelines",
+      "reporting": "Board and RBI"
+    },
+    {
+      "id": "CYB-005",
+      "title": "IT Governance and Systems",
+      "description": "Implement IT governance framework including IT policy, information security, and IT audit.",
+      "category": "Cyber Security",
+      "chapterReference": "IT Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "IT governance policy",
+        "Information security policy",
+        "IT audit reports",
+        "Compliance certificate"
+      ],
+      "regulatoryReference": "IT Guidelines",
+      "reporting": "Board and RBI"
+    },
+    {
+      "id": "OPS-001",
+      "title": "KYC Compliance",
+      "description": "Conduct Know Your Customer procedures for all customers and maintain updated records.",
+      "category": "Operations",
+      "chapterReference": "KYC Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Per customer",
+      "evidenceRequired": [
+        "KYC records",
+        "Customer risk classification",
+        "Periodic review documentation",
+        "KYC compliance report"
+      ],
+      "regulatoryReference": "KYC/AML Guidelines",
+      "reporting": "Internal and inspection"
+    },
+    {
+      "id": "OPS-002",
+      "title": "AML Compliance",
+      "description": "Implement Anti-Money Laundering framework including suspicious transaction reporting.",
+      "category": "Operations",
+      "chapterReference": "AML Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "AML policy",
+        "STR and CTR filings",
+        "Principal officer designation",
+        "Training records"
+      ],
+      "regulatoryReference": "PMLA Guidelines",
+      "reporting": "To FIU-IND"
+    },
+    {
+      "id": "OPS-003",
+      "title": "Customer Service and Grievance Redressal",
+      "description": "Maintain customer service standards and grievance redressal mechanism with timely resolution.",
+      "category": "Operations",
+      "chapterReference": "Customer Service Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "Customer service policy",
+        "Grievance register",
+        "Resolution records",
+        "Ombudsman details display"
+      ],
+      "regulatoryReference": "Customer Service Guidelines",
+      "reporting": "Board, Ombudsman, and RBI"
+    },
+    {
+      "id": "OPS-004",
+      "title": "Ombudsman Scheme Compliance",
+      "description": "Participate in RBI Ombudsman Scheme and display ombudsman details at branches.",
+      "category": "Operations",
+      "chapterReference": "Customer Service Guidelines",
+      "ucbApplicability": "All UCBs",
+      "frequency": "Continuous",
+      "evidenceRequired": [
+        "Ombudsman details at branches",
+        "Complaint handling process",
+        "Ombudsman complaint handling",
+        "Annual compliance report"
+      ],
+      "regulatoryReference": "Ombudsman Scheme",
+      "reporting": "To RBI"
+    }
+  ],
+  "metadata": {
+    "totalRequirements": 42,
+    "categories": [
+      "Capital",
+      "Risk Management",
+      "Credit Risk",
+      "Market Risk",
+      "Operational Risk",
+      "Governance",
+      "Disclosure",
+      "Reporting",
+      "Cyber Security",
+      "Operations"
+    ],
+    "ucbTiers": ["All UCBs", "Tier 1 UCBs", "Tier 2 UCBs", "Scheduled UCBs"],
+    "lastUpdated": "2025-12-01",
+    "source": "UCB Guidelines by RBI - Comprehensive Compilation (December 2025)",
+    "idFormat": "CATEGORY-NNN"
+  }
+}

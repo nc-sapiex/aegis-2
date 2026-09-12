@@ -1,0 +1,141 @@
+{
+  "document": {
+    "id": "UCB-GUIDELINES-COMPILATION",
+    "title": "UCB Guidelines by RBI - Comprehensive Compilation",
+    "subtitle": "Master Circulars and Guidelines for Urban Cooperative Banks",
+    "version": "December 2025",
+    "effectiveDate": "2025-12-01",
+    "description": "A comprehensive compilation of all relevant RBI circulars, directions, and guidelines for Urban Cooperative Banks (UCBs) consolidated into a single document. This compilation covers all regulatory aspects including Basel III capital regulations, risk management, governance, ALM, liquidity, cyber security, and more.",
+    "publisher": "Reserve Bank of India",
+    "documentType": "Master Compilation",
+    "language": "English",
+    "applicability": {
+      "entityType": "Urban Cooperative Banks (UCBs)",
+      "tiers": {
+        "tier1": {
+          "name": "Tier 1 UCBs",
+          "definition": "UCBs with paid-up capital and reserves of Rs. 100 crore or more",
+          "baselApplicability": "2026-04-01",
+          "enhancedRequirements": true
+        },
+        "tier2": {
+          "name": "Tier 2 UCBs",
+          "definition": "UCBs with paid-up capital and reserves of Rs. 50 crore or more but less than Rs. 100 crore",
+          "baselApplicability": "2027-04-01",
+          "enhancedRequirements": false
+        },
+        "tier3": {
+          "name": "Tier 3 UCBs",
+          "definition": "UCBs with paid-up capital and reserves of Rs. 10 crore or more but less than Rs. 50 crore",
+          "baselApplicability": "To be notified",
+          "enhancedRequirements": false
+        },
+        "tier4": {
+          "name": "Tier 4 UCBs",
+          "definition": "UCBs with paid-up capital and reserves of less than Rs. 10 crore",
+          "baselApplicability": "To be notified",
+          "enhancedRequirements": false
+        }
+      }
+    },
+    "regulationCategories": [
+      {
+        "id": "CAPITAL",
+        "name": "Capital Regulations",
+        "description": "Basel III capital adequacy framework including Tier 1 and Tier 2 capital requirements"
+      },
+      {
+        "id": "RISK",
+        "name": "Risk Management",
+        "description": "Comprehensive risk management framework covering credit, market, and operational risks"
+      },
+      {
+        "id": "GOVERNANCE",
+        "name": "Governance",
+        "description": "Board composition, fit & proper criteria, and governance standards"
+      },
+      {
+        "id": "ALM",
+        "name": "Asset-Liability Management",
+        "description": "ALM framework, interest rate risk, and liquidity management"
+      },
+      {
+        "id": "DISCLOSURE",
+        "name": "Disclosure Requirements",
+        "description": "Pillar 3 disclosure requirements for transparency"
+      },
+      {
+        "id": "REPORTING",
+        "name": "Reporting Requirements",
+        "description": "Periodic reporting to RBI including DAKSH returns"
+      },
+      {
+        "id": "CYBER",
+        "name": "Cyber Security & IT",
+        "description": "Cyber security framework, business continuity, and IT controls"
+      },
+      {
+        "id": "CUSTOMER",
+        "name": "Customer Service",
+        "description": "Customer service guidelines and grievance redressal"
+      }
+    ],
+    "structure": {
+      "baselChapters": 15,
+      "appendices": 12,
+      "additionalGuidelines": [
+        "Risk Management and Internal Control",
+        "Asset Liability Management",
+        "Liquidity Management",
+        "Large Exposures Framework",
+        "Cyber Security Framework",
+        "Customer Service",
+        "Fit and Proper Criteria",
+        "IT Systems and Controls",
+        "Supervisory Returns",
+        "NBFC-UCB Interactions"
+      ]
+    },
+    "keyReferences": [
+      "DBR.No.BC.104/08.13.002/2023-24 - Basel III Capital Regulations",
+      "DBR.No.BP.BC.85/21.04.048/2023-24 - Risk Management Committee",
+      "DBR.No.BP.BC.84/21.04.048/2023-24 - FIT and FIT Criteria",
+      "DBR.No.FID.BC.09/12.01.004/2017-18 - Cyber Security Framework",
+      "DBR.No.BP.BC.86/21.04.048/2023-24 - RMC Constitution",
+      "DBR.No.LID.BC.10/22.02.009/2023-24 - ALM Guidelines",
+      "DBR.No.LID.BC.09/22.02.009/2023-24 - Liquidity Management",
+      "DBR.No.BP.BC.87/21.04.048/2023-24 - RMB Mandate"
+    ],
+    "minimumRequirements": {
+      "capitalAdequacyRatio": {
+        "allBanks": "9%",
+        "tier1Minimum": "6%",
+        "commonEquityTier1": "3.5%",
+        "capitalConservationBuffer": "Varies by tier",
+        "note": "UCBs must maintain minimum CRAR of 9% at all times"
+      },
+      "riskManagement": {
+        "riskManagementCommittee": "Required for all UCBs",
+        "independentRiskManagementFunction": "Required for Tier 1 UCBs",
+        "riskBasedSupervision": "Applicable to all UCBs"
+      },
+      "disclosure": {
+        "pillar3Disclosures": "Required for scheduled UCBs",
+        "frequency": "Annual/Quarterly",
+        "publicDisclosure": "Mandatory for Tier 1 UCBs"
+      }
+    },
+    "links": {
+      "chapters": "./chapters.json",
+      "definitions": "./definitions.json",
+      "capitalStructure": "./capital-structure.json",
+      "complianceRequirements": "./compliance-requirements.json"
+    },
+    "metadata": {
+      "createdAt": "2025-12-01",
+      "lastUpdated": "2025-12-01",
+      "maintainedBy": "Reserve Bank of India - Department of Banking Regulation",
+      "officialUrl": "https://www.rbi.org.in/scripts/BS_ViewCirculars.aspx"
+    }
+  }
+}

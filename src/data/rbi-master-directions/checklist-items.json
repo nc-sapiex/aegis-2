@@ -1,0 +1,1822 @@
+[
+  {
+    "itemCode": "MD-CAP-001",
+    "masterDirectionId": "MD-CAP",
+    "title": "Maintain CRAR >= 12%",
+    "description": "Bank must maintain Capital to Risk-weighted Assets Ratio of at least 12% at all times, comprising Tier 1 and Tier 2 capital relative to total risk-weighted assets.",
+    "category": "Capital",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": {
+      "TIER_3": "Plus Capital Conservation Buffer of 2.5%",
+      "TIER_4": "Plus Capital Conservation Buffer of 2.5% and Pillar 3 disclosures"
+    },
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "CRAR computation sheet",
+      "Risk-weighted assets schedule",
+      "Board approval of capital position"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.BC.104/08.13.002/2023-24"
+  },
+  {
+    "itemCode": "MD-CAP-002",
+    "masterDirectionId": "MD-CAP",
+    "title": "Tier 1 Capital Minimum of 6%",
+    "description": "Maintain minimum Tier 1 capital of 6% of risk-weighted assets, ensuring adequate core capital for loss absorption.",
+    "category": "Capital",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Tier 1 capital computation",
+      "Capital structure breakdown",
+      "Board approved capital plan"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.BC.104/08.13.002/2023-24"
+  },
+  {
+    "itemCode": "MD-CAP-003",
+    "masterDirectionId": "MD-CAP",
+    "title": "Common Equity Tier 1 (CET1) Minimum 3.5%",
+    "description": "Maintain minimum CET1 capital of 3.5% of risk-weighted assets, representing the highest quality capital.",
+    "category": "Capital",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "CET1 calculation",
+      "Capital composition analysis",
+      "Share capital and reserves statement"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.BC.104/08.13.002/2023-24"
+  },
+  {
+    "itemCode": "MD-CAP-004",
+    "masterDirectionId": "MD-CAP",
+    "title": "Capital Conservation Buffer",
+    "description": "Build and maintain capital conservation buffer above minimum CRAR as per UCB tier classification.",
+    "category": "Capital",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": {
+      "TIER_3": "CCB of 2.5% mandatory above minimum CRAR",
+      "TIER_4": "CCB of 2.5% mandatory with distribution restrictions if breached"
+    },
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "CCB calculation",
+      "Capital buffer utilization report",
+      "Distribution restrictions if buffer breached"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.BC.104/08.13.002/2023-24"
+  },
+  {
+    "itemCode": "MD-CAP-005",
+    "masterDirectionId": "MD-CAP",
+    "title": "Tier 2 Capital Limit Compliance",
+    "description": "Ensure Tier 2 capital does not exceed the prescribed limit relative to Tier 1 capital.",
+    "category": "Capital",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Tier 1/Tier 2 ratio calculation",
+      "Capital structure report",
+      "Compliance certificate"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.BC.104/08.13.002/2023-24"
+  },
+  {
+    "itemCode": "MD-CAP-006",
+    "masterDirectionId": "MD-CAP",
+    "title": "Annual Capital Plan",
+    "description": "Prepare and implement Board-approved capital plan ensuring adequate capital for current and projected business activities.",
+    "category": "Capital",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual",
+    "evidenceRequired": [
+      "Board approved capital plan",
+      "Capital projection report",
+      "Capital raising strategy",
+      "Quarterly review of capital plan"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.BC.104/08.13.002/2023-24"
+  },
+  {
+    "itemCode": "MD-CAP-007",
+    "masterDirectionId": "MD-CAP",
+    "title": "Credit Risk Capital Charge — Standardized Approach",
+    "description": "Calculate credit risk capital using standardized approach with appropriate risk weights for various asset classes.",
+    "category": "Capital",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "Credit RWA calculation",
+      "Risk weight application report",
+      "Asset classification review"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.BC.104/08.13.002/2023-24"
+  },
+  {
+    "itemCode": "MD-CAP-008",
+    "masterDirectionId": "MD-CAP",
+    "title": "Market Risk Capital Charge",
+    "description": "Compute and maintain adequate capital charge for market risk on trading book exposures.",
+    "category": "Capital",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "Market risk capital computation",
+      "Trading book positions",
+      "Duration gap analysis"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.BC.104/08.13.002/2023-24"
+  },
+  {
+    "itemCode": "MD-CAP-009",
+    "masterDirectionId": "MD-CAP",
+    "title": "Operational Risk Capital Charge",
+    "description": "Assess operational risk capital using basic indicator approach based on gross income.",
+    "category": "Capital",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "Business indicator calculation",
+      "Operational risk capital charge",
+      "Loss data collection"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.BC.104/08.13.002/2023-24"
+  },
+  {
+    "itemCode": "MD-CAP-010",
+    "masterDirectionId": "MD-CAP",
+    "title": "CRAR Reporting to RBI via DAKSH",
+    "description": "Submit Capital to Risk-weighted Assets Ratio returns to RBI through DAKSH platform on schedule.",
+    "category": "Capital",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "CRAR return submission",
+      "DAKSH submission confirmation",
+      "Validated data"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.BC.104/08.13.002/2023-24"
+  },
+  {
+    "itemCode": "MD-CAP-011",
+    "masterDirectionId": "MD-CAP",
+    "title": "Pillar 3 Public Disclosures",
+    "description": "Make Pillar 3 disclosures on capital adequacy, risk exposures, and risk assessment processes on bank website.",
+    "category": "Capital",
+    "tierApplicability": ["TIER_3", "TIER_4"],
+    "tierEnhancements": {
+      "TIER_4": "Full Basel III Pillar 3 disclosure template required"
+    },
+    "frequency": "Annual",
+    "evidenceRequired": [
+      "Pillar 3 disclosure document",
+      "Website publication",
+      "Board approval"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.BC.104/08.13.002/2023-24"
+  },
+  {
+    "itemCode": "MD-CAP-012",
+    "masterDirectionId": "MD-CAP",
+    "title": "Basel III Supervisory Returns",
+    "description": "Submit all Basel III supervisory returns as per RBI format through DAKSH platform.",
+    "category": "Capital",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "All applicable returns",
+      "DAKSH submission confirmation",
+      "Timely submission proof"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.BC.104/08.13.002/2023-24"
+  },
+
+  {
+    "itemCode": "MD-IRAC-001",
+    "masterDirectionId": "MD-IRAC",
+    "title": "NPA Classification — Sub-Standard Assets",
+    "description": "Classify assets as sub-standard when they remain NPA for a period not exceeding 12 months.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Monthly",
+    "evidenceRequired": [
+      "NPA register",
+      "Asset classification report",
+      "Ageing analysis"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-002",
+    "masterDirectionId": "MD-IRAC",
+    "title": "NPA Classification — Doubtful Assets",
+    "description": "Classify assets as doubtful when they remain in sub-standard category for more than 12 months.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Monthly",
+    "evidenceRequired": [
+      "NPA register",
+      "Doubtful asset identification",
+      "Security valuation"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-003",
+    "masterDirectionId": "MD-IRAC",
+    "title": "NPA Classification — Loss Assets",
+    "description": "Classify assets as loss when identified as uncollectable by internal or external audit or RBI inspection.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Monthly",
+    "evidenceRequired": [
+      "Audit findings on loss assets",
+      "Write-off proposals",
+      "Board approval"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-004",
+    "masterDirectionId": "MD-IRAC",
+    "title": "Provisioning for Sub-Standard Assets",
+    "description": "Maintain 15% provision on total outstanding for sub-standard secured assets and 25% for unsecured.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Monthly",
+    "evidenceRequired": [
+      "Provision calculation sheet",
+      "Sub-standard asset list",
+      "Provision held in accounts"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-005",
+    "masterDirectionId": "MD-IRAC",
+    "title": "Provisioning for Doubtful Assets",
+    "description": "Maintain 100% provision on unsecured portion and graded provision (25-100%) on secured portion based on ageing.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Monthly",
+    "evidenceRequired": [
+      "Doubtful asset provisioning schedule",
+      "Security valuation",
+      "Ageing-wise breakdown"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-006",
+    "masterDirectionId": "MD-IRAC",
+    "title": "Provision Coverage Ratio Monitoring",
+    "description": "Maintain adequate provision coverage ratio against NPAs and report to Board quarterly.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "PCR report",
+      "Provisioning held in accounts",
+      "Audit verification"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-007",
+    "masterDirectionId": "MD-IRAC",
+    "title": "Income Recognition — NPA Interest Reversal",
+    "description": "Reverse interest income already charged to profit and loss on accounts classified as NPA.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Monthly",
+    "evidenceRequired": [
+      "Interest reversal report",
+      "NPA-wise interest computation",
+      "P&L impact analysis"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-008",
+    "masterDirectionId": "MD-IRAC",
+    "title": "NPA Return Filing to RBI",
+    "description": "Submit NPA returns including asset classification and provisioning details through DAKSH.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Monthly",
+    "evidenceRequired": [
+      "NPA return submission",
+      "DAKSH submission confirmation",
+      "Validation report"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-009",
+    "masterDirectionId": "MD-IRAC",
+    "title": "Restructuring of Advances",
+    "description": "Follow RBI norms for restructuring of advances including asset classification during and after restructuring.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Per case",
+    "evidenceRequired": [
+      "Restructuring proposal",
+      "Board/committee approval",
+      "Viability assessment"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-010",
+    "masterDirectionId": "MD-IRAC",
+    "title": "Wilful Defaulter Identification",
+    "description": "Identify and report wilful defaulters as per RBI framework including Board-level review.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Wilful defaulter list",
+      "Investigation reports",
+      "Board resolution",
+      "CRILC reporting"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-011",
+    "masterDirectionId": "MD-IRAC",
+    "title": "Write-Off Policy and Execution",
+    "description": "Implement Board-approved write-off policy for irrecoverable NPA accounts with proper documentation.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual",
+    "evidenceRequired": [
+      "Write-off policy",
+      "Board approval of write-offs",
+      "Recovery efforts documentation"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-012",
+    "masterDirectionId": "MD-IRAC",
+    "title": "Credit Risk Assessment Framework",
+    "description": "Conduct comprehensive credit risk assessment for borrowers including financial analysis, security assessment, and internal rating.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Per credit",
+    "evidenceRequired": [
+      "Credit appraisal report",
+      "Borrower rating",
+      "Security valuation",
+      "Sanction documentation"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-013",
+    "masterDirectionId": "MD-IRAC",
+    "title": "Large Exposure Monitoring",
+    "description": "Monitor and limit single borrower exposure to 25% and group exposure to 55% of eligible capital.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": {
+      "TIER_3": "Additional large exposure framework reporting",
+      "TIER_4": "Basel III large exposure framework compliance required"
+    },
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Large exposure register",
+      "Exposure vs capital calculation",
+      "Exception reports",
+      "Board reporting"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-014",
+    "masterDirectionId": "MD-IRAC",
+    "title": "Sectoral Exposure Limits",
+    "description": "Monitor exposure to individual sectors and ensure concentration risk is within Board-approved limits.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "Sector-wise exposure report",
+      "Board-approved sector limits",
+      "Exception reports"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+  {
+    "itemCode": "MD-IRAC-015",
+    "masterDirectionId": "MD-IRAC",
+    "title": "Collateral Valuation and Monitoring",
+    "description": "Ensure periodic revaluation of collateral securities and maintain loan-to-value ratios within norms.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual",
+    "evidenceRequired": [
+      "Collateral valuation reports",
+      "LTV ratio monitoring",
+      "Revaluation certificates"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.BP.BC.4/21.04.048/2023-24"
+  },
+
+  {
+    "itemCode": "MD-KYC-001",
+    "masterDirectionId": "MD-KYC",
+    "title": "Customer Identification — Individual Accounts",
+    "description": "Verify identity and address of individual customers using officially valid documents (OVDs) at account opening.",
+    "category": "Customer Due Diligence",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Per customer",
+    "evidenceRequired": [
+      "KYC documents collected",
+      "Identity verification records",
+      "Customer acceptance policy compliance"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.AML.BC.4/14.01.001/2023-24"
+  },
+  {
+    "itemCode": "MD-KYC-002",
+    "masterDirectionId": "MD-KYC",
+    "title": "Customer Identification — Non-Individual Accounts",
+    "description": "Verify beneficial ownership and control structure for non-individual accounts including trusts, companies, partnerships.",
+    "category": "Customer Due Diligence",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Per customer",
+    "evidenceRequired": [
+      "Entity documents",
+      "Beneficial ownership declaration",
+      "Board resolution",
+      "Control structure chart"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.AML.BC.4/14.01.001/2023-24"
+  },
+  {
+    "itemCode": "MD-KYC-003",
+    "masterDirectionId": "MD-KYC",
+    "title": "Customer Risk Categorization",
+    "description": "Categorize customers into low, medium, and high risk based on nature of business, transaction volumes, and geographic location.",
+    "category": "Customer Due Diligence",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": {
+      "TIER_3": "Enhanced CDD for high-risk customers including senior management approval",
+      "TIER_4": "Enhanced CDD with automated risk scoring system required"
+    },
+    "frequency": "Per customer",
+    "evidenceRequired": [
+      "Risk categorization matrix",
+      "Customer risk classification",
+      "Review documentation"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.AML.BC.4/14.01.001/2023-24"
+  },
+  {
+    "itemCode": "MD-KYC-004",
+    "masterDirectionId": "MD-KYC",
+    "title": "Periodic KYC Updation",
+    "description": "Update KYC records periodically — high risk every 2 years, medium risk every 8 years, low risk every 10 years.",
+    "category": "Customer Due Diligence",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Per customer risk category",
+    "evidenceRequired": [
+      "KYC updation records",
+      "Review date tracking",
+      "Compliance report"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.AML.BC.4/14.01.001/2023-24"
+  },
+  {
+    "itemCode": "MD-KYC-005",
+    "masterDirectionId": "MD-KYC",
+    "title": "Suspicious Transaction Reporting (STR)",
+    "description": "Report suspicious transactions to FIU-IND within prescribed timelines as per PMLA requirements.",
+    "category": "Customer Due Diligence",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Event-based",
+    "evidenceRequired": [
+      "STR filings to FIU-IND",
+      "Internal alert documentation",
+      "Investigation records"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.AML.BC.4/14.01.001/2023-24"
+  },
+  {
+    "itemCode": "MD-KYC-006",
+    "masterDirectionId": "MD-KYC",
+    "title": "Cash Transaction Reporting (CTR)",
+    "description": "Report all cash transactions exceeding Rs. 10 lakh and integrally connected cash transactions to FIU-IND.",
+    "category": "Customer Due Diligence",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Monthly",
+    "evidenceRequired": [
+      "CTR filings",
+      "Large cash transaction register",
+      "FIU-IND acknowledgment"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.AML.BC.4/14.01.001/2023-24"
+  },
+  {
+    "itemCode": "MD-KYC-007",
+    "masterDirectionId": "MD-KYC",
+    "title": "Principal Officer Designation",
+    "description": "Designate Principal Officer and Deputy Principal Officer for AML compliance reporting to FIU-IND.",
+    "category": "Customer Due Diligence",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Designation letter",
+      "FIU-IND registration",
+      "Reporting structure documentation"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.AML.BC.4/14.01.001/2023-24"
+  },
+  {
+    "itemCode": "MD-KYC-008",
+    "masterDirectionId": "MD-KYC",
+    "title": "AML/CFT Training Program",
+    "description": "Conduct regular training for staff on AML/CFT obligations, suspicious transaction identification, and reporting procedures.",
+    "category": "Customer Due Diligence",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual",
+    "evidenceRequired": [
+      "Training calendar",
+      "Attendance records",
+      "Training material",
+      "Assessment results"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.AML.BC.4/14.01.001/2023-24"
+  },
+  {
+    "itemCode": "MD-KYC-009",
+    "masterDirectionId": "MD-KYC",
+    "title": "Record Keeping — Transaction Records",
+    "description": "Maintain records of all transactions for minimum 5 years from the date of transaction as per PMLA.",
+    "category": "Customer Due Diligence",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Record retention policy",
+      "Archival confirmation",
+      "Retrieval capability"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.AML.BC.4/14.01.001/2023-24"
+  },
+  {
+    "itemCode": "MD-KYC-010",
+    "masterDirectionId": "MD-KYC",
+    "title": "Correspondent Banking Due Diligence",
+    "description": "Conduct enhanced due diligence for correspondent banking relationships including shell bank checks.",
+    "category": "Customer Due Diligence",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Per relationship",
+    "evidenceRequired": [
+      "Correspondent bank due diligence",
+      "Shell bank certification",
+      "Ongoing monitoring records"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.AML.BC.4/14.01.001/2023-24"
+  },
+
+  {
+    "itemCode": "MD-PSL-001",
+    "masterDirectionId": "MD-PSL",
+    "title": "Overall PSL Target — 75% of ANBC",
+    "description": "Achieve priority sector lending target of 75% of Adjusted Net Bank Credit (or credit equivalent of Off-Balance Sheet Exposure, whichever is higher).",
+    "category": "Lending",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "PSL achievement report",
+      "ANBC calculation",
+      "Quarterly reporting to RBI"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "FIDD.CO.Plan.BC.5/04.09.01/2023-24"
+  },
+  {
+    "itemCode": "MD-PSL-002",
+    "masterDirectionId": "MD-PSL",
+    "title": "Micro Enterprise Lending Sub-Target",
+    "description": "Achieve sub-target for lending to micro enterprises within the overall PSL target.",
+    "category": "Lending",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "Micro enterprise loan register",
+      "Sub-target achievement report",
+      "Classification evidence"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "FIDD.CO.Plan.BC.5/04.09.01/2023-24"
+  },
+  {
+    "itemCode": "MD-PSL-003",
+    "masterDirectionId": "MD-PSL",
+    "title": "Weaker Section Lending Sub-Target",
+    "description": "Achieve sub-target for lending to weaker sections as prescribed by RBI.",
+    "category": "Lending",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "Weaker section loan register",
+      "Sub-target achievement report"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "FIDD.CO.Plan.BC.5/04.09.01/2023-24"
+  },
+  {
+    "itemCode": "MD-PSL-004",
+    "masterDirectionId": "MD-PSL",
+    "title": "PSL Classification Accuracy",
+    "description": "Ensure all loans classified as priority sector meet RBI classification criteria for the respective category.",
+    "category": "Lending",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Classification criteria compliance",
+      "Loan-wise classification report",
+      "Internal audit verification"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "FIDD.CO.Plan.BC.5/04.09.01/2023-24"
+  },
+  {
+    "itemCode": "MD-PSL-005",
+    "masterDirectionId": "MD-PSL",
+    "title": "PSL Non-Achievement Penalty — RIDF Deposit",
+    "description": "In case of PSL shortfall, deposit required amount under RIDF or other RBI-designated funds.",
+    "category": "Lending",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual",
+    "evidenceRequired": [
+      "PSL shortfall calculation",
+      "RIDF deposit receipt",
+      "RBI PSL shortfall correspondence"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "FIDD.CO.Plan.BC.5/04.09.01/2023-24"
+  },
+  {
+    "itemCode": "MD-PSL-006",
+    "masterDirectionId": "MD-PSL",
+    "title": "PSL Reporting to RBI",
+    "description": "Submit quarterly PSL returns to RBI showing achievement against targets and sub-targets.",
+    "category": "Lending",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "PSL quarterly return",
+      "DAKSH submission",
+      "Target vs achievement analysis"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "FIDD.CO.Plan.BC.5/04.09.01/2023-24"
+  },
+  {
+    "itemCode": "MD-PSL-007",
+    "masterDirectionId": "MD-PSL",
+    "title": "Housing Loan Classification",
+    "description": "Ensure housing loans up to specified limits qualify under priority sector with proper documentation.",
+    "category": "Lending",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Per loan",
+    "evidenceRequired": [
+      "Housing loan register",
+      "Limit compliance verification",
+      "Classification evidence"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "FIDD.CO.Plan.BC.5/04.09.01/2023-24"
+  },
+  {
+    "itemCode": "MD-PSL-008",
+    "masterDirectionId": "MD-PSL",
+    "title": "Education Loan Classification",
+    "description": "Ensure education loans up to Rs. 20 lakh qualify under priority sector lending.",
+    "category": "Lending",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Per loan",
+    "evidenceRequired": [
+      "Education loan register",
+      "Limit compliance verification"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "FIDD.CO.Plan.BC.5/04.09.01/2023-24"
+  },
+
+  {
+    "itemCode": "MD-ADV-001",
+    "masterDirectionId": "MD-ADV",
+    "title": "Loan Policy — Board Approved",
+    "description": "Maintain comprehensive Board-approved loan policy covering all aspects of credit management and reviewed annually.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual",
+    "evidenceRequired": [
+      "Board approved loan policy",
+      "Annual review documentation",
+      "Policy compliance report"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.10/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-ADV-002",
+    "masterDirectionId": "MD-ADV",
+    "title": "Single Borrower Exposure Limit — 25%",
+    "description": "Ensure single borrower exposure does not exceed 25% of eligible capital base.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": {
+      "TIER_3": "Additional large exposure framework monitoring",
+      "TIER_4": "Basel III large exposure framework full compliance"
+    },
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Exposure register",
+      "Capital base calculation",
+      "Breach reporting to Board"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.Dir.BC.10/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-ADV-003",
+    "masterDirectionId": "MD-ADV",
+    "title": "Group Borrower Exposure Limit — 55%",
+    "description": "Ensure group borrower exposure does not exceed 55% of eligible capital base.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Group exposure register",
+      "Group identification",
+      "Capital base calculation"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.Dir.BC.10/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-ADV-004",
+    "masterDirectionId": "MD-ADV",
+    "title": "Director-Related Lending Restrictions",
+    "description": "Comply with restrictions on loans to directors and their relatives including disclosure and reporting requirements.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Director loan register",
+      "Board disclosure",
+      "Compliance certificate"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.10/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-ADV-005",
+    "masterDirectionId": "MD-ADV",
+    "title": "Unsecured Advances Limit",
+    "description": "Ensure unsecured advances do not exceed 10% of total assets as per RBI ceiling.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Unsecured advances register",
+      "Total assets computation",
+      "Ceiling compliance report"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.10/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-ADV-006",
+    "masterDirectionId": "MD-ADV",
+    "title": "Gold Loan Management",
+    "description": "Comply with RBI norms for gold loans including LTV cap of 75%, safe custody of ornaments, and documentation.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Per loan",
+    "evidenceRequired": [
+      "Gold loan policy",
+      "LTV computation",
+      "Safe custody verification",
+      "Insurance coverage"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.Dir.BC.10/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-ADV-007",
+    "masterDirectionId": "MD-ADV",
+    "title": "Housing Loan LTV Compliance",
+    "description": "Maintain Loan-to-Value ratios within prescribed limits for housing loans (75-90% depending on loan amount).",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Per loan",
+    "evidenceRequired": [
+      "Property valuation",
+      "LTV calculation",
+      "Compliance certificate"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.Dir.BC.10/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-ADV-008",
+    "masterDirectionId": "MD-ADV",
+    "title": "Credit Monitoring and Review",
+    "description": "Establish credit monitoring system for early warning signals and periodic review of loan accounts.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Credit monitoring reports",
+      "Early warning system output",
+      "Review notes"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.10/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-ADV-009",
+    "masterDirectionId": "MD-ADV",
+    "title": "Large Exposure Reporting to RBI",
+    "description": "Report large exposures exceeding 10% of eligible capital to RBI on quarterly basis.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "Large exposure return",
+      "DAKSH submission",
+      "Exception reports"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.10/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-ADV-010",
+    "masterDirectionId": "MD-ADV",
+    "title": "Consortium and Multiple Banking Arrangements",
+    "description": "Follow RBI guidelines for consortium lending and multiple banking arrangements including information sharing.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Per arrangement",
+    "evidenceRequired": [
+      "Consortium agreement",
+      "Information sharing protocol",
+      "Common appraisal report"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.Dir.BC.10/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-ADV-011",
+    "masterDirectionId": "MD-ADV",
+    "title": "Lending to Nominal Members",
+    "description": "Ensure lending to nominal members complies with RBI restrictions and does not exceed 10% of total advances.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Nominal member loan register",
+      "Percentage calculation",
+      "Board reporting"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.Dir.BC.10/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-ADV-012",
+    "masterDirectionId": "MD-ADV",
+    "title": "Area of Operation Compliance",
+    "description": "Ensure lending operations remain within bank's registered area of operation as approved by RBI/RCS.",
+    "category": "Credit Risk",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Area of operation certificate",
+      "Branch-wise lending data",
+      "Compliance certificate"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.Dir.BC.10/13.03.00/2023-24"
+  },
+
+  {
+    "itemCode": "MD-BOD-001",
+    "masterDirectionId": "MD-BOD",
+    "title": "Board Composition — Fit and Proper Criteria",
+    "description": "Ensure all directors meet fit and proper criteria including educational qualifications, experience, and no disqualifications.",
+    "category": "Governance",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual",
+    "evidenceRequired": [
+      "Director profiles",
+      "Background verification reports",
+      "Fit and proper declarations",
+      "Board composition report to RBI"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Leg.BC.15/09.81.002/2023-24"
+  },
+  {
+    "itemCode": "MD-BOD-002",
+    "masterDirectionId": "MD-BOD",
+    "title": "Mandatory Board Committees",
+    "description": "Constitute mandatory committees: Audit Committee, Risk Management Committee, and Nomination Committee.",
+    "category": "Governance",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": {
+      "TIER_3": "RMC mandatory with independent members and quarterly reporting",
+      "TIER_4": "Full committee structure including Remuneration Committee"
+    },
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Committee formation resolutions",
+      "Terms of reference",
+      "Meeting minutes",
+      "Committee reports"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Leg.BC.15/09.81.002/2023-24"
+  },
+  {
+    "itemCode": "MD-BOD-003",
+    "masterDirectionId": "MD-BOD",
+    "title": "Audit Committee Functioning",
+    "description": "Maintain functioning Audit Committee meeting quarterly with review of internal audit findings and controls.",
+    "category": "Governance",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "Meeting minutes",
+      "Internal audit reports reviewed",
+      "Action taken on findings"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Leg.BC.15/09.81.002/2023-24"
+  },
+  {
+    "itemCode": "MD-BOD-004",
+    "masterDirectionId": "MD-BOD",
+    "title": "Related Party Transactions Policy",
+    "description": "Implement Board-approved policy for identifying, approving, and disclosing related party transactions.",
+    "category": "Governance",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "RPT policy",
+      "RPT register",
+      "Board approvals",
+      "Financial statement disclosures"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Leg.BC.15/09.81.002/2023-24"
+  },
+  {
+    "itemCode": "MD-BOD-005",
+    "masterDirectionId": "MD-BOD",
+    "title": "Internal Audit Function",
+    "description": "Maintain independent internal audit function covering all areas of operations with adequate frequency and reporting.",
+    "category": "Governance",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Internal audit plan",
+      "Audit reports",
+      "Audit committee review",
+      "Finding closure tracking"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Leg.BC.15/09.81.002/2023-24"
+  },
+  {
+    "itemCode": "MD-BOD-006",
+    "masterDirectionId": "MD-BOD",
+    "title": "Risk Management Framework",
+    "description": "Establish comprehensive risk management policy covering credit, market, and operational risks with Board oversight.",
+    "category": "Governance",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual review",
+    "evidenceRequired": [
+      "Board approved RM policy",
+      "Policy review documentation",
+      "Implementation status report"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Leg.BC.15/09.81.002/2023-24"
+  },
+  {
+    "itemCode": "MD-BOD-007",
+    "masterDirectionId": "MD-BOD",
+    "title": "Risk Appetite Framework",
+    "description": "Document and implement risk appetite statement approved by Board defining acceptable risk levels and limits.",
+    "category": "Governance",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual review",
+    "evidenceRequired": [
+      "Board approved risk appetite statement",
+      "Risk limits and thresholds",
+      "Monitoring vs risk appetite"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.Leg.BC.15/09.81.002/2023-24"
+  },
+  {
+    "itemCode": "MD-BOD-008",
+    "masterDirectionId": "MD-BOD",
+    "title": "Compliance Culture and Reporting",
+    "description": "Establish compliance culture with designated compliance officer reporting to Board on regulatory compliance status.",
+    "category": "Governance",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "Compliance officer appointment",
+      "Quarterly compliance reports",
+      "Board review of compliance"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Leg.BC.15/09.81.002/2023-24"
+  },
+  {
+    "itemCode": "MD-BOD-009",
+    "masterDirectionId": "MD-BOD",
+    "title": "Financial Statements Disclosures",
+    "description": "Ensure comprehensive disclosures in annual financial statements as per RBI prescribed format.",
+    "category": "Governance",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual",
+    "evidenceRequired": [
+      "Annual financial statements",
+      "Notes to accounts",
+      "RBI format compliance",
+      "Auditor certification"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.Leg.BC.15/09.81.002/2023-24"
+  },
+  {
+    "itemCode": "MD-BOD-010",
+    "masterDirectionId": "MD-BOD",
+    "title": "Customer Grievance Redressal",
+    "description": "Maintain customer grievance redressal mechanism with Board oversight and participation in RBI Ombudsman Scheme.",
+    "category": "Governance",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Grievance redressal policy",
+      "Grievance register",
+      "Resolution records",
+      "Ombudsman details display"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.Leg.BC.15/09.81.002/2023-24"
+  },
+
+  {
+    "itemCode": "MD-FRM-001",
+    "masterDirectionId": "MD-FRM",
+    "title": "Fraud Risk Management Policy",
+    "description": "Establish Board-approved fraud risk management policy covering fraud prevention, detection, investigation, and reporting.",
+    "category": "Risk Management",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual review",
+    "evidenceRequired": [
+      "Board approved FRM policy",
+      "Implementation status",
+      "Policy review documentation"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.FrMC.BC.12/12.01.037/2023-24"
+  },
+  {
+    "itemCode": "MD-FRM-002",
+    "masterDirectionId": "MD-FRM",
+    "title": "Fraud Reporting to RBI",
+    "description": "Report fraud cases to RBI within prescribed timelines based on fraud amount thresholds.",
+    "category": "Risk Management",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": {
+      "TIER_3": "CEO-level reporting to Board for all frauds above Rs. 1 crore",
+      "TIER_4": "Board-level reporting for all frauds with quarterly trend analysis"
+    },
+    "frequency": "Event-based",
+    "evidenceRequired": [
+      "FMR-1 return filed",
+      "RBI acknowledgment",
+      "Investigation report",
+      "Timeline compliance"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.FrMC.BC.12/12.01.037/2023-24"
+  },
+  {
+    "itemCode": "MD-FRM-003",
+    "masterDirectionId": "MD-FRM",
+    "title": "Fraud Investigation Mechanism",
+    "description": "Establish mechanism for investigating fraud cases including designated investigation officer and process.",
+    "category": "Risk Management",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Per incident",
+    "evidenceRequired": [
+      "Investigation officer appointment",
+      "Investigation reports",
+      "Root cause analysis",
+      "Action taken"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.FrMC.BC.12/12.01.037/2023-24"
+  },
+  {
+    "itemCode": "MD-FRM-004",
+    "masterDirectionId": "MD-FRM",
+    "title": "Staff Accountability for Fraud",
+    "description": "Implement framework for fixing staff accountability in fraud cases including departmental action.",
+    "category": "Risk Management",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Per incident",
+    "evidenceRequired": [
+      "Accountability framework",
+      "Staff action records",
+      "Board reporting on staff accountability"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.FrMC.BC.12/12.01.037/2023-24"
+  },
+  {
+    "itemCode": "MD-FRM-005",
+    "masterDirectionId": "MD-FRM",
+    "title": "Fraud Prevention Measures",
+    "description": "Implement preventive measures including maker-checker, concurrent audit, staff rotation, and surprise inspections.",
+    "category": "Risk Management",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Preventive controls documentation",
+      "Concurrent audit reports",
+      "Staff rotation records",
+      "Surprise inspection reports"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.FrMC.BC.12/12.01.037/2023-24"
+  },
+  {
+    "itemCode": "MD-FRM-006",
+    "masterDirectionId": "MD-FRM",
+    "title": "Early Warning Signals Monitoring",
+    "description": "Monitor early warning signals for potential fraud including unusual transactions, override patterns, and anomalies.",
+    "category": "Risk Management",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "EWS monitoring reports",
+      "Alert investigation records",
+      "Escalation documentation"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.FrMC.BC.12/12.01.037/2023-24"
+  },
+  {
+    "itemCode": "MD-FRM-007",
+    "masterDirectionId": "MD-FRM",
+    "title": "Whistle-Blower Mechanism",
+    "description": "Maintain whistle-blower mechanism for employees and stakeholders to report suspected fraud confidentially.",
+    "category": "Risk Management",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Whistle-blower policy",
+      "Reporting channel details",
+      "Protection framework",
+      "Reports received and action taken"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.FrMC.BC.12/12.01.037/2023-24"
+  },
+  {
+    "itemCode": "MD-FRM-008",
+    "masterDirectionId": "MD-FRM",
+    "title": "Quarterly Fraud Review by Board",
+    "description": "Present quarterly review of fraud cases, investigation status, and preventive actions to the Board.",
+    "category": "Risk Management",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "Quarterly fraud review report",
+      "Board minutes",
+      "Trend analysis",
+      "Action taken report"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.FrMC.BC.12/12.01.037/2023-24"
+  },
+
+  {
+    "itemCode": "MD-CSF-001",
+    "masterDirectionId": "MD-CSF",
+    "title": "Board-Approved Cyber Security Policy",
+    "description": "Establish and implement comprehensive cyber security policy approved by Board with annual review.",
+    "category": "IT & Cyber Security",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual review",
+    "evidenceRequired": [
+      "Board approved policy",
+      "Implementation status",
+      "Annual review documentation"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.FID.BC.09/12.01.004/2023-24"
+  },
+  {
+    "itemCode": "MD-CSF-002",
+    "masterDirectionId": "MD-CSF",
+    "title": "CISO Appointment",
+    "description": "Appoint Chief Information Security Officer responsible for information security governance and implementation.",
+    "category": "IT & Cyber Security",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": {
+      "TIER_1": "CISO function may be combined with another role",
+      "TIER_2": "Dedicated CISO recommended",
+      "TIER_3": "Dedicated CISO mandatory",
+      "TIER_4": "Dedicated CISO with independent reporting mandatory"
+    },
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "CISO appointment order",
+      "Role and responsibility document",
+      "Reporting structure"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.FID.BC.09/12.01.004/2023-24"
+  },
+  {
+    "itemCode": "MD-CSF-003",
+    "masterDirectionId": "MD-CSF",
+    "title": "Cyber Security Incident Reporting to RBI",
+    "description": "Report cyber security incidents to RBI-CERT within 6 hours of detection for critical incidents.",
+    "category": "IT & Cyber Security",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Event-based",
+    "evidenceRequired": [
+      "Incident report to RBI-CERT",
+      "Incident log",
+      "Root cause analysis",
+      "Remediation actions"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.FID.BC.09/12.01.004/2023-24"
+  },
+  {
+    "itemCode": "MD-CSF-004",
+    "masterDirectionId": "MD-CSF",
+    "title": "Business Continuity Plan and DR",
+    "description": "Maintain tested Business Continuity Plan with disaster recovery site and annual DR drill.",
+    "category": "IT & Cyber Security",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual testing",
+    "evidenceRequired": [
+      "Board approved BCP",
+      "DR site details",
+      "DR drill reports",
+      "Recovery time metrics"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.FID.BC.09/12.01.004/2023-24"
+  },
+  {
+    "itemCode": "MD-CSF-005",
+    "masterDirectionId": "MD-CSF",
+    "title": "IT Governance Framework",
+    "description": "Implement IT governance framework including IT strategy, IT policy, and IT steering committee.",
+    "category": "IT & Cyber Security",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "IT governance policy",
+      "IT strategy document",
+      "IT steering committee minutes"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.FID.BC.09/12.01.004/2023-24"
+  },
+  {
+    "itemCode": "MD-CSF-006",
+    "masterDirectionId": "MD-CSF",
+    "title": "Information Security Audit",
+    "description": "Conduct annual information security audit by CERT-IN empaneled auditor.",
+    "category": "IT & Cyber Security",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual",
+    "evidenceRequired": [
+      "IS audit report",
+      "CERT-IN empaneled auditor certificate",
+      "Remediation action plan"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.FID.BC.09/12.01.004/2023-24"
+  },
+  {
+    "itemCode": "MD-CSF-007",
+    "masterDirectionId": "MD-CSF",
+    "title": "Vulnerability Assessment and Penetration Testing",
+    "description": "Conduct VAPT at least annually and after significant system changes.",
+    "category": "IT & Cyber Security",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual",
+    "evidenceRequired": [
+      "VAPT reports",
+      "Remediation status",
+      "Re-testing confirmation"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.FID.BC.09/12.01.004/2023-24"
+  },
+  {
+    "itemCode": "MD-CSF-008",
+    "masterDirectionId": "MD-CSF",
+    "title": "Cyber Security Awareness Training",
+    "description": "Conduct regular cyber security awareness training for all staff members and Board.",
+    "category": "IT & Cyber Security",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual",
+    "evidenceRequired": [
+      "Training calendar",
+      "Attendance records",
+      "Training material",
+      "Phishing simulation results"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.FID.BC.09/12.01.004/2023-24"
+  },
+  {
+    "itemCode": "MD-CSF-009",
+    "masterDirectionId": "MD-CSF",
+    "title": "Security Operations Center",
+    "description": "Establish or subscribe to Security Operations Center for continuous monitoring of cyber threats.",
+    "category": "IT & Cyber Security",
+    "tierApplicability": ["TIER_3", "TIER_4"],
+    "tierEnhancements": {
+      "TIER_4": "Dedicated 24x7 SOC mandatory with SIEM integration"
+    },
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "SOC setup documentation",
+      "Monitoring reports",
+      "Incident response from SOC",
+      "SIEM configuration"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.FID.BC.09/12.01.004/2023-24"
+  },
+  {
+    "itemCode": "MD-CSF-010",
+    "masterDirectionId": "MD-CSF",
+    "title": "Data Loss Prevention",
+    "description": "Implement data loss prevention controls to protect sensitive customer and financial data.",
+    "category": "IT & Cyber Security",
+    "tierApplicability": ["TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "DLP policy",
+      "DLP tool implementation",
+      "Incident reports",
+      "Effectiveness review"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.FID.BC.09/12.01.004/2023-24"
+  },
+  {
+    "itemCode": "MD-CSF-011",
+    "masterDirectionId": "MD-CSF",
+    "title": "Access Control and Identity Management",
+    "description": "Implement role-based access control, strong authentication, and privileged access management.",
+    "category": "IT & Cyber Security",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Access control policy",
+      "User access review",
+      "Privileged access logs",
+      "Authentication mechanism details"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.FID.BC.09/12.01.004/2023-24"
+  },
+  {
+    "itemCode": "MD-CSF-012",
+    "masterDirectionId": "MD-CSF",
+    "title": "Network Security and Segmentation",
+    "description": "Implement network security controls including firewall, IDS/IPS, network segmentation, and encrypted communication.",
+    "category": "IT & Cyber Security",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Network architecture document",
+      "Firewall rule review",
+      "IDS/IPS reports",
+      "Segmentation validation"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.FID.BC.09/12.01.004/2023-24"
+  },
+
+  {
+    "itemCode": "MD-IR-001",
+    "masterDirectionId": "MD-IR",
+    "title": "Interest Rate Policy — Board Approved",
+    "description": "Maintain Board-approved interest rate policy for deposits and advances with periodic review.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual review",
+    "evidenceRequired": [
+      "Board approved interest rate policy",
+      "Rate schedule",
+      "Review documentation"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.11/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-IR-002",
+    "masterDirectionId": "MD-IR",
+    "title": "ALCO Constitution and Monthly Meetings",
+    "description": "Constitute Asset Liability Committee with monthly meetings to review interest rate positions and liquidity.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Monthly",
+    "evidenceRequired": [
+      "ALCO constitution",
+      "Monthly meeting minutes",
+      "Interest rate view",
+      "Action taken reports"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.11/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-IR-003",
+    "masterDirectionId": "MD-IR",
+    "title": "ALM Gap Analysis",
+    "description": "Conduct Asset Liability Management gap analysis to manage interest rate risk in banking book.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Monthly",
+    "evidenceRequired": [
+      "ALM gap analysis report",
+      "Interest rate sensitivity",
+      "Duration gap analysis"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.11/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-IR-004",
+    "masterDirectionId": "MD-IR",
+    "title": "Liquidity Coverage Ratio Monitoring",
+    "description": "Maintain adequate liquidity through LCR monitoring and contingency funding plan.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Daily",
+    "evidenceRequired": [
+      "LCR calculation",
+      "Liquidity position report",
+      "Contingency funding plan"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.11/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-IR-005",
+    "masterDirectionId": "MD-IR",
+    "title": "Deposit Rate Compliance",
+    "description": "Ensure deposit interest rates comply with RBI ceilings and do not offer rates above prescribed limits.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Deposit rate schedule",
+      "RBI ceiling compliance",
+      "Board-approved rates"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.Dir.BC.11/13.03.00/2023-24"
+  },
+  {
+    "itemCode": "MD-IR-006",
+    "masterDirectionId": "MD-IR",
+    "title": "ALM Reporting to RBI",
+    "description": "Submit ALM returns to RBI including gap analysis and liquidity position through DAKSH.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "ALM return submission",
+      "DAKSH submission confirmation",
+      "Liquidity position statement"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.11/13.03.00/2023-24"
+  },
+
+  {
+    "itemCode": "MD-INV-001",
+    "masterDirectionId": "MD-INV",
+    "title": "Investment Policy — Board Approved",
+    "description": "Maintain Board-approved investment policy covering permitted instruments, limits, and risk management.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual review",
+    "evidenceRequired": [
+      "Board approved investment policy",
+      "Permitted instrument list",
+      "Limit framework"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.14/13.05.00/2023-24"
+  },
+  {
+    "itemCode": "MD-INV-002",
+    "masterDirectionId": "MD-INV",
+    "title": "SLR Maintenance",
+    "description": "Maintain Statutory Liquidity Ratio at prescribed minimum (currently 18%) in approved government securities.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Daily",
+    "evidenceRequired": [
+      "SLR computation",
+      "Government securities portfolio",
+      "Daily SLR position"
+    ],
+    "priority": "critical",
+    "rbiCircularRef": "DBR.No.Dir.BC.14/13.05.00/2023-24"
+  },
+  {
+    "itemCode": "MD-INV-003",
+    "masterDirectionId": "MD-INV",
+    "title": "HTM/AFS/HFT Classification",
+    "description": "Classify investment portfolio into Held to Maturity, Available for Sale, and Held for Trading categories as per RBI norms.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": {
+      "TIER_3": "Stricter mark-to-market requirements for AFS/HFT",
+      "TIER_4": "Full HTM/AFS/HFT classification with quarterly Board reporting"
+    },
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Portfolio classification report",
+      "Board approval for category shifts",
+      "Compliance with HTM limits"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.14/13.05.00/2023-24"
+  },
+  {
+    "itemCode": "MD-INV-004",
+    "masterDirectionId": "MD-INV",
+    "title": "Mark-to-Market Valuation",
+    "description": "Mark AFS and HFT portfolios to market at prescribed frequency and account for depreciation.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": {
+      "TIER_3": "Monthly MTM mandatory with P&L impact reporting",
+      "TIER_4": "Weekly MTM with full fair value accounting"
+    },
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "MTM valuation report",
+      "Depreciation provision",
+      "P&L impact analysis"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.14/13.05.00/2023-24"
+  },
+  {
+    "itemCode": "MD-INV-005",
+    "masterDirectionId": "MD-INV",
+    "title": "Non-SLR Investment Limits",
+    "description": "Ensure non-SLR investments do not exceed prescribed limits and comply with quality and rating requirements.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Non-SLR investment register",
+      "Limit compliance",
+      "Credit rating verification"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.14/13.05.00/2023-24"
+  },
+  {
+    "itemCode": "MD-INV-006",
+    "masterDirectionId": "MD-INV",
+    "title": "Dealing Room Operations",
+    "description": "Maintain proper dealing room operations with front-office, back-office, and mid-office segregation.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Dealing room setup",
+      "Operations manual",
+      "Segregation of duties evidence"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.Dir.BC.14/13.05.00/2023-24"
+  },
+  {
+    "itemCode": "MD-INV-007",
+    "masterDirectionId": "MD-INV",
+    "title": "Investment Depreciation Provision",
+    "description": "Maintain investment fluctuation reserve and depreciation provision as per RBI norms.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Quarterly",
+    "evidenceRequired": [
+      "IFR balance",
+      "Depreciation provision calculation",
+      "Board approval"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.Dir.BC.14/13.05.00/2023-24"
+  },
+  {
+    "itemCode": "MD-INV-008",
+    "masterDirectionId": "MD-INV",
+    "title": "Prohibited Investments Compliance",
+    "description": "Ensure bank does not invest in prohibited instruments including equity shares, units of equity mutual funds beyond limits.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Continuous",
+    "evidenceRequired": [
+      "Investment portfolio review",
+      "Prohibited instrument check",
+      "Compliance certificate"
+    ],
+    "priority": "high",
+    "rbiCircularRef": "DBR.No.Dir.BC.14/13.05.00/2023-24"
+  },
+  {
+    "itemCode": "MD-INV-009",
+    "masterDirectionId": "MD-INV",
+    "title": "Investment Transaction Reporting",
+    "description": "Report investment transactions including purchase, sale, and maturity through prescribed returns.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Monthly",
+    "evidenceRequired": [
+      "Investment transaction register",
+      "Returns to RBI",
+      "CCIL settlement records"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.Dir.BC.14/13.05.00/2023-24"
+  },
+  {
+    "itemCode": "MD-INV-010",
+    "masterDirectionId": "MD-INV",
+    "title": "Risk-Based Supervision Return — Investments",
+    "description": "Submit investment-related data in RBS returns including portfolio composition and risk assessment.",
+    "category": "Treasury",
+    "tierApplicability": ["TIER_1", "TIER_2", "TIER_3", "TIER_4"],
+    "tierEnhancements": null,
+    "frequency": "Annual",
+    "evidenceRequired": [
+      "RBS investment section",
+      "Portfolio risk assessment",
+      "DAKSH submission"
+    ],
+    "priority": "medium",
+    "rbiCircularRef": "DBR.No.Dir.BC.14/13.05.00/2023-24"
+  }
+]
