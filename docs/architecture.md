@@ -12,7 +12,7 @@ reference to find out _what_ exists.
   [`reference/routes.md`](reference/routes.md),
   [`reference/api-reference.md`](reference/api-reference.md),
   [`reference/data-flows.md`](reference/data-flows.md)
-- **What it must do** → [`requirements/SRS.md`](requirements/SRS.md)
+- **What it must do** → [`superpowers/specs/2026-09-12-first-customer-readiness-design.md`](superpowers/specs/2026-09-12-first-customer-readiness-design.md)
 - **What the words mean** → [`../CONTEXT.md`](../CONTEXT.md)
 - **How to run and release it** → [`../CLAUDE.md`](../CLAUDE.md), [`ops/`](ops/)
 
@@ -54,7 +54,6 @@ flowchart TD
     App --> PG[("PostgreSQL 16<br/>application data · AuditLog · pg-boss queues")]
     App --> S3["AWS S3<br/>evidence, reports"]
     App --> SES["AWS SES<br/>notification email"]
-    App --> Sentry["Sentry<br/>errors"]
     Workers["pg-boss workers<br/>(in-process, started by instrumentation.ts)"] --> PG
     App -.starts.-> Workers
 ```
@@ -214,24 +213,18 @@ convention exists.
 ## Invariant 1 — tenant isolation
 
 **Tenant isolation is enforced in application code. PostgreSQL row-level
-security is not enabled.**
+security is not enabled.** This repo carries no RLS SQL of any kind — no
+`ENABLE ROW LEVEL SECURITY`, no policy file — despite `prismaForTenant(tenantId)`
+reading like an RLS helper: it validates that the tenant id is a well-formed
+UUID and returns the shared singleton client. It adds no filtering of its own.
+RLS is planned (spec §4, gated by a spike; see the five implementation plans
+under [`superpowers/plans/`](superpowers/plans/)), not yet built.
 
-This surprises people, because
-`prisma/migrations/superseded/add_rls_policies.sql` exists and
-`prismaForTenant(tenantId)` reads like an RLS helper. Neither is what it
-appears:
-
-- The RLS file is quarantined history. It is applied to **no** database and
-  must not be — the gotcha in [`CLAUDE.md`](../CLAUDE.md#gotchas) explains
-  what it would do to a system whose reads never set the tenant GUC.
-- `prismaForTenant()` validates that the tenant id is a well-formed UUID and
-  returns the shared singleton client. It adds no filtering of its own.
-
-It used to wrap every query in a transaction with `SET LOCAL`, which was a no-op
-without policies _and_ caused P2028 transaction timeouts under parallel SSR load
-— a dashboard fires 10–15 queries at once and they competed for pool
-connections. That wrapping was removed (see the architecture note in
-`src/lib/prisma.ts`).
+An earlier version wrapped every query in a transaction with `SET LOCAL`,
+which was a no-op without policies _and_ caused P2028 transaction timeouts
+under parallel SSR load — a dashboard fires 10–15 queries at once and they
+competed for pool connections. That wrapping was removed (see the
+architecture note in `src/lib/prisma.ts`).
 
 What actually keeps tenants apart:
 
@@ -247,7 +240,7 @@ What actually keeps tenants apart:
      `prisma` imports — only `console.warn`, and nothing static covers
      `findFirst`/`count`/aggregates or any query in `src/actions/`.
    - The read-side assertion ("throw if a returned row's `tenantId` doesn't
-     match") exists in only ~8 of 51 DAL modules, some returning `null`
+     match") exists in only ~8 of 43 DAL modules, some returning `null`
      instead of throwing.
 
 Outside the two enforced checks, a dropped `WHERE tenantId` is caught by code
@@ -318,11 +311,12 @@ because callers wrap side effects in catch-alls.
 the source and fails the build on any unwrapped write to an audited table,
 before it can reach a database.
 
-**Legacy call sites.** 63 action files predate the wrapper and set the context
+**Legacy call sites.** 28 action files predate the wrapper and set the context
 by hand via `setAuditContext` from `src/data-access/audit-context.ts`. They
-work, and the discipline test allowlists them under a ceiling (67) that may
-only ever be lowered. New code must use `withAuditedMutation`; touching an
-allowlisted file is a good opportunity to migrate it and lower the ceiling.
+work, and the discipline test computes its allowlist directly from which files
+still call `setAuditContext` — a separate, empty `KNOWN_UNAUDITED` set may only
+ever shrink. New code must use `withAuditedMutation`; touching one of the 28
+is a good opportunity to migrate it off `setAuditContext` entirely.
 
 **Which tables are audited** is declared in three places that must agree:
 `AUDITED_TABLES` in `src/lib/audit-triggers.ts`, the `audited` array in
@@ -366,7 +360,7 @@ the clearest example: `AUDIT_MANAGER` may close LOW/MEDIUM observations,
 `CAE` is required for HIGH/CRITICAL. That is a property of the transition, not
 of the page, so it lives in `src/lib/state-machine.ts`.
 
-> **Coverage is uneven.** 17 of 65 pages call a permission guard. The rest rely
+> **Coverage is uneven.** 15 of 46 pages call a permission guard. The rest rely
 > on the layout's session check plus action-level and DAL-level enforcement — so
 > a user without permission cannot _do_ anything, but may be able to _load_ a
 > page. See [Where the map is thin](#where-the-map-is-thin).
@@ -497,11 +491,10 @@ minute-ly worker deliver it.
 
 ## Internationalisation
 
-`next-intl`, with the locale read from a `NEXT_LOCALE` cookie in
-`src/i18n/request.ts` and validated against `["en", "hi", "mr", "gu"]` — an
-unrecognised value silently falls back to `en`. There is **no locale path
-segment**: URLs are identical across languages. Dictionaries are
-`messages/<locale>.json`.
+None. `next-intl` was removed in the 2.0 seed; English strings live in
+`src/lib/strings.ts`, which keeps the old `useTranslations(ns)` call shape
+over a plain object instead of `messages/<locale>.json` (see
+[`CLAUDE.md`](../CLAUDE.md#what-is-not-here-on-purpose)).
 
 ## Build and runtime configuration
 
@@ -516,8 +509,8 @@ segment**: URLs are identical across languages. Dictionaries are
   `Referrer-Policy` and a `Permissions-Policy` — are set for all routes in
   `next.config.ts`. The CSP allows `'unsafe-inline'` for scripts and styles and
   `'unsafe-eval'` in development only. The S3 origin is listed in both
-  `img-src` and `connect-src`; the Sentry ingest origin is in `connect-src`
-  only.
+  `img-src` and `connect-src`. There is no error-tracking origin — Sentry was
+  removed in the 2.0 seed.
 - **Server action body limit** is 5 MB.
 - **Output** is `standalone` for Docker, but disabled under `CI` because
   `next start` is incompatible with standalone output in the E2E job.
@@ -562,16 +555,15 @@ the section that owns the detail; the numbers live there, once.
 - **Permission-guard coverage is not uniform** — most pages rely on the layout
   session check plus action- and DAL-level enforcement
   → [Invariant 3](#invariant-3--authorization).
-- **Legacy audit writes** — 63 action files still hand-roll `setAuditContext`
+- **Legacy audit writes** — 28 action files still hand-roll `setAuditContext`
   under a shrink-only allowlist → [Invariant 2](#invariant-2--audit-attribution).
 - **`prisma db push` alone produces an incomplete database** — triggers, views
   and guards come from loose `.sql` files applied by hand, and they do not ride
   along with a deploy → [Invariant 2](#invariant-2--audit-attribution).
-- **RLS ships as dead code.** The deliberate policy files were never applied;
-  a bootstrap side effect enabled RLS on exactly one table
-  (`ObservationRbiCircular`), inert because the app connects as a `BYPASSRLS`
-  superuser. Verified against production in
-  [`claims-vs-implementation.md`](claims-vs-implementation.md#resolution-of-the-open-rls-question-added-2026-08-27).
+- **RLS is not implemented, not dead code.** This repo carries no RLS SQL at
+  all — no policy files, no `ENABLE ROW LEVEL SECURITY` anywhere in `prisma/`.
+  It is planned per spec §4, gated by a spike →
+  [Invariant 1](#invariant-1--tenant-isolation).
 - **`WHERE tenantId` is only partially machine-checked** — the no-`where`
   `findMany` shape is enforced; everything else is code review
   → [Invariant 1](#invariant-1--tenant-isolation).
