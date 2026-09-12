@@ -105,10 +105,15 @@ word in the code column and by the mark, not by a background.
   closes, focus trapped and returned.
 - **Status line**: bottom-left bordered text, 2.4s, for "Saved …" and
   "Added …". Not a toast stack.
+- **Sample register**: the register with `Compliant | Violation | N/A`
+  columns and an account list in the rail (spec §6.5b). Same state words.
+- **Numbers**: amounts in Indian grouping (₹12,34,567.00) via `formatAmount`;
+  scores via `formatScore`; dates `12 Sep 2026`.
 
 ## Themes
 
-Light and dark ship together (D17). Both palettes live in `globals.css`:
+Light and dark ship together (D17); light is the default regardless of the OS,
+and the user switches from the user menu (grilling Q9). Both palettes live in `globals.css`:
 the bare `:root` block is light; `@media (prefers-color-scheme: dark)`
 guarded as `:root:not([data-theme="light"])` and `:root[data-theme="dark"]`
 redefine the same tokens. Components read tokens only; no colour is defined

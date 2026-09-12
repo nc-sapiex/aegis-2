@@ -183,6 +183,20 @@ use those kinds and carries only data. A new kind is a kernel release.
   `loanProducts String[]`. Module applicability is evaluated against these.
 - Scoring engines, sampling engine, instance scoring, state machines,
   maker-checker. Re-pointed at modules; arithmetic unchanged except §6.5.
+- **Permissions (grilling Q11, Q22).** Two new keys: `module:manage` (modules
+  page, weights, pack install, bank statements) held by CAE, AUDIT_MANAGER,
+  SYSTEM_ADMIN; `rbia:revise_score` (score revision after fieldwork) held by
+  LEAD_AUDITOR, AUDIT_MANAGER, CAE. Scoring stays `rbia:examine`.
+- **Formats (Q27).** `formatAmount`: Indian grouping (₹12,34,567.00); lakh
+  and crore only in free text. Dates `12 Sep 2026`; financial years
+  `FY 2026–27`. `formatScore` per D19.
+- **RBIA engagements require a branch (Q13).** `AuditEngagement.branchId` is
+  enforced non-null for RBIA engagements by a DB check; head-office audits
+  are out of scope for 2.0.
+- **Prior audit (Q14).** The prior engagement for a branch is the latest
+  engagement at that branch whose report was issued or closed. The same
+  lookup feeds RAM's "previous audit rating" and the register's prior-audit
+  fact.
 - **Cash verification** stays a kernel feature (`CashCheck`), not a module.
 - **Reporting engine.** One PDF renderer and one XLSX renderer, both
   data-driven. Kernel sections: cover, executive summary, score and rating
@@ -366,7 +380,7 @@ Layout, desktop (≥1150px):
 - Themes (D17): light and dark ship together. Every token in `globals.css`
   gets a dark value under `prefers-color-scheme: dark` guarded by
   `:root:not([data-theme="light"])` and again under `[data-theme="dark"]`;
-  a theme control in the top bar stamps `data-theme`; the sidebar reads
+  light is the default regardless of the OS setting; a control in the user menu stamps `data-theme`; the sidebar reads
   the same tokens instead of its hard-coded dark values. Dark values are in
   `DESIGN.md`. Every page in scope is checked in both themes before
   go-live (§10).
@@ -387,6 +401,43 @@ Layout, desktop (≥1150px):
   hidden, ticks as filled or empty circles under the same column headers,
   bands always open, one section per page break, engagement name and
   section title in the running header. "Print section" sits in the footer.
+- Header during fieldwork (Q1, Q15): progress only ("325 of 465 scored ·
+  14 N/A · 3 action points"); the composite appears at Fieldwork complete.
+  The rail shows a module's score once every applicable statement in it is
+  Scored or N/A, "—" before. Band score effects are shown throughout.
+- Edit lock and revision (Q2, Q16): rows are editable until FIELDWORK →
+  REVIEW. After that only `rbia:revise_score` holders may change a score,
+  with a mandatory reason, through the row's side panel. Each revision is
+  its own audited event `rbia.score_revised`; the original is never
+  overwritten in the trail. The row's state word reads "Revised by <name>"
+  and the panel lists the original and every revision with reasons.
+- Section-level N/A (Q17, Q24): any scorer may mark a section not
+  applicable with a reason from the sticky band. If rows are already
+  scored, a confirm dialog states how many scores will be cleared. It is
+  reversible; reversal restores nothing. The readiness list shows "Section
+  N/A: <section>, by <name>". Reports print one line under the module:
+  "Not examined: <section>. Reason: <reason>", excluded from the module
+  score.
+- Remarks and evidence (Q18): remarks are required below Largely and on
+  N/A, limit 2000 characters. Evidence is never mandatory; the readiness
+  list warns "n non-compliant statements without evidence".
+- Evidence from a phone (Q12): on touch devices the row's Evidence panel
+  offers the camera directly; HEIC is converted to JPEG on the device before
+  upload; the server allowlist (pdf, jpeg, png, docx, xlsx, 10MB, magic
+  bytes) is unchanged.
+- References (Q6): a statement's reference is a plain string supplied by
+  the pack; bank fields may append text; a link is rendered only when the
+  pack supplies a URL and opens in a new tab.
+- Prior audit on the row (Q7): label and financial year from the prior
+  engagement (§6.2 rule); clicking opens that engagement's row read-only in
+  the side panel, remarks included.
+- Severity suggestion (Q23): the finding panel pre-fills severity from the
+  tick: Non-compliant → High, Marginally → Medium, Partly → Low; a critical
+  statement bumps one level; Largely and Fully suggest nothing.
+- Search and anchors (Q28): no search box in 2.0. Every row has a URL
+  anchor `#<code>` so readiness-list and report links land on the row.
+- Team (Q19): any member of the engagement team may score any row; no
+  module or section assignment in 2.0.
 - Entry and order (D7): opening the examination resumes at the section the
   current auditor last touched in this engagement (`EngagementSectionVisit`:
   engagementId, userId, sectionId, visitedAt, not audited); with no visit it
@@ -451,6 +502,26 @@ Install pack       | progress line in     | catalog empty: "No packs in    | "Si
                    | packs list           | your license"                  | licensed" in the packs list  | rows appear off by defau |
 ```
 
+### 6.5b Sample-account register (grilling Q10, Q20, Q21, Q26)
+
+POPULATION_SAMPLE modules use the same register component, not the 1.x
+card page (`src/components/account-examination/` is replaced).
+
+- Rail: under the module's sections, "Sample · 40 of 1,212 accounts" expands
+  to one row per sampled account: `recordKey · displayName · amount ·
+  classification`, a state word (Untouched, In progress, Complete) and a
+  violation count. Accounts are ordered by `recordKey`.
+- Register: columns `code | question | Compliant | Violation | N/A`; keys
+  C, V and 0 on a focused row. Row state words: Unscored, Remarks due,
+  Scored, Violation, Not applicable, plus the D8 save states.
+- Remarks band: required on Violation and on N/A (reason), optional on
+  Compliant. Score effect shows the change to the module's compliance share.
+- Footer: "Previous account" / "Next account" in rail order; "Unscored
+  only" filters questions within the open account.
+- Evidence, finding verbs, prior-audit fact, revision and section-N/A rules
+  are those of §6.5a. Instance scoring (§6.5) is unchanged: N/A is excluded
+  from the denominator.
+
 ### 6.6 Engagement scope
 
 `EngagementModule` replaces `EngagementModuleSelection`: `moduleId`,
@@ -458,6 +529,14 @@ Install pack       | progress line in     | catalog empty: "No packs in    | "Si
 On engagement creation, every active module's applicability predicate is
 evaluated against the branch profile; the lead auditor may add or remove with
 a reason.
+
+Content snapshot (Q3, Q25): at creation the engagement materialises its
+statement set (`EngagementStatement`: engagementId, nodeId or questionId,
+text, reference, weight, isCritical, origin) from the packs in force and the
+bank's current edits. Later changes to bank statements or to the bank
+fields on pack statements (`weight`, `isCritical`, `isActive`) apply to
+engagements created from then on; running engagements keep what they
+started with. `BranchRbiaScore` stores the same set at scoring time.
 
 ### 6.7 Findings
 
@@ -549,6 +628,14 @@ One page per tenant at Settings › Audit modules, guarded by
   applicability predicate, e.g. "Branches that offer housing loans (9 of
   14)", never field names), Share of score (computed, bold), Weight (number
   input, disabled when off), Statements ("141 +4 bank"), Statements link.
+- Weights (Q4) are integers 1–100. A core module cannot be set to 0 or
+  switched off; a pack module is excluded by switching it off, never by a
+  zero weight.
+- Install pack (Q5): "Install pack" opens a file picker for an `.aegispack`;
+  the server verifies the signature and the license entitlement before
+  anything is written and reports "Signature invalid" or "Not licensed" in
+  the packs list. The `aegis-pack` CLI inside the container does the same
+  for operators and scripted rollouts (§7.3).
 - Share is weight ÷ the sum of weights of modules that apply to a branch.
   No weight total is shown. Changing any weight recomputes shares, marks
   changed shares in accent, and shows "Unsaved. <branch> would move from
@@ -561,6 +648,9 @@ One page per tenant at Settings › Audit modules, guarded by
   0.5–3.0), critical yes/no, and a read-only preview of the fixed
   five-point scale. Saving appends a `BANK` statement with the next
   `<section>-B<nn>` code.
+- Every content change on this page (bank statements, pack `weight`,
+  `isCritical`, `isActive`) applies to engagements created from then on
+  (§6.6 snapshot); the page states this once under the table.
 - The Statements link opens the register in edit mode (D20): the same
   code | statement columns; the tick columns are replaced by weight
   (number), critical (checkbox), origin (Pack/Bank tag) and an On switch.
@@ -825,6 +915,37 @@ finding above. Run with Claude Code or Codex; checkbox as you ship.
   - Surfaced by: Pass 6 D15
   - Files: tests/e2e/a11y.spec.ts
   - Verify: pnpm test:e2e:smoke
+
+Added by the design grilling (2026-09-13, Q1–Q28):
+
+- [ ] **T15 (P1, human: ~3 days / CC: ~1.5 h)** — SampleRegister — Sample-account register per §6.5b, replacing src/components/account-examination
+  - Surfaced by: grilling Q10, Q20, Q21, Q26
+  - Files: src/components/rbia/examination-register.tsx (binary column mode), src/components/rbia/account-rail.tsx, src/app/(dashboard)/audit-execution/[engagementId]/rbia/examination/[moduleCode]/page.tsx
+  - Verify: Playwright: C/V/0 keys, Next account, violation count in rail
+- [ ] **T16 (P1, human: ~2 days / CC: ~1 h)** — EngagementStatement — Materialise the statement set at engagement creation; register reads it
+  - Surfaced by: grilling Q3, Q25
+  - Files: prisma/schema.prisma, src/actions/audit-execution/create-engagement.ts, src/data-access/engagement-statements.ts
+  - Verify: integration test: editing a bank statement after creation does not change a running engagement
+- [ ] **T17 (P1, human: ~2 h / CC: ~10 min)** — permissions — Add `module:manage` and `rbia:revise_score` with role seeding; RBIA branch check
+  - Surfaced by: grilling Q11, Q13, Q22
+  - Files: src/lib/permissions.ts, prisma/sql (check constraint), src/lib/guards.ts
+  - Verify: permissions unit test; migration applies on seed
+- [ ] **T18 (P2, human: ~1 day / CC: ~30 min)** — revision — Post-fieldwork score revision with reason, `rbia.score_revised` event, history in side panel
+  - Surfaced by: grilling Q2, Q16
+  - Files: src/actions/rbia/revise-score.ts, src/components/rbia/response-history-panel.tsx
+  - Verify: integration test: revision preserves original; audit chain verifies
+- [ ] **T19 (P2, human: ~1 day / CC: ~30 min)** — section N/A — Section-level N/A with reason, confirm dialog, readiness-list line, report line
+  - Surfaced by: grilling Q8, Q17, Q24
+  - Files: prisma/schema.prisma (EngagementSectionNa), src/actions/rbia/section-not-applicable.ts, report engine module section
+  - Verify: integration test: scores cleared count matches dialog; module score excludes section
+- [ ] **T20 (P2, human: ~3 h / CC: ~15 min)** — formats — `formatAmount` (Indian grouping) and date helpers; prior-audit lookup by issued/closed status shared with RAM
+  - Surfaced by: grilling Q14, Q27
+  - Files: src/lib/format-amount.ts, src/data-access/pre-audit-profiling.ts, src/lib/ram-engine.ts callers
+  - Verify: pnpm test:unit
+- [ ] **T21 (P2, human: ~4 h / CC: ~20 min)** — evidence — Camera capture on touch devices with HEIC → JPEG conversion before upload; severity suggestion in finding panel
+  - Surfaced by: grilling Q12, Q23
+  - Files: src/components/rbia/bm-evidence-upload-panel.tsx, src/components/rbia/finding-form.tsx
+  - Verify: manual on iPhone Safari; unit test for severity mapping
 
 ## GSTACK REVIEW REPORT
 
