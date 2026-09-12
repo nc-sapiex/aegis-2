@@ -46,7 +46,7 @@ PostgreSQL database. There is no separate API service, no message broker, no
 cache tier. Everything that looks like infrastructure is either PostgreSQL or
 AWS. Nothing sits in front of the app today — AEGIS is not deployed, so there
 is no reverse proxy and no TLS termination; the retired Coolify layout put
-Traefik there (see [`CLAUDE.md` § Deployment](../CLAUDE.md#deployment)).
+Traefik there (see [`CLAUDE.md` § Project overview](../CLAUDE.md#project-overview)).
 
 ```mermaid
 flowchart TD
@@ -502,7 +502,7 @@ over a plain object instead of `messages/<locale>.json` (see
   `next.config.ts` so validation runs at build time (`SKIP_ENV_VALIDATION=1`
   bypasses it for Docker builds). The variable contract — which four are
   required, what degrades without the rest — lives in
-  [`CLAUDE.md`](../CLAUDE.md#environment-notes), not here.
+  [`CLAUDE.md`](../CLAUDE.md#gotchas), not here.
 - **`NEXT_PUBLIC_*` variables are baked at build time**, so changing one
   requires a rebuild, not a restart.
 - **Security headers** — CSP, HSTS, `X-Frame-Options: DENY`, `nosniff`,
@@ -545,7 +545,7 @@ CI runs `lint` (which includes `pnpm docs:check`), `typecheck`, `build`,
 `docker-build`, `unit-test`, `integration-test`, `e2e-smoke` and
 `security-audit` as gates on every pull request, plus the full `e2e` suite as an
 advisory job, all against the merge ref (see
-[`CLAUDE.md`](../CLAUDE.md#current-flow)).
+[`CLAUDE.md`](../CLAUDE.md#commands)).
 
 ## Where the map is thin
 
@@ -599,7 +599,7 @@ The path of least resistance, which is also the one the discipline tests expect:
    `revalidatePath()` afterwards.
 5. **Page** — a server component that calls `requirePermission()` and the DAL,
    passing plain data to client components. Style conventions (aliases, icons,
-   `cn()`) are in [`CLAUDE.md`](../CLAUDE.md#code-style).
+   `cn()`) are in [`CLAUDE.md`](../CLAUDE.md#conventions).
 6. **Permission** — if you added one, extend the `Permission` union and the
    `ROLE_PERMISSIONS` map in `src/lib/permissions.ts`.
 7. **Verify** — `pnpm lint`, `pnpm test:unit` (the discipline tests run here),
