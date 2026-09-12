@@ -79,6 +79,8 @@ SKIP_ENV_VALIDATION=1 pnpm build
 
 ## Conventions
 
+- UI follows `DESIGN.md` (tokens, named patterns, do-not list). Read it before
+  building or changing a page.
 - `@/*` path aliases; icons from `@/lib/icons`; `cn()` for classes
 - Server components by default; client components receive props and call actions
 - Page guard `requirePermission()` from `src/lib/guards.ts`; action guard

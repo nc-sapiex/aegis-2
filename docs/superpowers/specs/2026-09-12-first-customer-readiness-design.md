@@ -234,7 +234,7 @@ canonical columns. Per-record questions (`ExaminationQuestion`,
 to a five-band module score. Credit products, forex deals and deposit
 accounts are all this kind with different mappings.
 
-**FORM** (designed, implemented after go-live). A structured verification form
+**FORM** (design deferred, see TODOS.md; implemented after go-live). A structured verification form
 from a JSON schema in the pack with computed fields. Fixed assets and register
 checks land here later.
 
@@ -266,6 +266,190 @@ checks land here later.
   versions in force. History never changes on pack upgrade.
 - RAM's "previous audit rating" and "compliance of previous audit" read the
   frozen composite and closed findings, unchanged.
+
+### 6.5a Examination register (approved wireframe, 2026-09-12)
+
+The fieldwork surface is a register, not a form. Approved as version 3 of
+the wireframe at `~/.gstack/projects/nc-sapiex-Dev/designs/examination-statement-row-20260912/wireframe.html`
+(artifact https://claude.ai/code/artifact/09667ad7-286b-4737-bd77-4b51fda2dba4).
+
+Layout, desktop (≥1150px):
+
+```
+ Audit execution › ENG-… › RBIA examination                      71.4 / 100
+ Shivaji Nagar branch  Status · Period · Lead · RAM         325 of 465 scored
+ ─────────────────────────────────────────────────────────────────────────
+ CORE               │ Documentation and disbursement   28/38 · [ ] Unscored only
+ ▸ Cash   62/62 .91 │ CODE     STATEMENT            F     L     P     M     N   N/A
+ ▾ Credit 103/145   │                              1.00  0.75  0.50  0.25  0.00 excl
+     Appraisal 44/44│ CL-DD-04 Loan agreement…      ○     ○     ●     ○     ○    □
+     Documentation ◂│ REMARKS  RBI MC … · Evidence 2 · Prior audit: Largely
+     Post-sanction  │   DUE    [Raise action point] [Note observation]
+     Sample 22/40   │          Remarks  required below Largely     Section −1.3
+ ▸ Cash credit …    │          ┃ textarea (amber rule until filled)
+ PACKS              │ CL-DD-06 Disbursement only after EM…  ○  ○  ○  ○  ○    □
+ ▸ Housing 1.0      │ CRITICAL
+ KERNEL             │ Below Partly caps the module at 0.50
+   Cash verification│ ...
+   Findings         │ Each tick saves · 10 left · 1–5 score, 0 N/A, R remarks
+```
+
+- Left rail: module register grouped Core / Packs / Kernel. Each module row
+  shows scored/total and the module score coloured by band (green ≥0.80,
+  amber 0.50–0.79, red <0.50, "—" when nothing scored). Sections nest one
+  level with scored/total. Kernel entries (cash verification, findings) sit
+  under their own heading in a lighter weight; they are not modules.
+- Sticky band: section title, scored/total, N/A count, module weight as a
+  share of the engagement, and the "Unscored only" filter, with the six
+  column headers beneath it. Both stay pinned while the register scrolls.
+- Register row: code column (statement code, `Critical` and `Bank` tags,
+  one-word state, and for critical statements the red line "Below Partly
+  caps the module at 0.50"); statement column (text ≤68ch, reference line,
+  facts "Evidence n · Prior audit: label, FY", then exactly two verbs
+  "Raise action point" and "Note observation" as links); five circular
+  ticks in fixed columns Fully 1.00 · Largely 0.75 · Partly 0.50 ·
+  Marginally 0.25 · Non-compliant 0.00, plus a square N/A tick.
+- Marks: the selected tick is the only accent fill; Non-compliant is red;
+  N/A is ink. No tinted row backgrounds, no stripes, no pills.
+- Row states (word in the code column): Unscored · Remarks due (amber) ·
+  Scored (green) · Non-compliant (red) · Not applicable. A row counts as
+  scored only in Scored, Non-compliant and Not applicable. A tick below
+  Largely without remarks is Remarks due and stays in the "Unscored only"
+  filter.
+- Remarks band spans the row under the statement: label "Remarks · required
+  below Largely" or "optional", character count when filled, and the score
+  effect on the right ("Section −1.3 · engagement −0.3", computed as
+  (1 − value) × 100/statements-in-section and × module share). The textarea
+  carries an amber left rule while required. N/A shows its own reason input
+  (required) and "Excluded from the denominator"; entering N/A clears
+  remarks, leaving N/A clears the reason.
+- Each tick saves immediately (server action, audited). The footer names how
+  many statements are left in the section and the next section.
+- Keyboard on a focused row: 1–5 score, 0 toggles N/A, R opens remarks.
+  Keys are ignored for scoring while N/A is set, matching the mouse.
+- Responsive: 1200–760px the column headers become letters F L P M N with
+  the values beneath and ticks narrow to 48px; below 760px the six ticks
+  move under the statement as one full-width row with letter and value
+  labels, and the rail stacks above the register. Every tick has a 44px+
+  hit area; links and buttons have ≥40px height.
+- Type (D11): statement text 16px Noto Sans, reference and meta lines
+  12.5–13px, column headers 12px, tags 11px; muted ink `#4B5A70` on white
+  (AA). DM Serif Display only for the engagement name. The letter-label
+  breakpoint is 1200px.
+- Browser surfaces (D12), in `globals.css` for the whole app: `::selection`
+  primary at 20%, `caret-color` and `accent-color` primary, `scrollbar-color`
+  border on background, visited reference links in muted ink with the same
+  underline as unvisited.
+- Design system (D13, D14): `DESIGN.md` at the repo root is the source for
+  tokens and named patterns (register, tick, state word, band, tag, rail,
+  side panel, status line). Its front matter cites `globals.css` variables.
+  Token changes land app-wide in `globals.css`: `--radius` 2px,
+  `--muted-foreground` 215 20% 37%, `--border` 214 22% 86%, new
+  `--border-strong` 213 15% 62% and `--success` 151 60% 26% with Tailwind
+  colour entries; the Devanagari/Gujarati font blocks are removed in the
+  same edit. New components: `ExaminationRegister`, `ScaleTick`,
+  `StateWord`, `RemarksBand` in `src/components/rbia/`, built on
+  `radio-group`, `checkbox`, `textarea`, `sheet`, `table` and `skeleton`
+  from `src/components/ui/`. `CLAUDE.md` gains a pointer to `DESIGN.md`.
+- Assistive semantics (D15): each row's five ticks form a `radiogroup`
+  labelled by the statement code and text; each tick is a `radio` labelled
+  "<label>, <value>"; N/A is a `checkbox`. Arrow keys move within the group;
+  1–5, 0 and R stay as shortcuts. The state word and score effect sit in
+  one polite `aria-live` region per row; the band's "n not saved" is a
+  polite live region. The rail is a `nav` with `aria-current` on the
+  section. Built on `radio-group` and `checkbox` from `src/components/ui/`.
+- Tablet and phone rail (D16): below 900px the rail collapses into a left
+  `sheet` opened from the section title in the sticky band (the title
+  becomes a button with ▾); picking a section closes it; the register keeps
+  the full width and the footer's Previous/Next section buttons are the
+  primary way to move. Uses `sheet` and `useIsMobile` already in `src/`.
+- Themes (D17): light and dark ship together. Every token in `globals.css`
+  gets a dark value under `prefers-color-scheme: dark` guarded by
+  `:root:not([data-theme="light"])` and again under `[data-theme="dark"]`;
+  a theme control in the top bar stamps `data-theme`; the sidebar reads
+  the same tokens instead of its hard-coded dark values. Dark values are in
+  `DESIGN.md`. Every page in scope is checked in both themes before
+  go-live (§10).
+- Row verbs (D18): "Raise action point", "Note observation" and "Evidence n"
+  open the right side panel over the register. The two verbs load the
+  existing finding form pre-filled with `moduleId`, `sourceResponseId`, the
+  statement text as the description seed and a severity suggested from the
+  score; Evidence loads the existing upload panel. On save the panel closes
+  and the row's link reads "Action point AP-031", "Observation OB-012" or
+  "Evidence 3". The finding form is laid out to work at 440px.
+- Score display (D19): statement values print as ratios 1.00–0.00 on the
+  ticks; every aggregate (section, module, engagement, score effects,
+  reports) prints as a percentage with one decimal (91.0, 71.4, −1.3). The
+  engine and `BranchRbiaScore` stay on 0–1; one `formatScore` helper does
+  the conversion. The critical cap prints as "capped at 50.0" with a
+  footnote in reports.
+- Print (D21): a print stylesheet for the register: rail and controls
+  hidden, ticks as filled or empty circles under the same column headers,
+  bands always open, one section per page break, engagement name and
+  section title in the running header. "Print section" sits in the footer.
+- Entry and order (D7): opening the examination resumes at the section the
+  current auditor last touched in this engagement (`EngagementSectionVisit`:
+  engagementId, userId, sectionId, visitedAt, not audited); with no visit it
+  opens the first section that has unscored statements; with none it opens
+  the first section. The rail lists core modules in catalog order, then
+  packs in install order, then kernel entries.
+
+- Save outcomes (D8): ticks are optimistic. `ExaminationResponse` gains
+  `version Int`; the save action is compare-and-set on (id, version). On
+  failure the tick reverts and the code column reads "Not saved · Retry" in
+  red until a retry succeeds; the sticky band shows "n not saved" while any
+  row is in that state and leaving the page asks for confirmation. On a
+  version conflict the row reloads the stored score and reads "Scored by
+  <name>" for that visit. The count in the header updates only from server
+  responses.
+
+- Finish line (D10). When the last applicable statement in a section is
+  Scored or N/A and no row is Remarks due or Not saved, the sticky band
+  reads "Section complete · score 0.71 · Next: <section>" and the Next
+  button is the only primary; rows stay editable. When that holds for every
+  applicable section, the header reads "Fieldwork complete" and the
+  engagement page offers the existing FIELDWORK → REVIEW transition. When it
+  does not hold, the engagement page shows a readiness list, each line a
+  link into the register: "3 statements need remarks", "1 not saved",
+  "2 action points in draft". Completeness is computed on the engagement
+  page from a single grouped query, not stored.
+
+User journey (D10):
+
+```
+STEP | USER DOES                          | USER FEELS                 | PLAN SPECIFIES
+-----|------------------------------------|----------------------------|---------------------------------------------
+1    | Opens engagement, clicks RBIA      | "Where was I?"             | Resume at last section (D7)
+2    | Scans the section                  | Oriented in seconds        | Sticky band with counts; unscored word in code column
+3    | Ticks 30 rows in a row             | Momentum, no friction      | Optimistic tick, keys 1–5, each tick saves (D8)
+4    | Hits a Non-compliant               | Alert, needs to explain    | Remarks due in amber, band opens, score effect shown
+5    | Raises an action point from the row| In control                 | Verb link on the row, AP code appears in place
+6    | Network drops in the branch        | Worry                      | Not saved · Retry per row, count in band, leave guard (D8)
+7    | Finishes the section               | Relief, a checkpoint       | Section complete band, Next as the only primary (D10)
+8    | Returns next morning               | Picks up where left off    | Resume rule (D7)
+9    | Finishes the register              | Done, wants to hand over   | Fieldwork complete header, readiness list, transition (D10)
+10   | Board reads the report months later| Trust in the record        | BranchRbiaScore snapshot, audit chain (§5, §6.5)
+```
+
+Interaction states (D9). What the user sees, per feature:
+
+```
+FEATURE            | LOADING              | EMPTY                          | ERROR                        | SUCCESS                  | PARTIAL
+-------------------|----------------------|--------------------------------|------------------------------|--------------------------|------------------------------
+Register section   | sticky header real,  | "No statements apply to this   | row: Not saved · Retry (red) | state word turns Scored; | Remarks due rows count as
+                   | 6 skeleton rows      | branch" + predicate reason     | band: "n not saved"          | counts update from server| unscored in header and filter
+All-N/A section    | same                 | rows stay; band "Excluded: all | same                         | same                     | mixed N/A shown per row
+                   |                      | 12 statements N/A"             |                              |                          |
+Rail               | module names, counts | module with 0 applicable       | inline "Couldn't load, Retry"| counts and score per band| unscored modules show "—"
+                   | as skeleton          | sections greyed, "Not at this  |                              |                          |
+                   |                      | branch"                        |                              |                          |
+Module admin table | skeleton rows        | core only: table + row "Packs  | inline banner with reason    | shares recompute, "Saved"| unsaved weights: accent
+                   |                      | you can add" from catalog      | and Retry                    | status line              | shares + "Unsaved…" line
+Bank statements    | n/a                  | "+0 bank" count, nothing else  | panel keeps input, shows     | panel closes, status     | n/a
+                   |                      |                                | field-level message          | "Added <code>"           |
+Install pack       | progress line in     | catalog empty: "No packs in    | "Signature invalid" / "Not   | pack row appears, modules| n/a
+                   | packs list           | your license"                  | licensed" in the packs list  | rows appear off by defau |
+```
 
 ### 6.6 Engagement scope
 
@@ -346,12 +530,47 @@ see "available, not licensed"; the catalog also ships inside each release.
 On-prem: admin uploads the file on the module admin page; no network. SaaS:
 platform admin installs.
 
-### 7.6 Module admin
+### 7.6 Module admin (approved wireframe, 2026-09-12)
 
-One page per tenant: installed packs and versions; module list with weight
-and active toggle; tree editor for `BANK` nodes (add, edit, reorder,
-deactivate) and the three bank fields on `PACK` nodes; the same for questions.
-Every change is an audited mutation.
+One page per tenant at Settings › Audit modules, guarded by
+`settings.modules.manage`. Approved as version 3 of the wireframe at
+`~/.gstack/projects/nc-sapiex-Dev/designs/module-admin-20260912/wireframe.html`.
+
+- Header: title, one sentence of purpose, actions "Install pack" and
+  "Add bank statement".
+- Installed packs as a definition list, one line each: id, version,
+  bundled/installed date, module and statement counts, signature
+  verification date. Unlicensed packs in the catalog appear muted with
+  "Not in this bank's license. Contact Nexly to add it."
+- Module table grouped by rule rows "Core, bundled with AEGIS" / "Pack ·
+  <id> <version>" / "Not licensed". Columns: On (checkbox; core modules are
+  checked and disabled), Module (name, one-line description), Kind
+  (Checklist / Checklist + sample), Applies to (plain language from the
+  applicability predicate, e.g. "Branches that offer housing loans (9 of
+  14)", never field names), Share of score (computed, bold), Weight (number
+  input, disabled when off), Statements ("141 +4 bank"), Statements link.
+- Share is weight ÷ the sum of weights of modules that apply to a branch.
+  No weight total is shown. Changing any weight recomputes shares, marks
+  changed shares in accent, and shows "Unsaved. <branch> would move from
+  X to Y" using the most recent engagement's module scores. Discard resets;
+  Save weights is an audited mutation and applies to engagements created
+  from then on (§6.5 snapshot rule).
+- "Add bank statement" opens a side panel (role dialog, Escape closes,
+  focus trapped and returned): module and section, statement text,
+  optional reference, weight within section (default 1.0, step 0.5,
+  0.5–3.0), critical yes/no, and a read-only preview of the fixed
+  five-point scale. Saving appends a `BANK` statement with the next
+  `<section>-B<nn>` code.
+- The Statements link opens the register in edit mode (D20): the same
+  code | statement columns; the tick columns are replaced by weight
+  (number), critical (checkbox), origin (Pack/Bank tag) and an On switch.
+  `PACK` rows are read-only except the three bank fields (§6.3); `BANK`
+  rows edit inline (statement text becomes a textarea in the row); reorder
+  is by "Move up" / "Move down" links, no drag; a deactivated row shows the
+  state word "Off". "Add bank statement" opens the same side panel pre-set
+  to this section. Every change is an audited mutation.
+- Table scrolls horizontally inside its own container below 820px; the
+  page never scrolls sideways.
 
 ## 8. Deployment seams, licensing, operations
 
@@ -511,3 +730,132 @@ inter-bank exposure; continuous auditing and rule engine; PWA/offline;
 skills and capacity; field-level encryption; locale support if a customer
 requires it; Blueprint AI items only when a customer asks and a data feed
 exists.
+
+## 14. Design review outputs (plan-design-review, 2026-09-13)
+
+### NOT in scope
+
+- Offline scoring queue: D8 surfaces failures per row; replay is TODOS.md.
+- FORM examination kind UI: design deferred to TODOS.md; built after go-live.
+- Critical-cap explanatory block in reports: TODOS.md, after the §6.2 engine.
+- Dashboards, onboarding and report layouts were not reviewed (focus A was
+  fieldwork and module admin); they follow DESIGN.md when reworked.
+- Drag-and-drop reorder in the statements editor: move up/down links only.
+- Toast stack: outcomes live in the row or the status line.
+
+### What already exists
+
+- `src/app/globals.css` shadcn HSL tokens; `--font-noto-sans`, `--font-dm-serif`.
+- `src/components/ui/`: radio-group, checkbox, textarea, sheet, table,
+  skeleton, dialog, switch, tabs, tooltip (34 primitives).
+- `src/components/rbia/`: finding-form, bm-evidence-upload-panel,
+  score-gauge, score-drilldown, add-module-dialog, remove-module-alert-dialog,
+  engagement-stepper, status-transition-control; `rbia-examination-tree.tsx`
+  is replaced by the register.
+- `src/components/ui/empty-state-card` pattern, `src/hooks/use-mobile.tsx`,
+  `src/hooks/use-auto-save.ts`.
+- `src/lib/rbia-scoring-engine.ts`, `instance-scoring.ts`,
+  `engagement-state-machine.ts` (unchanged by this review).
+- `DESIGN.md` (new, this review) and its pointer in `CLAUDE.md`.
+
+### Approved Mockups
+
+| Screen/Section | Mockup Path | Direction | Notes |
+|---|---|---|---|
+| Examination register | ~/.gstack/projects/nc-sapiex-Dev/designs/examination-statement-row-20260912/wireframe.html (artifact https://claude.ai/code/artifact/09667ad7-286b-4737-bd77-4b51fda2dba4, v3) | Bank inspection register: aligned tick columns, state word, band | D11 16px statement text; D15 radiogroup semantics; D16 rail sheet <900px; D19 percentages above the tick |
+| Audit modules admin | ~/.gstack/projects/nc-sapiex-Dev/designs/module-admin-20260912/wireframe.html (same artifact, tab 2) | Ruled table, packs as a list, side panel | D14 app-wide tokens; D20 statements editor is the register in edit mode |
+
+## Implementation Tasks
+Synthesized from this review's findings. Each task derives from a specific
+finding above. Run with Claude Code or Codex; checkbox as you ship.
+
+- [ ] **T1 (P1, human: ~1 day / CC: ~30 min)** — globals.css — Apply DESIGN.md tokens app-wide, both themes, browser surfaces
+  - Surfaced by: Pass 4 D12, Pass 5 D14, Pass 6 D17
+  - Files: src/app/globals.css, src/app/layout.tsx, src/components/layout/top-bar.tsx, src/components/ui/sidebar.tsx, DESIGN.md
+  - Verify: pnpm build; screenshot pass of every (dashboard) page in light and dark
+- [ ] **T2 (P1, human: ~4 days / CC: ~2 h)** — ExaminationRegister — Build register, tick, state word, band per §6.5a with radiogroup semantics
+  - Surfaced by: Step 0.5 approved wireframe v3; Pass 4 D11; Pass 6 D15
+  - Files: src/components/rbia/examination-register.tsx, scale-tick.tsx, state-word.tsx, remarks-band.tsx; src/app/(dashboard)/audit-execution/[engagementId]/rbia/page.tsx; remove rbia-examination-tree.tsx
+  - Verify: Playwright: keys 1–5/0/R, reader labels via axe; unit test for state derivation
+- [ ] **T3 (P1, human: ~1 day / CC: ~30 min)** — score action — Versioned optimistic save with compare-and-set, Not saved / Scored by states
+  - Surfaced by: Pass 2 D8
+  - Files: prisma/schema.prisma (ExaminationResponse.version, naReason), src/actions/rbia/score-statement.ts, src/data-access/rbia-responses.ts
+  - Verify: integration test: stale version returns conflict; UI shows Scored by <name>
+- [ ] **T4 (P1, human: ~2 h / CC: ~10 min)** — statement-state — Pure state derivation: scored/required/na/nc, remarks required below Largely, N/A reason separate
+  - Surfaced by: §6.5a row states; user review of wireframe v2 (scored flag bug)
+  - Files: src/lib/statement-state.ts, src/lib/__tests__/statement-state.test.ts
+  - Verify: pnpm test:unit
+- [ ] **T5 (P2, human: ~2 h / CC: ~10 min)** — resume — EngagementSectionVisit and rail order
+  - Surfaced by: Pass 1 D7
+  - Files: prisma/schema.prisma, src/data-access/engagement-visits.ts, rbia/page.tsx
+  - Verify: integration test: second visit opens last section
+- [ ] **T6 (P2, human: ~3 h / CC: ~10 min)** — states — Loading skeletons and empty copy per the D9 table
+  - Surfaced by: Pass 2 D9
+  - Files: examination-register.tsx, src/app/(dashboard)/settings/modules/page.tsx
+  - Verify: Playwright screenshots of empty section, all-N/A section, core-only admin
+- [ ] **T7 (P2, human: ~1 day / CC: ~20 min)** — finish line — Section complete band, Fieldwork complete header, readiness list on engagement page
+  - Surfaced by: Pass 3 D10
+  - Files: examination-register.tsx, src/app/(dashboard)/audit-execution/[engagementId]/page.tsx, src/data-access/engagement-readiness.ts
+  - Verify: integration test: readiness list links resolve; transition guard agrees with list
+- [ ] **T8 (P2, human: ~4 h / CC: ~15 min)** — rail — Sheet below 900px from the section title; Previous/Next as primary
+  - Surfaced by: Pass 6 D16
+  - Files: src/components/rbia/module-rail.tsx
+  - Verify: Playwright at 768px: first screen is the register
+- [ ] **T9 (P1, human: ~3 days / CC: ~1.5 h)** — module admin — Packs list, module table with share simulation, weights save, Add bank statement panel per §7.6
+  - Surfaced by: Step 0.5 approved wireframe v3 tab 2; Pass 5 D14
+  - Files: src/app/(dashboard)/settings/modules/page.tsx, src/components/modules/*, src/actions/modules/*
+  - Verify: unit test for share computation; audited-mutation discipline test passes
+- [ ] **T10 (P2, human: ~2 days / CC: ~1 h)** — statements editor — Register in edit mode for BANK and PACK nodes
+  - Surfaced by: Pass 7 D20
+  - Files: src/app/(dashboard)/settings/modules/[moduleId]/page.tsx, src/components/modules/statements-editor.tsx
+  - Verify: Playwright: add, edit, move, deactivate a bank statement; pack row fields locked
+- [ ] **T11 (P2, human: ~1.5 days / CC: ~40 min)** — row verbs — Side panel with pre-filled finding form and evidence panel; form at 440px
+  - Surfaced by: Pass 7 D18
+  - Files: src/components/rbia/finding-form.tsx, bm-evidence-upload-panel.tsx, examination-register.tsx
+  - Verify: Playwright: raise AP from row, code appears in place, no navigation
+- [ ] **T12 (P2, human: ~2 h / CC: ~10 min)** — formatScore — Percentages for aggregates, ratios on ticks, cap footnote
+  - Surfaced by: Pass 7 D19
+  - Files: src/lib/format-score.ts, src/lib/__tests__/format-score.test.ts, rail, header, report templates
+  - Verify: pnpm test:unit; rail shows 91.0
+- [ ] **T13 (P3, human: ~4 h / CC: ~15 min)** — print — Register print stylesheet and Print section action
+  - Surfaced by: Pass 7 D21
+  - Files: src/app/globals.css (@media print), examination-register.tsx
+  - Verify: print preview: one section per page, ticks legible in monochrome
+- [ ] **T14 (P2, human: ~3 h / CC: ~15 min)** — a11y — axe checks for register and admin in the smoke suite
+  - Surfaced by: Pass 6 D15
+  - Files: tests/e2e/a11y.spec.ts
+  - Verify: pnpm test:e2e:smoke
+
+## GSTACK REVIEW REPORT
+
+plan-design-review · 2026-09-13 · focus A (fieldwork + module admin) · commit 085a388 (dirty)
+
+```
++====================================================================+
+|         DESIGN PLAN REVIEW — COMPLETION SUMMARY                    |
++====================================================================+
+| System Audit         | no DESIGN.md → written; 34 shadcn primitives |
+| Step 0               | initial 5/10; focus A; HTML wireframes v1→v3 |
+| Pass 1  (Info Arch)  | 7/10 → 9/10 (D7 resume + rail order)         |
+| Pass 2  (States)     | 5/10 → 9/10 (D8 save outcomes, D9 table)     |
+| Pass 3  (Journey)    | 6/10 → 9/10 (D10 finish line, journey table) |
+| Pass 4  (AI Slop)    | 8/10 → 9/10 (D11 16px, D12 browser surfaces) |
+| Pass 5  (Design Sys) | 4/10 → 9/10 (D13 DESIGN.md, D14 tokens)      |
+| Pass 6  (Responsive) | 7/10 → 9/10 (D15 ARIA, D16 sheet, D17 dark)  |
+| Pass 7  (Decisions)  | 4 resolved (D18–D21), 0 deferred             |
++--------------------------------------------------------------------+
+| NOT in scope         | written (6 items)                            |
+| What already exists  | written                                      |
+| TODOS.md updates     | 3 proposed, 3 added (D22–D24)                |
+| Approved Mockups     | 2 generated (HTML), 2 approved (v3, D6)      |
+| Decisions made       | 18 added to plan (D4–D21)                    |
+| Decisions deferred   | 0                                            |
+| Overall design score | 5/10 → 9/10                                  |
++====================================================================+
+```
+
+Plan is design-complete. Run /design-review after implementation for visual QA.
+Tasks: 14 in §14 Implementation Tasks; JSONL at
+`~/.gstack/projects/nc-sapiex-Dev/tasks-design-review-20260913-003254.jsonl`.
+
+NO UNRESOLVED DECISIONS
