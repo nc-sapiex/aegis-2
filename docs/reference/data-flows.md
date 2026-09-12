@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `c3807d3` (main)
+> Source commit: `01b77d1` (plan1/task-7)
 
 Which processes read and write which tables.
 
@@ -21,7 +21,7 @@ reachability graph.
 | `(root)` | 8 | `Account`, `AuditeeResponse`, `Evidence`, `Observation`, `ObservationTimeline`, `Tenant`, `User` |
 | `account-examination` | 1 | `AccountExamResponse`, `AuditEngagement`, `ExaminationQuestion`, `LoanAccount` |
 | `admin` | 4 | `AuditCalendar`, `Branch`, `ReportTemplate`, `Zone` |
-| `audit-execution` | 8 | `AuditEngagement`, `AuditExaminationResponse`, `AuditTeamMember`, `CashCheck`, `Evidence`, `LoanReview` |
+| `audit-execution` | 7 | `AuditEngagement`, `AuditExaminationResponse`, `AuditTeamMember`, `CashCheck`, `Evidence`, `LoanReview` |
 | `audit-plans` | 3 | `AuditEngagement`, `AuditPlan`, `Branch` |
 | `compliance` | 5 | `BoardReport`, `ComplianceItem`, `NotificationQueue`, `User` |
 | `examination-questions` | 1 | `ExaminationQuestion` |
