@@ -1,5 +1,6 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { createTenantClient, type TenantClient } from "@/lib/tenant-client";
 
 const prismaClientSingleton = () => {
   const connectionString = process.env.DATABASE_URL;
@@ -42,35 +43,29 @@ export const prisma = new Proxy(
 );
 
 const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const tenantClients = new Map<string, TenantClient>();
 
 /**
- * Tenant-scoped Prisma client — application-level isolation.
+ * The only client actions and the DAL may use for reads. Every operation runs
+ * with app.current_tenant_id set, so RLS applies. WHERE tenantId stays on every
+ * query as the second wall (spec §4.3).
  *
- * ARCHITECTURE NOTE (2026-02-18):
- * Previously wrapped every query in a $transaction with SET LOCAL for
- * PostgreSQL RLS. But: (1) no RLS policies exist in the DB, so SET LOCAL
- * was a no-op, and (2) wrapping every query in a transaction caused P2028
- * errors under concurrent SSR load (10+ parallel queries competing for
- * pool connections → transaction timeouts → 500 errors).
- *
- * Tenant isolation is enforced at the APPLICATION level:
- * - Every DAL function adds WHERE tenantId = ? to its queries
- * - tenantId comes from authenticated session only
- * - This function validates the UUID format as a safety check
- *
- * If PostgreSQL RLS is added later, re-enable transaction wrapping with
- * per-connection (not per-query) tenant context via middleware.
- *
- * SECURITY:
- * - tenantId MUST come from authenticated session ONLY
- * - NEVER pass tenantId from URL params, request body, or query string
+ * TENANT_CLIENT=singleton is read only by scripts/load/rls-spike.mjs to
+ * measure the unwrapped baseline. It is removed in Task 8.
  */
-export function prismaForTenant(tenantId: string) {
+export function prismaForTenant(tenantId: string): TenantClient {
   if (!UUID_REGEX.test(tenantId)) {
     throw new Error(`Invalid tenantId format: ${tenantId}`);
   }
-  // Return the singleton client — tenant isolation is via WHERE clauses
-  // in every DAL function, not via PostgreSQL RLS (no policies exist).
-  return prisma;
+  if (process.env.TENANT_CLIENT === "singleton") {
+    return prisma as unknown as TenantClient;
+  }
+  let client = tenantClients.get(tenantId);
+  if (!client) {
+    client = createTenantClient(prisma, tenantId);
+    tenantClients.set(tenantId, client);
+  }
+  return client;
 }
