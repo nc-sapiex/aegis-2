@@ -4,10 +4,10 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `d3b6e78` (HEAD)
+> Source commit: `fb5c400` (copilot/plan-4-task-17-score-revision)
 
 Every table AEGIS maintains, with its columns, types and relationships.
-**76 models** and **22 enumerations**.
+**77 models** and **22 enumerations**.
 
 Conventions used throughout the schema:
 
@@ -86,6 +86,7 @@ Conventions used throughout the schema:
 - [ExaminationResponse](#examinationresponse)
 - [BranchRbiaScore](#branchrbiascore)
 - [EngagementModuleSelection](#engagementmoduleselection)
+- [EngagementSectionNa](#engagementsectionna)
 - [EngagementMeeting](#engagementmeeting)
 - [ActionPoint](#actionpoint)
 - [BmResponseBatch](#bmresponsebatch)
@@ -676,6 +677,7 @@ Indexes and constraints:
 | `examinationResponsesV2` | ExaminationResponse[] | no | FK→ExaminationResponse |  | v6.0 RBIA relations |
 | `branchRbiaScore` | BranchRbiaScore | yes | FK→BranchRbiaScore |  |  |
 | `moduleSelections` | EngagementModuleSelection[] | no | FK→EngagementModuleSelection |  |  |
+| `sectionNaMarks` | EngagementSectionNa[] | no | FK→EngagementSectionNa |  |  |
 | `meetings` | EngagementMeeting[] | no | FK→EngagementMeeting |  |  |
 | `actionPointsV2` | ActionPoint[] | no | FK→ActionPoint |  |  |
 | `bmResponseBatch` | BmResponseBatch | yes | FK→BmResponseBatch |  |  |
@@ -1857,6 +1859,7 @@ Indexes and constraints:
 | `updatedAt` | DateTime | no |  |  |  |
 | `responses` | ExaminationResponse[] | no | FK→ExaminationResponse |  | Relations |
 | `moduleSelections` | EngagementModuleSelection[] | no | FK→EngagementModuleSelection |  |  |
+| `sectionNaMarks` | EngagementSectionNa[] | no | FK→EngagementSectionNa |  |  |
 
 Indexes and constraints:
 
@@ -1943,6 +1946,27 @@ Indexes and constraints:
 - `@@unique([engagementId, moduleNodeId])`
 - `@@index([tenantId])`
 - `@@index([engagementId])`
+
+## EngagementSectionNa
+
+*Tenant-scoped:* **yes** — always filter by `tenantId`
+
+| Column | Type | Null | Key | Default | Notes |
+|---|---|---|---|---|---|
+| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
+| `tenantId` | String `@db.Uuid` | no |  |  |  |
+| `engagementId` | String `@db.Uuid` | no |  |  |  |
+| `engagement` | AuditEngagement | no | FK→AuditEngagement |  | relation |
+| `moduleId` | String `@db.Uuid` | no |  |  |  |
+| `module` | ExaminationNode | no | FK→ExaminationNode |  | relation |
+| `reason` | String `@db.Text` | no |  |  |  |
+| `markedById` | String `@db.Uuid` | no |  |  |  |
+| `markedAt` | DateTime | no |  | `now()` |  |
+
+Indexes and constraints:
+
+- `@@unique([engagementId, moduleId])`
+- `@@index([tenantId])`
 
 ## EngagementMeeting
 
@@ -2151,7 +2175,6 @@ Indexes and constraints:
 | `questionId` | String `@db.Uuid` | no |  |  |  |
 | `question` | ExaminationQuestion | no | FK→ExaminationQuestion |  | relation |
 | `note` | String `@db.Text` | yes |  |  |  |
-| `isNotApplicable` | Boolean | no |  | `false` | Explicit N/A, same shape as ExaminationResponse.isNotApplicable |
 | `respondedById` | String `@db.Uuid` | no |  |  | Audit trail |
 | `respondedAt` | DateTime | no |  | `now()` |  |
 | `evidence` | Evidence[] | no | FK→Evidence |  | Evidence relation |

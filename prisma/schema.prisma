@@ -865,6 +865,7 @@ model AuditEngagement {
   examinationResponsesV2  ExaminationResponse[]
   branchRbiaScore         BranchRbiaScore?
   moduleSelections        EngagementModuleSelection[]
+  sectionNaMarks          EngagementSectionNa[]
   meetings                EngagementMeeting[]
   actionPointsV2          ActionPoint[]
   bmResponseBatch         BmResponseBatch?
@@ -2163,6 +2164,7 @@ model ExaminationNode {
   // Relations
   responses            ExaminationResponse[]
   moduleSelections     EngagementModuleSelection[]
+  sectionNaMarks       EngagementSectionNa[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -2265,6 +2267,24 @@ model EngagementModuleSelection {
   @@unique([engagementId, moduleNodeId])
   @@index([tenantId])
   @@index([engagementId])
+}
+
+model EngagementSectionNa {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId String @db.Uuid
+
+  engagementId String          @db.Uuid
+  engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+
+  moduleId String          @db.Uuid
+  module   ExaminationNode @relation(fields: [moduleId], references: [id])
+  reason   String          @db.Text
+
+  markedById String   @db.Uuid
+  markedAt   DateTime @default(now())
+
+  @@unique([engagementId, moduleId])
+  @@index([tenantId])
 }
 
 // ─── Engagement Meeting (v6.0 — opening/exit meeting records) ───────────────
