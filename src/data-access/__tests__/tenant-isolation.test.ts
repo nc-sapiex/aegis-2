@@ -186,36 +186,42 @@ describe("Tenant Data Isolation (DSEC-05)", () => {
      * have a tenantId column — see prisma/schema.prisma). This list may
      * only ever SHRINK — an unfiltered query on a tenant-scoped table
      * returns every tenant's rows.
+     *
+     * Keyed by path relative to the repo root, not basename — the scan walks
+     * both src/data-access and src/actions, which contain same-named files
+     * (compliance-management.ts, user-invitations.ts among them), and a
+     * basename key would silently exempt both.
      */
-    const NO_TENANT_ALLOWLIST = new Set<string>(["compliance-management.ts"]);
+    const NO_TENANT_ALLOWLIST = new Set<string>([
+      "src/data-access/compliance-management.ts",
+    ]);
 
     /**
      * Shrink-only, separate from NO_TENANT_ALLOWLIST: these tables do carry a
      * tenantId column, but one specific function's query is deliberately not
      * scoped by it — a pre-tenant lookup or a cross-tenant worker poll that
-     * splits by tenantId immediately after. Keyed by `basename:functionName`
-     * so the exemption covers only that function, not every query in the
-     * file — a sibling function in the same file (e.g. claimNotifications
-     * next to getPendingNotifications) stays fully checked.
+     * splits by tenantId immediately after. Keyed by
+     * `relativePath:functionName` so the exemption covers only that function
+     * in that exact file, not every query in every same-named file — a
+     * sibling function in the same file (e.g. claimNotifications next to
+     * getPendingNotifications) stays fully checked.
      */
     const DELIBERATE_ALLOWLIST = new Set<string>([
-      "user-invitations.ts:acceptInvitation", // resolves an invited User by globally-unique email before any tenantId is known — same shape as sign-in
-      "notifications.ts:getPendingNotifications", // polls the global pg-boss queue across all tenants; claimNotifications (same file) splits the claim by tenantId immediately after, in the same worker tick, and stays checked
+      "src/actions/user-invitations.ts:acceptInvitation", // resolves an invited User by globally-unique email before any tenantId is known — same shape as sign-in
+      "src/data-access/notifications.ts:getPendingNotifications", // polls the global pg-boss queue across all tenants; claimNotifications (same file) splits the claim by tenantId immediately after, in the same worker tick, and stays checked
     ]);
 
     const offenders: string[] = [];
     for (const file of queryFiles) {
-      const base = file.split("/").pop()!;
-      if (NO_TENANT_ALLOWLIST.has(base)) continue;
+      const rel = relative(process.cwd(), file);
+      if (NO_TENANT_ALLOWLIST.has(rel)) continue;
       const content = getFileContent(file);
       for (const marker of QUERY_MARKERS) {
         for (const { index, args } of queryArgs(content, marker)) {
           if (/\btenantId\b/.test(args)) continue;
           const fn = enclosingFunctionName(content, index);
-          if (fn && DELIBERATE_ALLOWLIST.has(`${base}:${fn}`)) continue;
-          offenders.push(
-            `${relative(process.cwd(), file)}: ${marker}${fn ? ` (in ${fn})` : ""}`,
-          );
+          if (fn && DELIBERATE_ALLOWLIST.has(`${rel}:${fn}`)) continue;
+          offenders.push(`${rel}: ${marker}${fn ? ` (in ${fn})` : ""}`);
         }
       }
     }

@@ -24,23 +24,40 @@ const BARE_IMPORT_ALLOWLIST = new Set<string>([
   "src/jobs/overdue-escalation.ts", // lists tenants, then calls prismaForTenant per tenant
   "src/jobs/rbia-overdue-escalation.ts", // lists tenants, then calls prismaForTenant per tenant
   "src/jobs/compliance-escalation.ts", // lists tenants, then calls prismaForTenant per tenant
+  "src/data-access/notifications.ts", // getPendingNotifications polls the global pg-boss queue across all tenants; claimNotifications (same file) uses prismaForTenant
   "tests/integration/harness.ts", // test harness needs the raw client to set up fixtures
 ]);
 
-const ROOTS = ["src/app", "src/actions", "src/data-access", "src/jobs", "src/lib", "src/components"];
+const ROOTS = [
+  "src/app",
+  "src/actions",
+  "src/data-access",
+  "src/jobs",
+  "src/lib",
+  "src/components",
+];
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) {
-      if (entry === "__tests__" || entry === "__integration__" || entry === "generated") continue;
+      if (
+        entry === "__tests__" ||
+        entry === "__integration__" ||
+        entry === "generated"
+      )
+        continue;
       walk(full, out);
     } else if (/\.(ts|tsx)$/.test(entry)) out.push(full);
   }
   return out;
 }
 
-const BARE_IMPORT = /import\s*\{[^}]*\bprisma\b[^}]*\}\s*from\s*["'](@\/lib\/prisma|@\/data-access\/prisma|\.\/prisma)["']/;
+// Matches both `import { prisma } from "..."` and the dynamic
+// `const { prisma } = await import("...")` form — a lazy import bypasses the
+// static-import check just as easily as it bypasses tree-shaking.
+const BARE_IMPORT =
+  /(?:import\s*\{[^}]*\bprisma\b[^}]*\}\s*from\s*|\{[^}]*\bprisma\b[^}]*\}\s*=\s*await\s+import\(\s*)["'](@\/lib\/prisma|@\/data-access\/prisma|\.\/prisma)["']/;
 
 describe("bare prisma singleton imports", () => {
   it("appear only in the allowlist", () => {
