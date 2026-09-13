@@ -74,9 +74,10 @@ export async function transitionReportStatus(input: TransitionReportInput) {
     const currentStatus = (engagement.reportStatus ?? "DRAFT") as ReportStatus;
     const targetStatus = validated.targetStatus;
     const requiredPermission =
-      targetStatus === "APPROVED" || targetStatus === "ISSUED"
-        ? "report:approve"
-        : "report:add_commentary";
+      currentStatus === "DRAFT" ||
+      (currentStatus === "REVIEWED" && targetStatus === "DRAFT")
+        ? "report:add_commentary"
+        : "report:approve";
 
     if (!hasPermission(userRoles, requiredPermission)) {
       return {

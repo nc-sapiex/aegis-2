@@ -96,6 +96,19 @@ describe("ROLE_PERMISSIONS structure", () => {
     expect(hasPermission([Role.AUDIT_MANAGER], "report:approve")).toBe(true);
   });
 
+  it("surprise-audit scheduling stays limited to CAE, AUDIT_MANAGER, and ACE_OFFICER", () => {
+    expect(hasPermission([Role.CAE], "audit_plan:surprise_create")).toBe(true);
+    expect(hasPermission([Role.AUDIT_MANAGER], "audit_plan:surprise_create")).toBe(
+      true,
+    );
+    expect(hasPermission([Role.ACE_OFFICER], "audit_plan:surprise_create")).toBe(
+      true,
+    );
+    expect(hasPermission([Role.AUDITOR], "audit_plan:surprise_create")).toBe(
+      false,
+    );
+  });
+
   it("CCO has compliance:read and compliance:update", () => {
     expect(hasPermission([Role.CCO], "compliance:read")).toBe(true);
     expect(hasPermission([Role.CCO], "compliance:update")).toBe(true);

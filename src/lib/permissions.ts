@@ -39,6 +39,7 @@ export type Permission =
   | "audit_plan:read"
   | "audit_plan:create"
   | "audit_plan:manage"
+  | "audit_plan:surprise_create"
   // Reports
   | "report:read"
   | "report:generate"
@@ -137,6 +138,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "observation:close_low_medium",
     "audit_plan:create",
     "audit_plan:manage",
+    "audit_plan:surprise_create",
     "compliance:read",
     "compliance:update",
     "report:read",
@@ -184,6 +186,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "audit_execution:manage_team",
     "audit_execution:create",
     "audit_execution:manage_sections",
+    "audit_plan:surprise_create",
     "examination:read",
     "compliance:ace_process",
     "report:approve",
@@ -305,6 +308,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "observation:read",
     "compliance:read",
     "compliance:ace_process",
+    "audit_plan:surprise_create",
     "issue:read",
     "issue:manage",
     "issue:accept_risk",

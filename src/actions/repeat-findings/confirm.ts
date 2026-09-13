@@ -57,7 +57,8 @@ export async function confirmRepeatFinding(
   if (!canManageRepeatFindings) {
     return {
       success: false,
-      error: "Only auditors can confirm repeat findings",
+      error:
+        "Observation create or review permission is required to confirm repeat findings.",
     };
   }
 
@@ -203,7 +204,8 @@ export async function dismissRepeatFinding(
   if (!canManageRepeatFindings) {
     return {
       success: false,
-      error: "Only auditors can dismiss repeat findings",
+      error:
+        "Observation create or review permission is required to dismiss repeat findings.",
     };
   }
 

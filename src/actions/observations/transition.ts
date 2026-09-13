@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/data-access/prisma";
 import { setAuditContext } from "@/data-access/audit-context";
-import { hasPermission, type Permission } from "@/lib/permissions";
+import { hasPermission, type Role } from "@/lib/permissions";
 import {
   canTransition,
   type ObservationStatus,
@@ -16,13 +16,14 @@ import type { TransitionObservationInput } from "./schemas";
 import { createNotification } from "@/data-access/notifications";
 import { logger } from "@/lib/logger";
 
-function requiredPermissionsForTransition(
+function hasTransitionPermission(
   currentStatus: ObservationStatus,
   targetStatus: ObservationStatus,
   severity: Severity,
-): Permission[] {
+  userRoles: Role[],
+): boolean {
   if (currentStatus === "DRAFT" && targetStatus === "SUBMITTED") {
-    return ["observation:create"];
+    return hasPermission(userRoles, "observation:create");
   }
 
   if (
@@ -31,24 +32,26 @@ function requiredPermissionsForTransition(
     (currentStatus === "REVIEWED" &&
       (targetStatus === "ISSUED" || targetStatus === "SUBMITTED"))
   ) {
-    return ["observation:review"];
+    return hasPermission(userRoles, "observation:review");
   }
 
   if (currentStatus === "ISSUED" && targetStatus === "RESPONSE") {
-    return ["observation:read"];
+    return hasPermission(userRoles, "observation:read");
   }
 
   if (currentStatus === "RESPONSE" && targetStatus === "COMPLIANCE") {
-    return ["observation:create", "observation:review"];
+    return userRoles.includes("AUDIT_MANAGER")
+      ? hasPermission(userRoles, "observation:review")
+      : hasPermission(userRoles, "observation:create");
   }
 
   if (currentStatus === "COMPLIANCE" && targetStatus === "CLOSED") {
     return severity === "HIGH" || severity === "CRITICAL"
-      ? ["observation:close_high_critical"]
-      : ["observation:close_low_medium", "observation:close_high_critical"];
+      ? hasPermission(userRoles, "observation:close_high_critical")
+      : hasPermission(userRoles, "observation:close_low_medium");
   }
 
-  return [];
+  return false;
 }
 
 /**
@@ -107,18 +110,14 @@ export async function transitionObservation(input: TransitionObservationInput) {
     const currentStatus = observation.status as ObservationStatus;
     const targetStatus = validated.targetStatus as ObservationStatus;
     const severity = observation.severity as Severity;
-    const requiredPermissions = requiredPermissionsForTransition(
+    const hasRequiredPermission = hasTransitionPermission(
       currentStatus,
       targetStatus,
       severity,
+      userRoles,
     );
 
-    if (
-      requiredPermissions.length === 0 ||
-      !requiredPermissions.some((permission) =>
-        hasPermission(userRoles, permission),
-      )
-    ) {
+    if (!hasRequiredPermission) {
       return {
         success: false as const,
         error: `You do not have permission to transition observations to ${targetStatus}.`,

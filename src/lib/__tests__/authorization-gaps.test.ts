@@ -10,7 +10,8 @@ const PAGE_GUARD_CALLS = [
   "requireAnyPermission(",
   "requireOnboardingPermission(",
 ];
-const ACTION_GUARD_CALLS = ["hasPermission(", "requireOnboardingPermission("];
+const ACTION_GUARD_PATTERN =
+  /(has[A-Za-z]*Permission\(|require[A-Za-z]+Permission\()/;
 const ACTION_EXCLUDED_FILES = new Set(["schemas.ts"]);
 const ACTION_ALLOWLIST = new Set([
   "src/actions/compliance/run-escalation-job.ts:runEscalationJobInternal",
@@ -96,7 +97,7 @@ describe("authorization gaps", () => {
         .filter((action) => {
           const key = `${file}:${action.name}`;
           if (ACTION_ALLOWLIST.has(key)) return false;
-          return !ACTION_GUARD_CALLS.some((call) => action.body.includes(call));
+          return !ACTION_GUARD_PATTERN.test(action.body);
         })
         .map((action) => `${file}:${action.name}`);
     });

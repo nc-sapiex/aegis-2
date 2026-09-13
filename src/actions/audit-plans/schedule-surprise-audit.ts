@@ -8,6 +8,8 @@ import { logger } from "@/lib/logger";
 import { hasPermission } from "@/lib/permissions";
 import { z } from "zod";
 
+const SURPRISE_AUDIT_PERMISSION = "audit_plan:surprise_create" as const;
+
 /**
  * Schema for surprise audit scheduling (R71).
  *
@@ -53,7 +55,7 @@ export type ScheduleSurpriseAuditInput = z.infer<
  * until the audit team arrives.
  *
  * Security:
- * - Requires audit_plan:create permission
+ * - Requires audit_plan:surprise_create permission
  * - Tenant-scoped via prismaForTenant
  * - Audit context logged for traceability
  *
@@ -73,14 +75,7 @@ export async function scheduleSurpriseAudit(
   const tenantId = session.user.tenantId;
 
   // R71: Surprise audits restricted to IAD Manager, ACE Officer, CAE only
-  const surpriseAllowedRoles = ["AUDIT_MANAGER", "ACE_OFFICER", "CAE"];
-  const hasAllowedRole = surpriseAllowedRoles.some((role) =>
-    userRoles.includes(role),
-  );
-  const hasSurprisePermission =
-    hasPermission(userRoles, "audit_plan:create") ||
-    hasPermission(userRoles, "compliance:ace_process");
-  if (!hasAllowedRole || !hasSurprisePermission) {
+  if (!hasPermission(userRoles, SURPRISE_AUDIT_PERMISSION)) {
     return {
       success: false,
       error:

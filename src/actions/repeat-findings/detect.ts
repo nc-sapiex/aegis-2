@@ -50,7 +50,11 @@ export async function detectRepeatFindings(
     hasPermission(userRoles, "observation:create") ||
     hasPermission(userRoles, "observation:review");
   if (!canManageRepeatFindings) {
-    return { success: false, error: "Only auditors can detect repeat findings" };
+    return {
+      success: false,
+      error:
+        "Observation create or review permission is required to detect repeat findings.",
+    };
   }
 
   if (!tenantId) {
