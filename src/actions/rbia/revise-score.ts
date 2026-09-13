@@ -2,7 +2,7 @@
 
 import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
 import { getRequiredSession } from "@/data-access/session";
-import { Role, hasPermission } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions";
 import { SCORE_VALUES } from "@/lib/rbia-scoring-engine";
 import type { ScoreLabel } from "@/generated/prisma/enums";
 
@@ -11,26 +11,11 @@ interface ReviseScoreInput {
   nodeId: string;
   newScoreLabel: ScoreLabel;
   reason: string;
-  tenantId?: string;
-  userId?: string;
-}
-
-function getTestSession(input: ReviseScoreInput) {
-  if (process.env.NODE_ENV !== "test") return null;
-  if (!input.tenantId || !input.userId) return null;
-  return {
-    user: {
-      id: input.userId,
-      tenantId: input.tenantId,
-      roles: [Role.LEAD_AUDITOR] as Role[],
-    },
-    session: undefined,
-  };
 }
 
 export async function reviseScore(input: ReviseScoreInput) {
   try {
-    const session = getTestSession(input) ?? (await getRequiredSession());
+    const session = await getRequiredSession();
     if (!hasPermission(session.user.roles, "rbia:revise_score")) {
       return {
         success: false as const,

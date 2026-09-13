@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { setSectionNotApplicable } from "@/actions/rbia/section-not-applicable";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   resetDatabase,
   createTenant,
   createUser,
+  fakeSession,
+  mockSessionModule,
   integrationPrisma,
   withFixtures,
 } from "../../../tests/integration/harness";
@@ -11,6 +12,7 @@ import {
 describe("setSectionNotApplicable", () => {
   beforeEach(async () => {
     await resetDatabase();
+    vi.resetModules();
   });
 
   it("clears the section scores and returns how many rows were cleared", async () => {
@@ -114,9 +116,13 @@ describe("setSectionNotApplicable", () => {
       };
     });
 
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { setSectionNotApplicable } =
+      await import("@/actions/rbia/section-not-applicable");
+
     const result = await setSectionNotApplicable({
-      tenantId: tenant.id,
-      userId: cae.id,
       engagementId: seeded.engagementId,
       moduleId: seeded.moduleId,
       reason: "Branch has no govt business",
@@ -240,9 +246,13 @@ describe("setSectionNotApplicable", () => {
       };
     });
 
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { setSectionNotApplicable } =
+      await import("@/actions/rbia/section-not-applicable");
+
     const result = await setSectionNotApplicable({
-      tenantId: tenant.id,
-      userId: cae.id,
       engagementId: seeded.engagementId,
       moduleId: seeded.moduleId,
       reason: "Branch has no govt business",

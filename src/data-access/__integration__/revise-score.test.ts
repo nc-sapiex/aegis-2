@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from "vitest";
-import { reviseScore } from "@/actions/rbia/revise-score";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   resetDatabase,
   createTenant,
   createUser,
+  fakeSession,
+  mockSessionModule,
   integrationPrisma,
   withFixtures,
 } from "../../../tests/integration/harness";
@@ -11,6 +12,7 @@ import {
 describe("reviseScore", () => {
   beforeEach(async () => {
     await resetDatabase();
+    vi.resetModules();
   });
 
   it("changes the score and records a rbia.score_revised audit event", async () => {
@@ -97,9 +99,16 @@ describe("reviseScore", () => {
       return { engagementId: engagement.id, nodeId: node.id };
     });
 
+    mockSessionModule(
+      fakeSession({
+        id: lead.id,
+        tenantId: tenant.id,
+        roles: ["LEAD_AUDITOR"],
+      }),
+    );
+    const { reviseScore } = await import("@/actions/rbia/revise-score");
+
     const result = await reviseScore({
-      tenantId: tenant.id,
-      userId: lead.id,
       engagementId: seeded.engagementId,
       nodeId: seeded.nodeId,
       newScoreLabel: "PARTIALLY_COMPLIANT",

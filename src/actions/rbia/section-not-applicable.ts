@@ -2,32 +2,19 @@
 
 import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
 import { getRequiredSession } from "@/data-access/session";
-import { Role, hasPermission } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions";
 
 interface SectionNotApplicableInput {
   engagementId: string;
   moduleId: string;
   reason: string;
-  tenantId?: string;
-  userId?: string;
 }
 
-function getTestSession(input: SectionNotApplicableInput) {
-  if (process.env.NODE_ENV !== "test") return null;
-  if (!input.tenantId || !input.userId) return null;
-  return {
-    user: {
-      id: input.userId,
-      tenantId: input.tenantId,
-      roles: [Role.CAE] as Role[],
-    },
-    session: undefined,
-  };
-}
-
-export async function setSectionNotApplicable(input: SectionNotApplicableInput) {
+export async function setSectionNotApplicable(
+  input: SectionNotApplicableInput,
+) {
   try {
-    const session = getTestSession(input) ?? (await getRequiredSession());
+    const session = await getRequiredSession();
     if (!hasPermission(session.user.roles, "module:manage")) {
       return {
         success: false as const,
