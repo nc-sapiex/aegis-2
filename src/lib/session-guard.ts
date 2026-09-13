@@ -11,9 +11,13 @@ export type SessionDecision =
   | { kind: "revoke"; reason: string }
   | { kind: "onboard" };
 
-/** Matches prismaForTenant's own check, so an admitted tenant is always usable. */
+/**
+ * Matches prismaForTenant's own check, so an admitted tenant is always usable.
+ * Keep the two in step: a tenant id this admits but prismaForTenant rejects
+ * would reach the client and throw there instead of routing to onboarding.
+ */
 const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * A session cookie is a snapshot taken at sign-in. This re-decides access from

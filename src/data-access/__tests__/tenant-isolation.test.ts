@@ -60,8 +60,9 @@ describe("Tenant Data Isolation (DSEC-05)", () => {
     expect(libPrismaContent).toContain("prismaForTenant");
     // UUID validation is a security requirement — prevents injection via invalid IDs
     expect(libPrismaContent).toContain("UUID_REGEX");
-    // Returns singleton — isolation via WHERE clauses, not connection-level
-    expect(libPrismaContent).toContain("return prisma");
+    // Returns the tenant-bound extended client, never the bare singleton
+    expect(libPrismaContent).toContain("createTenantClient(prisma, tenantId)");
+    expect(libPrismaContent).not.toMatch(/^\s*return prisma;\s*$/m);
   });
 
   describe("every DAL file with queries includes tenantId filter", () => {
