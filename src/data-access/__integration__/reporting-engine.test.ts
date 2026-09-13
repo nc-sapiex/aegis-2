@@ -122,5 +122,15 @@ describe("getAuditReportData, module-native", () => {
     expect(data).not.toBeNull();
     expect(data?.modules).toHaveLength(1);
     expect(data?.modules[0].code).toBe("CRD");
+    expect(data?.modules[0].statements).toHaveLength(1);
+    expect(data?.modules[0].statements[0]).toMatchObject({
+      code: "CRD-01",
+      text: "Loan file complete",
+    });
+    expect(data?.modules[0].responses).toHaveLength(1);
+    expect(data?.modules[0].responses[0]).toMatchObject({
+      scoreLabel: "FULLY_COMPLIANT",
+      nodeId: data?.modules[0].statements[0].id,
+    });
   });
 });

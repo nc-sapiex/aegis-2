@@ -525,6 +525,9 @@ export async function getAuditReportData(
   const selectedModules = engagement.moduleSelections
     .map((selection) => selection.moduleNode)
     .sort((a, b) => a.path.localeCompare(b.path));
+  const modulesBySpecificity = [...selectedModules].sort(
+    (a, b) => b.path.length - a.path.length,
+  );
   const statementNodes =
     selectedModules.length === 0
       ? []
@@ -551,7 +554,7 @@ export async function getAuditReportData(
         });
 
   const moduleCodeForNodePath = (path: string) =>
-    selectedModules.find(
+    modulesBySpecificity.find(
       (moduleNode) =>
         path === moduleNode.path || path.startsWith(`${moduleNode.path}/`),
     )?.code;
