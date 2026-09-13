@@ -6,6 +6,10 @@ import { TeamPanel } from "@/components/audit-execution/team-panel";
 import { hasPermission, type Role } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { ChevronLeft } from "@/lib/icons";
+import {
+  getAvailableEngagementTransitions,
+  type EngagementContext,
+} from "@/lib/engagement-state-machine";
 
 interface PageProps {
   params: Promise<{ engagementId: string }>;
@@ -38,6 +42,23 @@ export default async function AuditExecutionPage({ params }: PageProps) {
   }
 
   const canManageTeam = hasPermission(userRoles, "audit_execution:manage_team");
+  const transitionContext: EngagementContext = {
+    teamMemberCount: engagement.teamMembers.length,
+    hasOpeningMeeting: engagement.meetings.some(
+      (meeting) => meeting.meetingType === "OPENING" && meeting.signedOff,
+    ),
+    hasExitMeeting: engagement.meetings.some(
+      (meeting) => meeting.meetingType === "EXIT" && meeting.signedOff,
+    ),
+    hasFrozenScore: engagement.branchRbiaScore?.frozenAt != null,
+  };
+  const availableStatusTransitions = canManageTeam
+    ? getAvailableEngagementTransitions(
+        engagement.status,
+        userRoles as Role[],
+        transitionContext,
+      )
+    : [];
 
   // Fetch available auditors for team assignment (R13)
   const tenantId = session.user.tenantId;
@@ -72,7 +93,7 @@ export default async function AuditExecutionPage({ params }: PageProps) {
       <div className="flex items-center justify-between">
         <EngagementHeader
           engagement={engagement as any}
-          canManageStatus={canManageTeam}
+          availableTransitions={availableStatusTransitions}
         />
       </div>
 
