@@ -41,12 +41,15 @@ describe("getMailer", () => {
     );
   });
 
-  it("the disabled driver throws loudly on first use", async () => {
+  it("the disabled driver returns a structured error on first use", async () => {
     vi.stubEnv("MAIL_DRIVER", "disabled");
     const { getMailer } = await import("../mailer");
     await expect(
       getMailer().send({ to: "a@b.com", subject: "Hi", htmlBody: "x" }),
-    ).rejects.toThrow(/mail is disabled/i);
+    ).resolves.toEqual({
+      success: false,
+      error: "Mail is disabled (MAIL_DRIVER=disabled)",
+    });
   });
 
   it("a transport failure returns a structured error, never throws", async () => {

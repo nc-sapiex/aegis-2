@@ -23,7 +23,10 @@ export interface Mailer {
 function disabledMailer(): Mailer {
   return {
     async send() {
-      throw new Error("Mail is disabled (MAIL_DRIVER=disabled)");
+      return {
+        success: false,
+        error: "Mail is disabled (MAIL_DRIVER=disabled)",
+      };
     },
   };
 }
