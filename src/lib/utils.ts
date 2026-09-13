@@ -12,11 +12,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Format a date in the Indian calendar convention used across the platform.
+ * Format a date using the Indian English locale used across the platform.
  *
  * @param date - ISO string or Date instance to format.
  * @param format - Whether to show the month as a short or long label.
- * @returns A localized date string such as "13 Sep 2026".
+ * @returns A localized date string such as "13 Sept 2026".
  */
 export function formatDate(
   date: string | Date,
