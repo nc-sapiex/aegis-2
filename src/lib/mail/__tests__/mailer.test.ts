@@ -7,8 +7,12 @@ vi.mock("nodemailer", () => ({
 
 const sesSendMock = vi.fn(async () => ({ MessageId: "ses-msg-1" }));
 vi.mock("@aws-sdk/client-sesv2", () => ({
-  SESv2Client: vi.fn(() => ({ send: sesSendMock })),
-  SendEmailCommand: vi.fn((input) => ({ input })),
+  SESv2Client: vi.fn(function SESv2Client() {
+    return { send: sesSendMock };
+  }),
+  SendEmailCommand: vi.fn(function SendEmailCommand(input) {
+    return { input };
+  }),
 }));
 
 describe("getMailer", () => {
@@ -37,6 +41,29 @@ describe("getMailer", () => {
         to: "a@b.com",
         subject: "Hi",
         html: "<p>hi</p>",
+      }),
+    );
+  });
+
+  it("ses driver calls the SES client and returns the message id", async () => {
+    vi.stubEnv("MAIL_DRIVER", "ses");
+    vi.stubEnv("SES_FROM_EMAIL", "noreply@example.com");
+    const { getMailer } = await import("../mailer");
+    const result = await getMailer().send({
+      to: "a@b.com",
+      subject: "Hi",
+      htmlBody: "<p>hi</p>",
+      textBody: "hi",
+      replyTo: "reply@example.com",
+    });
+    expect(result).toEqual({ success: true, messageId: "ses-msg-1" });
+    expect(sesSendMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          FromEmailAddress: "noreply@example.com",
+          Destination: { ToAddresses: ["a@b.com"] },
+          ReplyToAddresses: ["reply@example.com"],
+        }),
       }),
     );
   });

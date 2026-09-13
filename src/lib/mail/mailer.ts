@@ -157,12 +157,19 @@ export function getMailer(): Mailer {
   }
 
   const driver = process.env.MAIL_DRIVER ?? "ses";
-  cached =
-    driver === "disabled"
-      ? disabledMailer()
-      : driver === "smtp"
-        ? smtpMailer()
-        : sesMailer();
+  switch (driver) {
+    case "disabled":
+      cached = disabledMailer();
+      break;
+    case "smtp":
+      cached = smtpMailer();
+      break;
+    case "ses":
+      cached = sesMailer();
+      break;
+    default:
+      throw new Error(`Unsupported MAIL_DRIVER: ${driver}`);
+  }
 
   return cached;
 }
