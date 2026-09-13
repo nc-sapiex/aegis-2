@@ -226,21 +226,6 @@ export type SaveSmaNpaEntriesInput = z.infer<typeof SaveSmaNpaEntriesSchema>;
 // ─── Engagement Status Transition (ISS-005) ─────────────────
 
 /**
- * @deprecated Use TransitionEngagementStatusSchema and transitionEngagementStatus instead.
- * This schema only covers 3 of the 8 engagement states. Kept for backward compatibility.
- */
-export const UpdateEngagementStatusSchema = z.object({
-  engagementId: z.string().uuid("Invalid engagement ID"),
-  targetStatus: z.enum(["IN_PROGRESS", "COMPLETED", "CANCELLED"], {
-    message: "Target status must be IN_PROGRESS, COMPLETED, or CANCELLED",
-  }),
-});
-
-export type UpdateEngagementStatusInput = z.infer<
-  typeof UpdateEngagementStatusSchema
->;
-
-/**
  * Schema for the new state-machine-backed engagement status transition action.
  * Covers all 7 non-PLANNED target statuses in the 8-state RBIA engagement lifecycle.
  */
