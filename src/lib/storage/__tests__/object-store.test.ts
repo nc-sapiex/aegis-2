@@ -18,6 +18,15 @@ describe("getObjectStore", () => {
     vi.resetModules();
   });
 
+  it("builds the default s3 driver without a custom endpoint", async () => {
+    vi.stubEnv("S3_BUCKET_NAME", "evidence-bucket");
+    const { S3Client } = await import("@aws-sdk/client-s3");
+    const { getObjectStore } = await import("../object-store");
+    getObjectStore();
+    expect(S3Client).toHaveBeenCalledWith({ region: "ap-south-1" });
+    vi.unstubAllEnvs();
+  });
+
   it("builds an s3 driver with a custom endpoint for minio", async () => {
     vi.stubEnv("STORAGE_DRIVER", "minio");
     vi.stubEnv("S3_BUCKET_NAME", "evidence-bucket");

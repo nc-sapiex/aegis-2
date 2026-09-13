@@ -45,7 +45,7 @@ function disabledStore(): ObjectStore {
 
 function s3CompatibleStore(bucket: string, endpoint?: string): ObjectStore {
   const client = new S3Client({
-    region: env.AWS_SES_REGION ?? "ap-south-1",
+    region: env.AWS_REGION ?? "ap-south-1",
     ...(endpoint ? { endpoint, forcePathStyle: true } : {}),
   });
 

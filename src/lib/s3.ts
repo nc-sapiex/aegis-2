@@ -91,14 +91,18 @@ export async function generateUploadUrl(
   if (fileSize > MAX_FILE_SIZE) {
     throw new Error(`File size ${fileSize} bytes exceeds the 10 MB limit`);
   }
-  return getObjectStore().presignPut(s3Key, contentType);
+  return getObjectStore().presignPut(
+    s3Key,
+    contentType,
+    PRESIGNED_URL_EXPIRY,
+  );
 }
 
 // ---------------------------------------------------------------------------
 // generateDownloadUrl — presigned GET
 // ---------------------------------------------------------------------------
 export async function generateDownloadUrl(s3Key: string): Promise<string> {
-  return getObjectStore().presignGet(s3Key);
+  return getObjectStore().presignGet(s3Key, PRESIGNED_URL_EXPIRY);
 }
 
 // ---------------------------------------------------------------------------
