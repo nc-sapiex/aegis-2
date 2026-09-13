@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `fb5c400` (copilot/plan-4-task-17-score-revision)
+> Source commit: `548076d` (HEAD)
 
 Every addressable path in the application: **46 pages** and
 **10 HTTP endpoints**.
