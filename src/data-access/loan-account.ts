@@ -33,7 +33,7 @@ export async function getLoanAccountsForEngagement(
   }
 
   return db.loanAccount.findMany({
-    where,
+    where: { tenantId, ...where },
     orderBy: { accountNo: "asc" },
     skip: options?.skip,
     take: options?.take,
@@ -69,7 +69,7 @@ export async function getLoanAccountSummary(
 
   return db.loanAccount.groupBy({
     by: ["assetClass"],
-    where,
+    where: { tenantId, ...where },
     _count: true,
     _sum: {
       sanctionAmount: true,

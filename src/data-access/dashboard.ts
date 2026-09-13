@@ -612,7 +612,7 @@ async function computeWorkloadFallback(
 
   // Fetch user names in a single query
   const users = await db.user.findMany({
-    where: { id: { in: Array.from(userIds) } },
+    where: { tenantId, id: { in: Array.from(userIds) } },
     select: { id: true, name: true },
   });
   const nameMap = new Map(users.map((u) => [u.id, u.name]));
@@ -890,7 +890,7 @@ export async function getBranchRiskData(
 
   // Fetch branch names in a single query
   const branches = await db.branch.findMany({
-    where: { id: { in: Array.from(branchIds) } },
+    where: { tenantId, id: { in: Array.from(branchIds) } },
     select: { id: true, name: true },
   });
   const nameMap = new Map(branches.map((b) => [b.id, b.name]));

@@ -195,8 +195,6 @@ export async function claimNotifications(
   ids: string[],
   claimId: string,
 ) {
-  const { prisma } = await import("@/lib/prisma");
-
   await withAuditedMutation(
     systemActor(tenantId),
     "notification.claimed",
@@ -207,8 +205,8 @@ export async function claimNotifications(
       }),
   );
 
-  return prisma.notificationQueue.findMany({
-    where: { claimId },
+  return prismaForTenant(tenantId).notificationQueue.findMany({
+    where: { tenantId, claimId },
     include: { recipient: { select: { id: true, name: true, email: true } } },
   });
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { prisma, prismaForTenant } from "@/lib/prisma";
 import { getRequiredSession } from "@/data-access/session";
 import { hasPermission } from "@/lib/permissions";
 import { headers } from "next/headers";
@@ -78,7 +78,7 @@ export async function sendUserInvitations(users: InviteUserInput[]) {
         }),
     );
 
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await prismaForTenant(tenantId).tenant.findUnique({
       where: { id: tenantId },
       select: { shortName: true },
     });
@@ -260,7 +260,7 @@ export async function resendInvitation(userId: string) {
   const tenantId = session.user.tenantId;
 
   try {
-    const user = await prisma.user.findFirst({
+    const user = await prismaForTenant(tenantId).user.findFirst({
       where: { id: userId, tenantId, status: "INVITED" },
     });
 
@@ -275,17 +275,21 @@ export async function resendInvitation(userId: string) {
     await withAuditedMutation(
       userActor(session),
       "user.invitation_resent",
-      (tx) =>
-        tx.user.updateMany({
-          where: { id: userId, tenantId },
+      async (tx) => {
+        const updated = await tx.user.updateMany({
+          where: { id: userId, tenantId, status: "INVITED" },
           data: {
             inviteTokenHash: tokenHash,
             inviteExpiry: newExpiry,
           },
-        }),
+        });
+        if (updated.count !== 1) {
+          throw new Error(ALREADY_ACCEPTED);
+        }
+      },
     );
 
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await prismaForTenant(tenantId).tenant.findUnique({
       where: { id: tenantId },
       select: { shortName: true },
     });
@@ -300,6 +304,9 @@ export async function resendInvitation(userId: string) {
 
     return { success: true, error: null };
   } catch (error) {
+    if (error instanceof Error && error.message === ALREADY_ACCEPTED) {
+      return { success: false, error: "User not found or already active." };
+    }
     logger.error(
       { error, action: "resend_invitation", tenantId, userId },
       "Failed to resend invitation",
@@ -321,7 +328,7 @@ export async function revokeInvitation(userId: string) {
   const tenantId = session.user.tenantId;
 
   try {
-    const user = await prisma.user.findFirst({
+    const user = await prismaForTenant(tenantId).user.findFirst({
       where: { id: userId, tenantId, status: "INVITED" },
     });
 
@@ -344,11 +351,21 @@ export async function revokeInvitation(userId: string) {
         sessionId: session.session.id,
       },
       "user.invitation_revoked",
-      (tx) => tx.user.deleteMany({ where: { id: userId, tenantId } }),
+      async (tx) => {
+        const deleted = await tx.user.deleteMany({
+          where: { id: userId, tenantId, status: "INVITED" },
+        });
+        if (deleted.count !== 1) {
+          throw new Error(ALREADY_ACCEPTED);
+        }
+      },
     );
 
     return { success: true, error: null };
   } catch (error) {
+    if (error instanceof Error && error.message === ALREADY_ACCEPTED) {
+      return { success: false, error: "User not found or already active." };
+    }
     logger.error(
       { error, action: "revoke_invitation", tenantId, userId },
       "Failed to revoke invitation",

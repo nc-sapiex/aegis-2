@@ -265,7 +265,7 @@ export async function getRbiaReportData(
   let userNameMap = new Map<string, string>();
   if (userIdsToResolve.size > 0) {
     const users = await db.user.findMany({
-      where: { id: { in: Array.from(userIdsToResolve) } },
+      where: { tenantId, id: { in: Array.from(userIdsToResolve) } },
       select: { id: true, name: true },
     });
     userNameMap = new Map(users.map((u) => [u.id, u.name]));

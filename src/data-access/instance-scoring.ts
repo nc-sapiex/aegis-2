@@ -8,6 +8,7 @@ import {
   type QuestionComplianceResult,
 } from "@/lib/instance-scoring";
 import { SCORE_VALUES } from "@/lib/rbia-scoring-engine";
+import { descendantPathPrefix } from "@/lib/examination-path";
 
 /**
  * Data Access Layer for Instance-Based Scoring.
@@ -184,14 +185,14 @@ export async function computeAndApplyInstanceScores(
     return { scoredLeafCount: 0, moduleScore: null };
   }
 
-  // Step 5: Find all active leaf nodes under this credit module
-  // Path format: "rootId.moduleId.subId.leafId" — match on path prefix
+  // Step 5: Find all active leaf nodes under this credit module.
+  // Path is slash-separated (`ROOT/CREDIT/CREDIT-001`); a "." prefix matches nothing.
   const leafNodes = await db.examinationNode.findMany({
     where: {
       tenantId,
       isLeaf: true,
       isActive: true,
-      path: { startsWith: moduleNode.path + "." },
+      path: { startsWith: descendantPathPrefix(moduleNode.path) },
     },
     select: { id: true },
   });

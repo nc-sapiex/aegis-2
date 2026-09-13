@@ -16,10 +16,15 @@ import {
 } from "@/lib/icons";
 import Link from "next/link";
 import { requirePermission } from "@/lib/guards";
+import { isBranchScopedObservationReader } from "@/lib/access-scope";
+import { redirect } from "next/navigation";
 
 export default async function FindingsPage() {
   const t = await getTranslations("Findings");
   const session = await requirePermission("observation:read");
+  if (isBranchScopedObservationReader(session.user.roles)) {
+    redirect("/auditee");
+  }
 
   const [summary, observationsData] = await Promise.all([
     getObservationSummary(session),

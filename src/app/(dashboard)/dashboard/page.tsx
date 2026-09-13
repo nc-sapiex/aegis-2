@@ -1,17 +1,10 @@
-import { requireAnyPermission } from "@/lib/guards";
+import { redirect } from "next/navigation";
+import { getRequiredSession } from "@/data-access/session";
 import { getDashboardConfig } from "@/lib/dashboard-config";
 import { getDashboardData, type DashboardData } from "@/data-access/dashboard";
 import { DashboardComposer } from "@/components/dashboard/dashboard-composer";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
-import type { Permission, Role } from "@/lib/permissions";
-
-const DASHBOARD_PERMISSIONS: Permission[] = [
-  "dashboard:auditor",
-  "dashboard:manager",
-  "dashboard:cae",
-  "dashboard:cco",
-  "dashboard:ceo",
-];
+import { hasDashboardAccess, postLoginHome } from "@/lib/access-scope";
 
 /**
  * Dashboard Page — Server Component
@@ -22,7 +15,15 @@ const DASHBOARD_PERMISSIONS: Permission[] = [
  * 4. Passes config + data to DashboardComposer client component
  */
 export default async function DashboardPage() {
-  const session = await requireAnyPermission(DASHBOARD_PERMISSIONS);
+  const session = await getRequiredSession();
+  if (!hasDashboardAccess(session.user.roles)) {
+    const home = postLoginHome(session.user.roles);
+    // Never bounce /dashboard → /dashboard: that is ERR_TOO_MANY_REDIRECTS
+    // for AUDITEE / BRANCH_HEAD after login (LoginForm always pushes here).
+    if (home !== "/dashboard") {
+      redirect(home);
+    }
+  }
 
   const roles = session.user.roles;
   const widgetConfig = getDashboardConfig(roles);

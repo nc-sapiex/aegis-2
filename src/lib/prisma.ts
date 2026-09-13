@@ -2,6 +2,21 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { createTenantClient, type TenantClient } from "@/lib/tenant-client";
 
+// Unset must reproduce prior behavior exactly; a present-but-malformed value
+// must fail loudly rather than silently falling back (pg-pool and Prisma both
+// treat 0/NaN as "use the library default", which masks a typo as a no-op).
+function envPositiveInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) {
+    throw new Error(
+      `${name} must be a positive number, got ${JSON.stringify(raw)}`,
+    );
+  }
+  return n;
+}
+
 const prismaClientSingleton = () => {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -11,9 +26,15 @@ const prismaClientSingleton = () => {
   // Increase pool size to handle concurrent RLS transactions
   // Default pg.Pool max is 10; dashboard SSR fires 10-15 parallel queries
   // each wrapped in a transaction for tenant isolation
-  const adapter = new PrismaPg({ connectionString, max: 25 });
+  const max = envPositiveInt("PG_POOL_MAX", 25);
+  const adapter = new PrismaPg({ connectionString, max });
   return new PrismaClient({
     adapter,
+    transactionOptions: {
+      // Prisma's own defaults (2000/5000); unset must not change behavior.
+      maxWait: envPositiveInt("PG_TX_MAX_WAIT_MS", 2000),
+      timeout: envPositiveInt("PG_TX_TIMEOUT_MS", 5000),
+    },
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]

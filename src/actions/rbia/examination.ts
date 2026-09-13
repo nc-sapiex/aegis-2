@@ -8,6 +8,7 @@ import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
 import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { SCORE_VALUES } from "@/lib/rbia-scoring-engine";
+import { descendantPathPrefix } from "@/lib/examination-path";
 import {
   SaveExaminationResponseSchema,
   AutoSelectModulesSchema,
@@ -167,6 +168,7 @@ export async function saveExaminationResponse(
         if (validated.flagForActionPoint) {
           const existingAp = await tx.actionPoint.findFirst({
             where: {
+              tenantId,
               sourceResponseId: upsertedResponse.id,
               engagementId: validated.engagementId,
             },
@@ -175,7 +177,7 @@ export async function saveExaminationResponse(
           if (!existingAp) {
             // Atomic serial number within transaction
             const maxSerial = await tx.actionPoint.aggregate({
-              where: { engagementId: validated.engagementId },
+              where: { tenantId, engagementId: validated.engagementId },
               _max: { serialNo: true },
             });
             const nextSerialNo = (maxSerial._max.serialNo ?? 0) + 1;
@@ -409,12 +411,13 @@ export async function removeModuleSelectionAction(
       };
     }
 
-    // Find all leaf descendants of this module using materialized path prefix
+    // Find all leaf descendants of this module using materialized path prefix.
+    // Path is slash-separated; a "." prefix matches no children and skips ENGG-06.
     const descendantLeaves = await db.examinationNode.findMany({
       where: {
         tenantId,
         isLeaf: true,
-        path: { startsWith: moduleNode.path + "." },
+        path: { startsWith: descendantPathPrefix(moduleNode.path) },
       },
       select: { id: true },
     });
@@ -423,6 +426,7 @@ export async function removeModuleSelectionAction(
       const leafIds = descendantLeaves.map((n) => n.id);
       const scoredCount = await db.examinationResponse.count({
         where: {
+          tenantId,
           engagementId: validated.engagementId,
           nodeId: { in: leafIds },
         },
