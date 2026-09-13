@@ -104,6 +104,7 @@ SKIP_ENV_VALIDATION=1 pnpm build
   `.prettierignore` and must stay there.
 - pnpm is pinned by `packageManager`; settings live in `pnpm-workspace.yaml`,
   which the Dockerfile copies on purpose.
-- `docs/architecture.md` is inherited from 1.x and describes some things that
-  are no longer here (i18n, Sentry, v5 sections). It is rewritten as the spec
-  lands; trust the spec where they disagree.
+- `docs/architecture.md` has been rewritten to describe 2.0 as it actually is
+  (the 1.x-inherited drift — i18n, Sentry, v5 sections — is gone). Keep it
+  current as each implementation plan lands; trust the spec where they
+  disagree in the meantime.

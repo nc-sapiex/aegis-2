@@ -26,6 +26,23 @@ carried over; the RBIA tree is the fieldwork model.
 Removed outright: next-intl (English only; `src/lib/strings.ts` holds the
 string table), Sentry, the hand-coded RBIA PDF document.
 
+## Development status
+
+Seven implementation plans carry the rest of the design to first-customer
+readiness (`docs/superpowers/plans/`), tracked as GitHub issues numbered
+per plan. Only the first is underway; the rest are queued behind it in
+dependency order and haven't started.
+
+| Plan                               | Scope                                                                         | Status      |
+| ---------------------------------- | ----------------------------------------------------------------------------- | ----------- |
+| 1. Tenant isolation (RLS)          | Per-tenant Prisma client, load spike, RLS policies, static/integration suites | In progress |
+| 2. Audit chain                     | Hash-chained `AuditLog`, nightly verification, attestation export             | Not started |
+| 3. Adapters, migrations, licensing | Storage/mail adapters, `prisma migrate`, signed license file                  | Not started |
+| 4. Module-native framework         | `AuditModule`, five-point scale, statement snapshots, register UI             | Not started |
+| 5. Content packs                   | Signed `.aegispack` format, CLI, the `core` pack                              | Not started |
+| 6. Module admin & reporting        | Weight editor, pack install UI, data-driven PDF/XLSX reports                  | Not started |
+| 7. E2E, deployment drills, runbook | Full-cycle E2E, on-prem installer, backup/restore drills                      | Not started |
+
 ## Tech stack
 
 Next.js 16, React 19, TypeScript 5.9, PostgreSQL 16, Prisma 7, Better Auth,
@@ -60,7 +77,7 @@ pnpm docs:reference      # regenerate docs/reference/ after schema or action cha
 ## Documentation
 
 - [`CLAUDE.md`](CLAUDE.md) — conventions, invariants, gotchas
-- [`docs/architecture.md`](docs/architecture.md) — inherited from 1.x; rewritten as the spec lands
+- [`docs/architecture.md`](docs/architecture.md) — how the system is put together, kept current as each plan lands
 - [`docs/superpowers/specs/`](docs/superpowers/specs/) — the 2.0 design
 - [`docs/reference/`](docs/reference/) — generated inventories
 - [`CONTEXT.md`](CONTEXT.md) — domain glossary
