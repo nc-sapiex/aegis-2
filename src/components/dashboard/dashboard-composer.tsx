@@ -248,35 +248,44 @@ function getGridClasses(size: "full" | "half" | "third"): string {
   }
 }
 
-// ─── Single widget wrapper with React Query ─────────────────────────────────
+function getPollingWidgetIds(widgetConfig: WidgetConfig[]): string[] {
+  return widgetConfig
+    .filter((config) => !!config.dataKey)
+    .map((config) => config.id);
+}
+
+function getDashboardRefetchInterval(
+  widgetConfig: WidgetConfig[],
+): false | number {
+  const intervals = widgetConfig
+    .filter((config) => !!config.dataKey && config.pollingInterval > 0)
+    .map((config) => config.pollingInterval);
+
+  return intervals.length > 0 ? Math.min(...intervals) : false;
+}
+
+// ─── Single widget wrapper ───────────────────────────────────────────────────
 
 function DashboardWidget({
   config,
-  initialData,
+  data,
+  isError,
+  isFetching,
+  onRetry,
 }: {
   config: WidgetConfig;
-  initialData: DashboardData;
+  data: DashboardData;
+  isError: boolean;
+  isFetching: boolean;
+  onRetry: () => void;
 }) {
-  const { data, isError, refetch, isFetching } = useQuery<DashboardData>({
-    queryKey: ["dashboard", config.dataKey],
-    queryFn: async () => {
-      const res = await fetch(`/api/dashboard?widgets=${config.id}`);
-      if (!res.ok) throw new Error("Failed to fetch dashboard data");
-      return res.json();
-    },
-    initialData,
-    refetchInterval: config.pollingInterval || false,
-    staleTime: 30_000,
-    enabled: !!config.dataKey, // Don't poll widgets without data (e.g., quick-actions)
-  });
-
-  if (isError) {
+  if (config.dataKey && isError) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center gap-2 py-8">
           <AlertTriangle className="text-muted-foreground h-6 w-6" />
           <p className="text-muted-foreground text-sm">Failed to load widget</p>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <Button variant="outline" size="sm" onClick={onRetry}>
             <RotateCcw className="mr-1 h-3 w-3" />
             Retry
           </Button>
@@ -285,7 +294,7 @@ function DashboardWidget({
     );
   }
 
-  const widgetContent = renderWidget(config.id, data ?? initialData);
+  const widgetContent = renderWidget(config.id, data);
 
   if (!widgetContent) {
     return <DashboardSkeleton size={config.size} />;
@@ -293,7 +302,7 @@ function DashboardWidget({
 
   return (
     <div className="relative">
-      {isFetching && (
+      {config.dataKey && isFetching && (
         <div className="absolute top-2 right-2 z-10">
           <div className="bg-primary h-1.5 w-1.5 animate-pulse rounded-full" />
         </div>
@@ -310,8 +319,25 @@ export function DashboardComposer({
   initialData,
   roles,
 }: DashboardComposerProps) {
+  const pollingWidgetIds = getPollingWidgetIds(widgetConfig);
+  const widgetsParam = pollingWidgetIds.join(",");
+  const refetchInterval = getDashboardRefetchInterval(widgetConfig);
+  const { data, isError, refetch, isFetching } = useQuery<DashboardData>({
+    queryKey: ["dashboard", widgetsParam],
+    queryFn: async () => {
+      const params = new URLSearchParams({ widgets: widgetsParam });
+      const res = await fetch(`/api/dashboard?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch dashboard data");
+      return res.json();
+    },
+    initialData,
+    refetchInterval,
+    staleTime: 30_000,
+    enabled: pollingWidgetIds.length > 0,
+  });
   const currentFY = getCurrentFiscalYear();
   const currentQ = getCurrentQuarter();
+  const liveData = data ?? initialData;
 
   // Empty state for new tenants
   if (widgetConfig.length === 0) {
@@ -366,7 +392,15 @@ export function DashboardComposer({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {widgetConfig.map((config) => (
           <div key={config.id} className={getGridClasses(config.size)}>
-            <DashboardWidget config={config} initialData={initialData} />
+            <DashboardWidget
+              config={config}
+              data={liveData}
+              isError={isError}
+              isFetching={isFetching}
+              onRetry={() => {
+                void refetch();
+              }}
+            />
           </div>
         ))}
       </div>
