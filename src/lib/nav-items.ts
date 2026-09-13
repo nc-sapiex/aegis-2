@@ -23,6 +23,10 @@ import {
   Monitor,
 } from "@/lib/icons";
 import type { Permission, Role } from "./permissions";
+import {
+  DASHBOARD_PERMISSIONS,
+  isBranchScopedObservationReader,
+} from "./access-scope";
 
 /**
  * Navigation item structure for sidebar.
@@ -167,13 +171,17 @@ export function filterNavByRoles(roles: Role[]): NavItem[] {
   return navItems.filter((item) => {
     // Special case: Dashboard has multiple role-specific permissions
     if (item.title === "Dashboard") {
+      return DASHBOARD_PERMISSIONS.some((permission) =>
+        permissions.has(permission),
+      );
+    }
+
+    // AUDITEE / BRANCH_HEAD use the auditee portal. The Findings list is
+    // tenant-wide and must not appear for branch-scoped readers.
+    if (item.title === "Findings") {
       return (
-        permissions.has("dashboard:auditor") ||
-        permissions.has("dashboard:manager") ||
-        permissions.has("dashboard:cae") ||
-        permissions.has("dashboard:cco") ||
-        permissions.has("dashboard:ceo") ||
-        permissions.has("dashboard:risk_head")
+        permissions.has("observation:read") &&
+        !isBranchScopedObservationReader(roles)
       );
     }
 

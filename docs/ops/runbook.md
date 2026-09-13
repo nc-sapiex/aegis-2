@@ -1,7 +1,7 @@
 # AEGIS Ops Runbook
 
 **Environment:** local development only
-**Last verified:** 2026-09-05
+**Last verified:** 2026-09-13
 
 **There is nothing to operate.** AEGIS has no deployed instance, no staging, and
 no production database. The Coolify application that previously served it was
@@ -44,6 +44,14 @@ pnpm dev
 
 `pnpm db:push` alone leaves a database with no audit triggers, no dashboard
 views, and no composite foreign keys. `db:bootstrap` is not optional.
+
+`pnpm db:seed` is only the first of four scripts. For a populated RBIA
+lifecycle (Kothrud housing-loan visit, frozen score, observations,
+compliance), continue with `pnpm seed:rbia-housing`,
+`pnpm seed:exam-questions`, then `pnpm seed:lifecycle`. Counts, login
+accounts, and the GRC-phase removal are in
+[SEED-PROCESS-MANUAL.md](../SEED-PROCESS-MANUAL.md). Re-running `db:seed`
+wipes tenants and the later steps.
 
 ---
 

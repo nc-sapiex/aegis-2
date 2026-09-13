@@ -25,6 +25,7 @@ reference to find out _what_ exists.
 - [Layers, and the rules between them](#layers-and-the-rules-between-them)
 - [One request, end to end](#one-request-end-to-end)
 - [Invariant 1 — tenant isolation](#invariant-1--tenant-isolation)
+  - [Using the tenant client](#using-the-tenant-client)
 - [Invariant 2 — audit attribution](#invariant-2--audit-attribution)
 - [Invariant 3 — authorization](#invariant-3--authorization)
 - [Domain logic: pure engines](#domain-logic-pure-engines)
@@ -256,6 +257,24 @@ predicate.
 
 The full pattern, with examples, is in
 [`src/data-access/README.md`](../src/data-access/README.md).
+
+### Using the tenant client
+
+`prismaForTenant` is the only client actions and the DAL may use for tenant
+data. Three constraints that are easy to miss:
+
+- **Do not call it inside `withAuditedMutation`.** That wrapper already opened
+  a transaction and set the actor GUCs on `tx`. A nested `prismaForTenant`
+  call starts a second transaction on a different pooled connection — the
+  inner write would not roll back with the outer one, and the audit trigger
+  would see empty actor settings.
+- **The GUC is set once per transaction, not once per query.** `$transaction`
+  on the tenant client prepends `set_config('app.current_tenant_id', …)`. An
+  operation already inside a transaction is left alone on purpose.
+- **`TENANT_CLIENT=singleton` is for the Task 2 load spike only.** It is
+  ignored when `NODE_ENV=production`. Do not set it in `.env` for ordinary
+  development — you would be measuring the unwrapped baseline, not the client
+  the app actually uses.
 
 > If RLS is ever switched on, it consumes the same `app.current_tenant_id`
 > setting the audit trigger already reads — it would be an additional layer, not

@@ -552,6 +552,26 @@ describe("generateSample", () => {
       const result = generateSample(input);
       expect(result.totalSelected).toBeLessThanOrEqual(7);
     });
+
+    it("does not collapse a requested sample to zero when every bucket rounds to 0", () => {
+      // UI default: 10% of a 24-account module, five 20% buckets.
+      // Math.round(2 * 20 / 100) is 0 for each bucket.
+      const accounts = makePortfolio(24);
+      const input: SamplingInput = {
+        accounts,
+        sampleSizePct: 10,
+        criteriaBuckets: makeBuckets(
+          { bucket: "AMOUNT_WISE", pct: 20 },
+          { bucket: "AGE_WISE", pct: 20 },
+          { bucket: "DPD_WISE", pct: 20 },
+          { bucket: "NEWLY_SANCTIONED", pct: 20 },
+          { bucket: "PRIOR_OBSERVATIONS", pct: 20 },
+        ),
+      };
+      const result = generateSample(input);
+      expect(result.totalRequested).toBe(2);
+      expect(result.totalSelected).toBe(2);
+    });
   });
 
   // ── Test 10: Prior observations empty ────────────────────────────────────────

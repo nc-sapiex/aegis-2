@@ -93,29 +93,36 @@ export async function recordMeeting(
           ? "OPENING_MEETING"
           : "EXIT_MEETING";
 
-      // d. Build EngagementContext and validate transition via state machine
-      const ctx: EngagementContext = {
-        teamMemberCount: engagement.teamMembers.length,
-        hasOpeningMeeting: engagement.meetings.some(
-          (m: { meetingType: string; signedOff: boolean }) =>
-            m.meetingType === "OPENING" && m.signedOff,
-        ),
-        hasExitMeeting: engagement.meetings.some(
-          (m: { meetingType: string; signedOff: boolean }) =>
-            m.meetingType === "EXIT" && m.signedOff,
-        ),
-        hasFrozenScore:
-          engagement.branchRbiaScore !== null &&
-          engagement.branchRbiaScore?.frozenAt !== null,
-      };
-      const transitionResult = canTransitionEngagement(
-        engagement.status,
-        targetStatus,
-        userRoles,
-        ctx,
-      );
-      if (!transitionResult.allowed) {
-        throw new TransitionBlockedError(transitionResult.reason);
+      // The RBIA status control can advance to OPENING_MEETING / EXIT_MEETING
+      // without creating a meeting row. recordMeeting is the only write path
+      // for that row, and the state machine has no self-transition — so a
+      // status-first click used to make the Meetings form reject forever.
+      const alreadyAtTarget = engagement.status === targetStatus;
+
+      if (!alreadyAtTarget) {
+        const ctx: EngagementContext = {
+          teamMemberCount: engagement.teamMembers.length,
+          hasOpeningMeeting: engagement.meetings.some(
+            (m: { meetingType: string; signedOff: boolean }) =>
+              m.meetingType === "OPENING" && m.signedOff,
+          ),
+          hasExitMeeting: engagement.meetings.some(
+            (m: { meetingType: string; signedOff: boolean }) =>
+              m.meetingType === "EXIT" && m.signedOff,
+          ),
+          hasFrozenScore:
+            engagement.branchRbiaScore !== null &&
+            engagement.branchRbiaScore?.frozenAt !== null,
+        };
+        const transitionResult = canTransitionEngagement(
+          engagement.status,
+          targetStatus,
+          userRoles,
+          ctx,
+        );
+        if (!transitionResult.allowed) {
+          throw new TransitionBlockedError(transitionResult.reason);
+        }
       }
 
       // e. Upsert meeting record
@@ -144,11 +151,13 @@ export async function recordMeeting(
         },
       });
 
-      // f. Transition engagement status
-      await tx.auditEngagement.update({
-        where: { id: validated.engagementId },
-        data: { status: targetStatus },
-      });
+      // f. Transition engagement status when we are not already there
+      if (!alreadyAtTarget) {
+        await tx.auditEngagement.update({
+          where: { id: validated.engagementId },
+          data: { status: targetStatus },
+        });
+      }
 
       return { status: targetStatus };
     });
