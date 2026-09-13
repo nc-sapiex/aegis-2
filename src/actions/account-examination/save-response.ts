@@ -46,7 +46,12 @@ const SCORING_ALLOWED_STATUSES = new Set([
  */
 export async function saveAccountExamResponse(
   input: SaveAccountExamResponseInput,
-): Promise<ActionResult<{ id: string; status: "COMPLIANT" | "VIOLATION" }>> {
+): Promise<
+  ActionResult<{
+    id: string | null;
+    status: "COMPLIANT" | "VIOLATION" | "NOT_APPLICABLE";
+  }>
+> {
   try {
     // 1. Auth
     const session = await getRequiredSession();
@@ -146,40 +151,55 @@ export async function saveAccountExamResponse(
       };
     }
 
-    // 6. Upsert AccountExamResponse on the unique constraint. AccountExamResponse
-    // carries an audit trigger, so the write runs through withAuditedMutation,
-    // which sets the session context the trigger reads.
-    const response = await withAuditedMutation(
-      userActor(session),
-      "account_exam_response.saved",
-      (tx) =>
-        tx.accountExamResponse.upsert({
-          where: {
-            engagementId_loanAccountId_questionId: {
+    // 6. Persist AccountExamResponse through audited mutation. In binary-mode
+    // register flows, NOT_APPLICABLE clears any existing saved response.
+    let responseId: string | null = null;
+    let responseStatus: "COMPLIANT" | "VIOLATION" | "NOT_APPLICABLE" = status;
+
+    if (status === "NOT_APPLICABLE") {
+      await withAuditedMutation(
+        userActor(session),
+        "account_exam_response.saved",
+        (tx) =>
+          tx.accountExamResponse.deleteMany({
+            where: { engagementId, loanAccountId, questionId, tenantId },
+          }),
+      );
+    } else {
+      const response = await withAuditedMutation(
+        userActor(session),
+        "account_exam_response.saved",
+        (tx) =>
+          tx.accountExamResponse.upsert({
+            where: {
+              engagementId_loanAccountId_questionId: {
+                engagementId,
+                loanAccountId,
+                questionId,
+              },
+            },
+            update: {
+              status,
+              note: note ?? null,
+              respondedById: userId,
+              respondedAt: new Date(),
+            },
+            create: {
+              tenantId,
               engagementId,
               loanAccountId,
               questionId,
+              status,
+              note: note ?? null,
+              respondedById: userId,
+              respondedAt: new Date(),
             },
-          },
-          update: {
-            status,
-            note: note ?? null,
-            respondedById: userId,
-            respondedAt: new Date(),
-          },
-          create: {
-            tenantId,
-            engagementId,
-            loanAccountId,
-            questionId,
-            status,
-            note: note ?? null,
-            respondedById: userId,
-            respondedAt: new Date(),
-          },
-          select: { id: true, status: true },
-        }),
-    );
+            select: { id: true, status: true },
+          }),
+      );
+      responseId = response.id;
+      responseStatus = response.status;
+    }
 
     // 7. Revalidate the examination page
     revalidatePath(`/audit-execution/${engagementId}/rbia`);
@@ -191,7 +211,7 @@ export async function saveAccountExamResponse(
         loanAccountId,
         questionId,
         status,
-        responseId: response.id,
+        responseId,
         userId,
         tenantId,
       },
@@ -200,7 +220,7 @@ export async function saveAccountExamResponse(
 
     return {
       success: true,
-      data: { id: response.id, status: response.status },
+      data: { id: responseId, status: responseStatus },
     };
   } catch (error) {
     const message =
