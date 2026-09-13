@@ -391,7 +391,7 @@ function WorkingNotesPanel({
   const notesValid = !requiresNotes || (notes && notes.length >= 500);
 
   return (
-    <div className="bg-muted/30 space-y-3 border-t px-4 py-3">
+    <div className="bg-muted/30 space-y-3 border-t px-4 py-3" data-remarks-band>
       <div className="space-y-1.5">
         <label htmlFor={`notes-${nodeId}`} className="text-sm font-medium">
           Working Notes
@@ -925,7 +925,7 @@ export function RbiaExaminationTree({
   });
 
   return (
-    <div className="space-y-0">
+    <div className="examination-register space-y-0">
       {/* ── Sticky Header Panel ──────────────────────────────────────── */}
       <div className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-10 border-b px-4 py-3 backdrop-blur">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -955,6 +955,7 @@ export function RbiaExaminationTree({
 
       {/* ── Filter Toggle Bar ────────────────────────────────────────── */}
       <div
+        data-register-controls
         className={cn(
           "flex flex-wrap items-center gap-2 border-b px-4 py-2",
           activeFilters.size > 0 && "bg-muted/50",
@@ -1060,6 +1061,7 @@ export function RbiaExaminationTree({
                 return (
                   <React.Fragment key={row.id}>
                     <TableRow
+                      data-section={row.depth === 0 ? "" : undefined}
                       className={cn(
                         "transition-colors",
                         node.isCritical &&
@@ -1138,6 +1140,14 @@ export function RbiaExaminationTree({
             )}
           </TableBody>
         </Table>
+      </div>
+      <div
+        data-register-controls
+        className="flex justify-end border-t px-4 py-3"
+      >
+        <Button size="sm" variant="outline" onClick={() => window.print()}>
+          Print section
+        </Button>
       </div>
     </div>
   );

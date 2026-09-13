@@ -74,7 +74,7 @@ export function AccountSidebar({
   );
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden" data-rail>
       <div className="border-border border-b px-3 py-2">
         <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
           Sampled Accounts ({accounts.length})

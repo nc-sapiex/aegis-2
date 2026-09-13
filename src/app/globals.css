@@ -182,6 +182,19 @@ html[lang="gu"] h1 {
     size: A4;
     margin: 15mm;
   }
+
+  [data-rail],
+  [data-register-controls] {
+    display: none;
+  }
+
+  .examination-register [data-remarks-band] {
+    display: block !important;
+  }
+
+  .examination-register [data-section] {
+    break-after: page;
+  }
 }
 
 /* Fade-in-up animation — respects reduced motion */
