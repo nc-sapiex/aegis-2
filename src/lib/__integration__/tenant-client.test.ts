@@ -33,7 +33,7 @@ describe("prismaForTenant against PostgreSQL", () => {
     await resetDatabase();
     const tenant = await createTenant();
     tenantId = tenant.id;
-    const user = await createUser(tenantId, ["ADMIN"]);
+    const user = await createUser(tenantId, ["SYSTEM_ADMIN"]);
     userId = user.id;
   });
 
