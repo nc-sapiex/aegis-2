@@ -46,13 +46,14 @@ async function seedEngagement(
   });
 }
 
-async function seedLoanAccount(
+async function seedPopulationRecord(
   tenantId: string,
   engagementId: string,
   isSampled: boolean,
+  moduleCode = "CRD-HLN",
 ) {
   return withFixtures(async () => {
-    // LoanAccount requires branchId + core portfolio columns (not just accountNo).
+    // PopulationRecord requires branchId + a resolved moduleId.
     const branch = await integrationOwner.branch.create({
       data: {
         tenantId,
@@ -63,19 +64,30 @@ async function seedLoanAccount(
       },
       select: { id: true },
     });
-    return integrationOwner.loanAccount.create({
+    const auditModule = await integrationOwner.auditModule.upsert({
+      where: { tenantId_code: { tenantId, code: moduleCode } },
+      create: {
+        tenantId,
+        code: moduleCode,
+        name: moduleCode,
+        domain: "CREDIT",
+        kinds: ["POPULATION_SAMPLE"],
+      },
+      update: {},
+      select: { id: true },
+    });
+    return integrationOwner.populationRecord.create({
       data: {
         tenantId,
         engagementId,
         branchId: branch.id,
-        moduleCode: "CRD-HLN",
-        accountNo: `LN-${randomUUID().slice(0, 8)}`,
-        borrowerName: "Test Borrower",
-        productType: "Housing Loan",
-        sanctionAmount: 1_000_000,
-        sanctionDate: new Date("2025-01-15"),
-        outstandingAmount: 750_000,
-        assetClass: "STANDARD",
+        moduleId: auditModule.id,
+        recordKey: `LN-${randomUUID().slice(0, 8)}`,
+        displayName: "Test Borrower",
+        amount: 750_000,
+        date: new Date("2025-01-15"),
+        classification: "STANDARD",
+        metadata: { productType: "Housing Loan", sanctionAmount: 1_000_000 },
         isSampled,
       },
       select: { id: true },
@@ -119,7 +131,7 @@ describe("saveAccountExamResponse", () => {
     const auditor = await createUser(tenant.id, ["FIELD_AUDITOR"]);
     const engagement = await seedEngagement(tenant.id);
     await addTeamMember(tenant.id, engagement.id, auditor.id);
-    const account = await seedLoanAccount(tenant.id, engagement.id, true);
+    const account = await seedPopulationRecord(tenant.id, engagement.id, true);
     const question = await seedQuestion(tenant.id);
 
     mockSessionModule(
@@ -133,7 +145,7 @@ describe("saveAccountExamResponse", () => {
 
     const result = await saveAccountExamResponse({
       engagementId: engagement.id,
-      loanAccountId: account.id,
+      recordId: account.id,
       questionId: question.id,
       status: "VIOLATION",
       note: "Sanction letter missing",
@@ -148,7 +160,7 @@ describe("saveAccountExamResponse", () => {
     const auditor = await createUser(tenant.id, ["FIELD_AUDITOR"]);
     const engagement = await seedEngagement(tenant.id);
     await addTeamMember(tenant.id, engagement.id, auditor.id);
-    const account = await seedLoanAccount(tenant.id, engagement.id, true);
+    const account = await seedPopulationRecord(tenant.id, engagement.id, true);
     const question = await seedQuestion(tenant.id);
 
     mockSessionModule(
@@ -162,7 +174,7 @@ describe("saveAccountExamResponse", () => {
 
     const input = {
       engagementId: engagement.id,
-      loanAccountId: account.id,
+      recordId: account.id,
       questionId: question.id,
       status: "COMPLIANT" as const,
     };
@@ -181,7 +193,7 @@ describe("saveAccountExamResponse", () => {
     const victim = await createTenant("Victim Bank");
     const attackerUser = await createUser(attacker.id, ["FIELD_AUDITOR"]);
     const victimEngagement = await seedEngagement(victim.id);
-    const victimAccount = await seedLoanAccount(
+    const victimAccount = await seedPopulationRecord(
       victim.id,
       victimEngagement.id,
       true,
@@ -199,7 +211,7 @@ describe("saveAccountExamResponse", () => {
 
     const result = await saveAccountExamResponse({
       engagementId: victimEngagement.id,
-      loanAccountId: victimAccount.id,
+      recordId: victimAccount.id,
       questionId: victimQuestion.id,
       status: "VIOLATION",
     });
@@ -214,7 +226,7 @@ describe("saveAccountExamResponse", () => {
     const auditor = await createUser(tenant.id, ["FIELD_AUDITOR"]);
     const engagement = await seedEngagement(tenant.id);
     await addTeamMember(tenant.id, engagement.id, auditor.id);
-    const account = await seedLoanAccount(tenant.id, engagement.id, false);
+    const account = await seedPopulationRecord(tenant.id, engagement.id, false);
     const question = await seedQuestion(tenant.id);
 
     mockSessionModule(
@@ -228,7 +240,7 @@ describe("saveAccountExamResponse", () => {
 
     const result = await saveAccountExamResponse({
       engagementId: engagement.id,
-      loanAccountId: account.id,
+      recordId: account.id,
       questionId: question.id,
       status: "COMPLIANT",
     });
@@ -241,7 +253,7 @@ describe("saveAccountExamResponse", () => {
     const tenant = await createTenant();
     const auditor = await createUser(tenant.id, ["FIELD_AUDITOR"]);
     const engagement = await seedEngagement(tenant.id, "COMPLETED");
-    const account = await seedLoanAccount(tenant.id, engagement.id, true);
+    const account = await seedPopulationRecord(tenant.id, engagement.id, true);
     const question = await seedQuestion(tenant.id);
 
     mockSessionModule(
@@ -255,7 +267,7 @@ describe("saveAccountExamResponse", () => {
 
     const result = await saveAccountExamResponse({
       engagementId: engagement.id,
-      loanAccountId: account.id,
+      recordId: account.id,
       questionId: question.id,
       status: "COMPLIANT",
     });
@@ -273,7 +285,7 @@ describe("saveAccountExamResponse", () => {
     const auditor = await createUser(tenant.id, ["FIELD_AUDITOR"]);
     const engagement = await seedEngagement(tenant.id);
     await addTeamMember(tenant.id, engagement.id, auditor.id);
-    const account = await seedLoanAccount(tenant.id, engagement.id, true);
+    const account = await seedPopulationRecord(tenant.id, engagement.id, true);
     const foreignQuestion = await seedQuestion(other.id);
 
     mockSessionModule(
@@ -287,7 +299,7 @@ describe("saveAccountExamResponse", () => {
 
     const result = await saveAccountExamResponse({
       engagementId: engagement.id,
-      loanAccountId: account.id,
+      recordId: account.id,
       questionId: foreignQuestion.id,
       status: "VIOLATION",
     });

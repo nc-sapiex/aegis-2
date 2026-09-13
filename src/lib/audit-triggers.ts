@@ -46,7 +46,7 @@ export const AUDITED_TABLES = [
   "ExaminationResponse",
   "EngagementSectionNa",
   "AccountExamResponse",
-  "LoanAccount",
+  "PopulationRecord",
 ] as const;
 
 export type AuditedTable = (typeof AUDITED_TABLES)[number];

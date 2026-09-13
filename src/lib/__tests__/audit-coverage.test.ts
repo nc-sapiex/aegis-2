@@ -25,7 +25,7 @@ const REGULATED_MODELS = [
   "AuditExaminationResponse",
   "ExaminationResponse",
   "AccountExamResponse",
-  "LoanAccount",
+  "PopulationRecord",
 ] as const;
 
 /**

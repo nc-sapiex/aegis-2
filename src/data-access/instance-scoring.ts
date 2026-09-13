@@ -265,7 +265,7 @@ export async function computeAndApplyInstanceScores(
 /**
  * Returns distinct module codes that have sampled loan account data for an engagement.
  *
- * Uses LoanAccount.isSampled = true to identify which credit modules have
+ * Uses PopulationRecord.isSampled = true to identify which credit modules have
  * been examined via sample-based audit. Only modules with sampled accounts
  * should have instance-based scores computed.
  *
@@ -280,13 +280,13 @@ export async function getCreditModuleCodes(
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
 
-  const modules = await db.loanAccount.findMany({
+  const modules = await db.populationRecord.findMany({
     where: { engagementId, isSampled: true, tenantId },
-    select: { moduleCode: true },
-    distinct: ["moduleCode"],
+    select: { module: { select: { code: true } } },
+    distinct: ["moduleId"],
   });
 
-  return modules.map((m) => m.moduleCode);
+  return modules.map((m) => m.module.code);
 }
 
 // ─── syncAllInstanceScores ────────────────────────────────────────────────────

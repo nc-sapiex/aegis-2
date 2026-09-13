@@ -4,6 +4,7 @@ import { getEngagementWithTeam } from "@/data-access/audit-execution";
 import {
   getLoanAccountSummary,
   countLoanAccountsForModule,
+  getSanctionAmountTotal,
 } from "@/data-access/loan-account";
 import { hasPermission } from "@/lib/permissions";
 import { MODULE_FIELD_CONFIGS } from "@/lib/loan-portfolio/types";
@@ -46,8 +47,13 @@ export default async function LoanPortfolioPage({ params }: PageProps) {
   const branchName = engagement.branch?.name ?? "Branch";
 
   // Load portfolio data in parallel
-  const [summaryGroups, ...moduleCounts] = await Promise.all([
+  const [summaryGroups, sanctionTotals, ...moduleCounts] = await Promise.all([
     getLoanAccountSummary(session, engagementId),
+    Promise.all(
+      CREDIT_MODULE_CODES.map((code) =>
+        getSanctionAmountTotal(session, engagementId, code),
+      ),
+    ),
     ...CREDIT_MODULE_CODES.map((code) =>
       countLoanAccountsForModule(session, engagementId, code),
     ),
@@ -55,28 +61,24 @@ export default async function LoanPortfolioPage({ params }: PageProps) {
 
   // Aggregate totals from summary groups
   let totalAccounts = 0;
-  let totalSanction = 0;
+  const totalSanction = sanctionTotals.reduce((sum, v) => sum + v, 0);
   let totalOutstanding = 0;
   const byAssetClass: {
     assetClass: string;
     count: number;
-    sanction: number;
     outstanding: number;
   }[] = [];
 
   for (const group of summaryGroups) {
     const count = group._count;
-    const sanction = Number(group._sum.sanctionAmount ?? 0);
-    const outstanding = Number(group._sum.outstandingAmount ?? 0);
+    const outstanding = Number(group._sum.amount ?? 0);
 
     totalAccounts += count;
-    totalSanction += sanction;
     totalOutstanding += outstanding;
 
     byAssetClass.push({
-      assetClass: group.assetClass,
+      assetClass: group.classification,
       count,
-      sanction,
       outstanding,
     });
   }

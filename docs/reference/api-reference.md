@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `c76a732` (module-framework/foundation)
+> Source commit: `31407d7` (module-framework/foundation)
 
 AEGIS has two callable surfaces.
 
@@ -102,7 +102,7 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 
 | Module | Audited | Exported functions | Tables touched |
 |---|---|---|---|
-| `account-examination/save-response.ts` | yes | `saveAccountExamResponse` | AccountExamResponse, AuditEngagement, ExaminationQuestion, LoanAccount |
+| `account-examination/save-response.ts` | yes | `saveAccountExamResponse` | AccountExamResponse, AuditEngagement, ExaminationQuestion, PopulationRecord |
 
 ### admin
 
@@ -154,7 +154,7 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 | Module | Audited | Exported functions | Tables touched |
 |---|---|---|---|
 | `loan-portfolio/get-portfolio-summary.ts` | — | `getPortfolioSummary` | — |
-| `loan-portfolio/import-loan-portfolio.ts` | yes | `importLoanPortfolio` | AuditEngagement, LoanAccount |
+| `loan-portfolio/import-loan-portfolio.ts` | yes | `importLoanPortfolio` | AuditEngagement, AuditModule, PopulationRecord |
 | `loan-portfolio/parse-excel-file.ts` | — | `parseExcelFile` | — |
 
 ### observations
@@ -205,6 +205,6 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 
 | Module | Audited | Exported functions | Tables touched |
 |---|---|---|---|
-| `sampling/generate-sample.ts` | yes | `generateSampleAction` | LoanAccount, SamplingConfig |
+| `sampling/generate-sample.ts` | yes | `generateSampleAction` | PopulationRecord, SamplingConfig |
 | `sampling/save-criteria.ts` | — | `saveSamplingCriteria` | SamplingConfig |
 

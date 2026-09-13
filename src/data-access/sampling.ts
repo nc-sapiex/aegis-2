@@ -103,17 +103,21 @@ export async function getLoanAccountsForSampling(
 ): Promise<LoanAccountForSampling[]> {
   const tenantId = session.user.tenantId;
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+  if (!moduleId) return [];
 
-  const accounts = await db.loanAccount.findMany({
+  const accounts = await db.populationRecord.findMany({
     where: {
       engagementId,
-      moduleCode,
+      moduleId,
       tenantId,
     },
-    orderBy: { accountNo: "asc" },
+    orderBy: { recordKey: "asc" },
   });
 
-  // Map Prisma model to LoanAccountForSampling (convert Decimal → number)
+  // Map Prisma model to LoanAccountForSampling: canonical columns plus
+  // credit-specific fields (productType, sanctionAmount, dpd) that only
+  // live in metadata now — the sampling engine's own DTO shape is unchanged.
   return accounts.map((account) => {
     const meta =
       account.metadata && typeof account.metadata === "object"
@@ -122,14 +126,16 @@ export async function getLoanAccountsForSampling(
 
     return {
       id: account.id,
-      accountNo: account.accountNo,
-      borrowerName: account.borrowerName,
-      productType: account.productType,
-      sanctionAmount: Number(account.sanctionAmount),
-      sanctionDate: account.sanctionDate,
-      outstandingAmount: Number(account.outstandingAmount),
-      assetClass: account.assetClass,
-      dpd: account.dpd,
+      accountNo: account.recordKey,
+      borrowerName: account.displayName,
+      productType:
+        typeof meta?.productType === "string" ? meta.productType : "",
+      sanctionAmount:
+        typeof meta?.sanctionAmount === "number" ? meta.sanctionAmount : 0,
+      sanctionDate: account.date,
+      outstandingAmount: Number(account.amount),
+      assetClass: account.classification,
+      dpd: typeof meta?.dpd === "number" ? meta.dpd : 0,
       metadata: meta,
       isSampled: account.isSampled,
       sampledAt: account.sampledAt,
@@ -160,18 +166,20 @@ export async function getSampledAccounts(
 ) {
   const tenantId = session.user.tenantId;
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+  if (!moduleId) return [];
 
-  const accounts = await db.loanAccount.findMany({
+  const accounts = await db.populationRecord.findMany({
     where: {
       engagementId,
-      moduleCode,
+      moduleId,
       tenantId,
       isSampled: true,
     },
-    orderBy: { accountNo: "asc" },
+    orderBy: { recordKey: "asc" },
   });
 
-  // Extract samplingBucket from metadata for UI bucket badge
+  // Extract productType/sanctionAmount/dpd/samplingBucket from metadata
   return accounts.map((account) => {
     const meta =
       account.metadata && typeof account.metadata === "object"
@@ -180,13 +188,15 @@ export async function getSampledAccounts(
 
     return {
       id: account.id,
-      accountNo: account.accountNo,
-      borrowerName: account.borrowerName,
-      productType: account.productType,
-      sanctionAmount: Number(account.sanctionAmount),
-      outstandingAmount: Number(account.outstandingAmount),
-      assetClass: account.assetClass,
-      dpd: account.dpd,
+      accountNo: account.recordKey,
+      borrowerName: account.displayName,
+      productType:
+        typeof meta?.productType === "string" ? meta.productType : "",
+      sanctionAmount:
+        typeof meta?.sanctionAmount === "number" ? meta.sanctionAmount : 0,
+      outstandingAmount: Number(account.amount),
+      assetClass: account.classification,
+      dpd: typeof meta?.dpd === "number" ? meta.dpd : 0,
       isSampled: account.isSampled,
       sampledAt: account.sampledAt,
       samplingBucket:
@@ -214,11 +224,13 @@ export async function getLoanAccountCount(
 ): Promise<number> {
   const tenantId = session.user.tenantId;
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+  if (!moduleId) return 0;
 
-  return db.loanAccount.count({
+  return db.populationRecord.count({
     where: {
       engagementId,
-      moduleCode,
+      moduleId,
       tenantId,
     },
   });

@@ -338,7 +338,8 @@ model Tenant {
   positiveObservations   PositiveObservation[]
   // v7.0 Sample-Based Examination relations
   examinationQuestions    ExaminationQuestion[]
-  loanAccounts           LoanAccount[]
+  populationRecords      PopulationRecord[]
+  populationSchemas      PopulationSchema[]
   samplingConfigs        SamplingConfig[]
   userBranchAssignments   UserBranchAssignment[]
   auditeeResponses        AuditeeResponse[]
@@ -905,7 +906,7 @@ model AuditEngagement {
   bmResponseBatch         BmResponseBatch?
   positiveObservations    PositiveObservation[]
   // v7.0 Sample-Based Examination relations
-  loanAccounts           LoanAccount[]
+  populationRecords      PopulationRecord[]
   samplingConfigs        SamplingConfig[]
   accountExamResponses   AccountExamResponse[]
 
@@ -2187,10 +2188,12 @@ model AuditModule {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  nodes           ExaminationNode[]
-  questions       ExaminationQuestion[]
-  samplingConfigs SamplingConfig[]
-  sectionNaMarks  EngagementSectionNa[]
+  nodes             ExaminationNode[]
+  questions         ExaminationQuestion[]
+  samplingConfigs   SamplingConfig[]
+  sectionNaMarks    EngagementSectionNa[]
+  populationRecords PopulationRecord[]
+  populationSchema  PopulationSchema?
   // engagementModules EngagementModule[] — added in Task 5, when EngagementModule lands
 
   @@unique([tenantId, code])
@@ -2524,7 +2527,9 @@ model ExaminationQuestion {
 
 // ─── v7.0 Loan Account (uploaded branch loan portfolio for sample-based examination) ──
 
-model LoanAccount {
+// ─── v8.0 Population Record (generalises LoanAccount beyond credit modules) ──
+
+model PopulationRecord {
   id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId String @db.Uuid
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -2532,21 +2537,19 @@ model LoanAccount {
   engagementId String          @db.Uuid
   engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
 
-  branchId   String @db.Uuid
-  moduleCode String // Credit module code (e.g., "CRD-HLN")
+  moduleId String      @db.Uuid
+  module   AuditModule @relation(fields: [moduleId], references: [id])
 
-  // Core mandatory fields
-  accountNo         String
-  borrowerName      String
-  productType       String  // "Housing Loan", "Gold Loan", "Vehicle Loan", etc.
-  sanctionAmount    Decimal @db.Decimal(15, 2)
-  sanctionDate      DateTime // For "newly sanctioned" sampling criteria
-  outstandingAmount Decimal @db.Decimal(15, 2)
-  assetClass        String  // "STANDARD", "SMA0", "SMA1", "SMA2", "NPA_SUB", "NPA_DOUBTFUL", "NPA_LOSS"
-  dpd               Int     @default(0) // Days Past Due
+  branchId String @db.Uuid
 
-  // JSONB for module-specific fields
-  metadata Json? // Flexible per-module fields
+  // Canonical columns every PopulationSchema maps a bank export onto.
+  recordKey      String // e.g. account number, deal reference
+  displayName    String // e.g. borrower name, counterparty name
+  amount         Decimal @db.Decimal(15, 2)
+  date           DateTime // e.g. sanction date, deal date
+  classification String // e.g. asset class, deal status
+
+  metadata Json? // module-specific fields the mapping doesn't canonicalise (e.g. productType, sanctionAmount, dpd)
 
   // Sampling state
   isSampled Boolean   @default(false)
@@ -2558,13 +2561,33 @@ model LoanAccount {
   // Relations
   accountExamResponses AccountExamResponse[]
 
-  @@unique([engagementId, accountNo])
+  @@unique([engagementId, moduleId, recordKey])
   @@index([tenantId])
   @@index([engagementId])
-  @@index([engagementId, moduleCode])
+  @@index([engagementId, moduleId])
   @@index([engagementId, isSampled])
-  @@index([engagementId, assetClass])
-  @@index([engagementId, dpd])
+  @@index([engagementId, classification])
+}
+
+model PopulationSchema {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  moduleId String      @unique @db.Uuid
+  module   AuditModule @relation(fields: [moduleId], references: [id])
+
+  // Column mapping from the bank's export to the five canonical columns,
+  // e.g. { "recordKey": "Account No", "displayName": "Borrower Name",
+  //        "amount": "Outstanding", "date": "Sanction Date",
+  //        "classification": "Asset Class" }. The import template UI (content
+  // packs plan) generates its header row from this.
+  columnMapping Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
 }
 
 // ─── v7.0 Sampling Config (HIA-defined sampling criteria per engagement/module) ──
@@ -2612,8 +2635,8 @@ model AccountExamResponse {
   engagementId String          @db.Uuid
   engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
 
-  loanAccountId String      @db.Uuid
-  loanAccount   LoanAccount @relation(fields: [loanAccountId], references: [id], onDelete: Cascade)
+  recordId String           @db.Uuid
+  record   PopulationRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
 
   questionId String              @db.Uuid
   question   ExaminationQuestion @relation(fields: [questionId], references: [id])
@@ -2634,11 +2657,11 @@ model AccountExamResponse {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([engagementId, loanAccountId, questionId])
+  @@unique([engagementId, recordId, questionId])
   @@index([tenantId])
   @@index([engagementId])
   @@index([engagementId, questionId])
-  @@index([loanAccountId])
+  @@index([recordId])
 }
 
 // ─── Failed Login Attempt Tracking (Phase 11 — account lockout) ─────────────

@@ -4,10 +4,10 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `c76a732` (module-framework/foundation)
+> Source commit: `31407d7` (module-framework/foundation)
 
 Every table AEGIS maintains, with its columns, types and relationships.
-**78 models** and **25 enumerations**.
+**79 models** and **25 enumerations**.
 
 Conventions used throughout the schema:
 
@@ -93,7 +93,8 @@ Conventions used throughout the schema:
 - [BmResponseBatch](#bmresponsebatch)
 - [PositiveObservation](#positiveobservation)
 - [ExaminationQuestion](#examinationquestion)
-- [LoanAccount](#loanaccount)
+- [PopulationRecord](#populationrecord)
+- [PopulationSchema](#populationschema)
 - [SamplingConfig](#samplingconfig)
 - [AccountExamResponse](#accountexamresponse)
 - [FailedLoginAttempt](#failedloginattempt)
@@ -186,7 +187,8 @@ Conventions used throughout the schema:
 | `examinationNodes` | ExaminationNode[] | no | FK→ExaminationNode |  |  |
 | `positiveObservations` | PositiveObservation[] | no | FK→PositiveObservation |  |  |
 | `examinationQuestions` | ExaminationQuestion[] | no | FK→ExaminationQuestion |  | v7.0 Sample-Based Examination relations |
-| `loanAccounts` | LoanAccount[] | no | FK→LoanAccount |  |  |
+| `populationRecords` | PopulationRecord[] | no | FK→PopulationRecord |  |  |
+| `populationSchemas` | PopulationSchema[] | no | FK→PopulationSchema |  |  |
 | `samplingConfigs` | SamplingConfig[] | no | FK→SamplingConfig |  |  |
 | `userBranchAssignments` | UserBranchAssignment[] | no | FK→UserBranchAssignment |  |  |
 | `auditeeResponses` | AuditeeResponse[] | no | FK→AuditeeResponse |  |  |
@@ -690,7 +692,7 @@ Indexes and constraints:
 | `actionPointsV2` | ActionPoint[] | no | FK→ActionPoint |  |  |
 | `bmResponseBatch` | BmResponseBatch | yes | FK→BmResponseBatch |  |  |
 | `positiveObservations` | PositiveObservation[] | no | FK→PositiveObservation |  |  |
-| `loanAccounts` | LoanAccount[] | no | FK→LoanAccount |  | v7.0 Sample-Based Examination relations |
+| `populationRecords` | PopulationRecord[] | no | FK→PopulationRecord |  | v7.0 Sample-Based Examination relations |
 | `samplingConfigs` | SamplingConfig[] | no | FK→SamplingConfig |  |  |
 | `accountExamResponses` | AccountExamResponse[] | no | FK→AccountExamResponse |  |  |
 
@@ -1869,6 +1871,8 @@ Indexes and constraints:
 | `questions` | ExaminationQuestion[] | no | FK→ExaminationQuestion |  |  |
 | `samplingConfigs` | SamplingConfig[] | no | FK→SamplingConfig |  |  |
 | `sectionNaMarks` | EngagementSectionNa[] | no | FK→EngagementSectionNa |  |  |
+| `populationRecords` | PopulationRecord[] | no | FK→PopulationRecord |  |  |
+| `populationSchema` | PopulationSchema | yes | FK→PopulationSchema |  |  |
 
 Indexes and constraints:
 
@@ -2146,7 +2150,7 @@ Indexes and constraints:
 - `@@index([tenantId, moduleId, isActive])`
 - `@@index([tenantId, moduleId, displayOrder])`
 
-## LoanAccount
+## PopulationRecord
 
 *Tenant-scoped:* **yes** — always filter by `tenantId`
 
@@ -2157,12 +2161,10 @@ Indexes and constraints:
 | `tenant` | Tenant | no | FK→Tenant |  | relation |
 | `engagementId` | String `@db.Uuid` | no |  |  |  |
 | `engagement` | AuditEngagement | no | FK→AuditEngagement |  | relation |
+| `moduleId` | String `@db.Uuid` | no |  |  |  |
+| `module` | AuditModule | no | FK→AuditModule |  | relation |
 | `branchId` | String `@db.Uuid` | no |  |  |  |
-| `accountNo` | String | no |  |  | Core mandatory fields |
-| `borrowerName` | String | no |  |  |  |
-| `sanctionAmount` | Decimal `@db.Decimal` | no |  |  |  |
-| `outstandingAmount` | Decimal `@db.Decimal` | no |  |  |  |
-| `dpd` | Int | no |  | `0` |  |
+| `amount` | Decimal `@db.Decimal` | no |  |  |  |
 | `isSampled` | Boolean | no |  | `false` | Sampling state |
 | `sampledAt` | DateTime | yes |  |  |  |
 | `createdAt` | DateTime | no |  | `now()` |  |
@@ -2171,13 +2173,31 @@ Indexes and constraints:
 
 Indexes and constraints:
 
-- `@@unique([engagementId, accountNo])`
+- `@@unique([engagementId, moduleId, recordKey])`
 - `@@index([tenantId])`
 - `@@index([engagementId])`
-- `@@index([engagementId, moduleCode])`
+- `@@index([engagementId, moduleId])`
 - `@@index([engagementId, isSampled])`
-- `@@index([engagementId, assetClass])`
-- `@@index([engagementId, dpd])`
+- `@@index([engagementId, classification])`
+
+## PopulationSchema
+
+*Tenant-scoped:* **yes** — always filter by `tenantId`
+
+| Column | Type | Null | Key | Default | Notes |
+|---|---|---|---|---|---|
+| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
+| `tenantId` | String `@db.Uuid` | no |  |  |  |
+| `tenant` | Tenant | no | FK→Tenant |  | relation |
+| `moduleId` | String `@db.Uuid` | no | UQ |  |  |
+| `module` | AuditModule | no | FK→AuditModule |  | relation |
+| `columnMapping` | Json | no |  |  | Column mapping from the bank's export to the five canonical columns, e.g. { "recordKey": "Account No", "displayName": "Borrower Name",        "amount": "Outstanding", "date": "Sanction Date",        "classification": "Asset Class" }. The import template UI (content packs plan) generates its header row from this. |
+| `createdAt` | DateTime | no |  | `now()` |  |
+| `updatedAt` | DateTime | no |  |  |  |
+
+Indexes and constraints:
+
+- `@@index([tenantId])`
 
 ## SamplingConfig
 
@@ -2218,8 +2238,8 @@ Indexes and constraints:
 | `tenantId` | String `@db.Uuid` | no |  |  |  |
 | `engagementId` | String `@db.Uuid` | no |  |  |  |
 | `engagement` | AuditEngagement | no | FK→AuditEngagement |  | relation |
-| `loanAccountId` | String `@db.Uuid` | no |  |  |  |
-| `loanAccount` | LoanAccount | no | FK→LoanAccount |  | relation |
+| `recordId` | String `@db.Uuid` | no |  |  |  |
+| `record` | PopulationRecord | no | FK→PopulationRecord |  | relation |
 | `questionId` | String `@db.Uuid` | no |  |  |  |
 | `question` | ExaminationQuestion | no | FK→ExaminationQuestion |  | relation |
 | `note` | String `@db.Text` | yes |  |  |  |
@@ -2232,11 +2252,11 @@ Indexes and constraints:
 
 Indexes and constraints:
 
-- `@@unique([engagementId, loanAccountId, questionId])`
+- `@@unique([engagementId, recordId, questionId])`
 - `@@index([tenantId])`
 - `@@index([engagementId])`
 - `@@index([engagementId, questionId])`
-- `@@index([loanAccountId])`
+- `@@index([recordId])`
 
 ## FailedLoginAttempt
 

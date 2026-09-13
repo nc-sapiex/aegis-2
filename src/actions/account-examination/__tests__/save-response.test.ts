@@ -36,7 +36,7 @@ import {
 
 const INPUT = {
   engagementId: ENGAGEMENT_A,
-  loanAccountId: LOAN_ACCOUNT_A,
+  recordId: LOAN_ACCOUNT_A,
   questionId: QUESTION_A,
   status: "VIOLATION" as const,
   note: "Valuation report older than the sanction date.",
@@ -49,15 +49,13 @@ function examinationDb(question: { id: string } | null) {
         .fn()
         .mockResolvedValue({ id: ENGAGEMENT_A, status: "IN_PROGRESS" }),
     },
-    loanAccount: {
+    populationRecord: {
       findFirst: vi.fn().mockResolvedValue({
         id: LOAN_ACCOUNT_A,
         isSampled: true,
-        moduleCode: "CRD-HLN",
+        moduleId: "module-crd-hln",
+        module: { code: "CRD-HLN" },
       }),
-    },
-    auditModule: {
-      findUnique: vi.fn().mockResolvedValue({ id: "module-crd-hln" }),
     },
     examinationQuestion: { findFirst: vi.fn().mockResolvedValue(question) },
     accountExamResponse: {

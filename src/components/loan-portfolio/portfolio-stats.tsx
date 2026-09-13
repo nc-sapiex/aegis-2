@@ -17,7 +17,6 @@ interface PortfolioStatsProps {
   byAssetClass: {
     assetClass: string;
     count: number;
-    sanction: number;
     outstanding: number;
   }[];
 }
@@ -82,7 +81,6 @@ export function PortfolioStats({
               <TableRow>
                 <TableHead>Asset Class</TableHead>
                 <TableHead className="text-right">Accounts</TableHead>
-                <TableHead className="text-right">Sanction (₹L)</TableHead>
                 <TableHead className="text-right">Outstanding (₹L)</TableHead>
               </TableRow>
             </TableHeader>
@@ -93,9 +91,6 @@ export function PortfolioStats({
                     {row.assetClass}
                   </TableCell>
                   <TableCell className="text-right">{row.count}</TableCell>
-                  <TableCell className="text-right">
-                    {(row.sanction / 100000).toFixed(2)}
-                  </TableCell>
                   <TableCell className="text-right">
                     {(row.outstanding / 100000).toFixed(2)}
                   </TableCell>

@@ -11,6 +11,7 @@ import {
   getSamplingConfig,
   getLoanAccountsForSampling,
 } from "@/data-access/sampling";
+import { getModuleIdByCode } from "@/data-access/audit-modules";
 
 /**
  * Generate a loan account sample using the saved sampling criteria.
@@ -97,16 +98,22 @@ export async function generateSampleAction(input: GenerateSampleInput) {
     }
 
     // 4. Persist sampling results in a transaction. Marking accounts sampled
-    // writes LoanAccount, which carries an audit trigger, so the transaction
-    // runs through withAuditedMutation to set the context the trigger reads.
+    // writes PopulationRecord, which carries an audit trigger, so the
+    // transaction runs through withAuditedMutation to set the context the
+    // trigger reads.
     await withAuditedMutation(
       userActor(session),
       "loan_sample.generated",
       async (tx) => {
+        const moduleId = await getModuleIdByCode(tx, tenantId, moduleCode);
+        if (!moduleId) {
+          throw new Error(`Unknown module: ${moduleCode}`);
+        }
+
         // a. Reset all previously sampled accounts for this engagement + module
         // Fetch currently sampled accounts to update their metadata
-        const previouslySampled = await tx.loanAccount.findMany({
-          where: { engagementId, moduleCode, tenantId, isSampled: true },
+        const previouslySampled = await tx.populationRecord.findMany({
+          where: { engagementId, moduleId, tenantId, isSampled: true },
           select: { id: true, metadata: true },
         });
 
@@ -116,7 +123,7 @@ export async function generateSampleAction(input: GenerateSampleInput) {
               ? (account.metadata as Record<string, unknown>)
               : {};
 
-          await tx.loanAccount.update({
+          await tx.populationRecord.update({
             where: { id: account.id },
             data: {
               isSampled: false,
@@ -130,7 +137,7 @@ export async function generateSampleAction(input: GenerateSampleInput) {
         const sampledAt = new Date();
         for (const sampledAccount of samplingResult.sampledAccounts) {
           // Fetch current metadata to preserve other fields
-          const current = await tx.loanAccount.findFirst({
+          const current = await tx.populationRecord.findFirst({
             where: { id: sampledAccount.accountId, tenantId },
             select: { metadata: true },
           });
@@ -140,7 +147,7 @@ export async function generateSampleAction(input: GenerateSampleInput) {
               ? (current.metadata as Record<string, unknown>)
               : {};
 
-          await tx.loanAccount.update({
+          await tx.populationRecord.update({
             where: { id: sampledAccount.accountId },
             data: {
               isSampled: true,

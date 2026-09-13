@@ -57,7 +57,7 @@ const AUDIT_TRIGGER_TABLES = [
   "ExaminationResponse",
   "EngagementSectionNa",
   "AccountExamResponse",
-  "LoanAccount",
+  "PopulationRecord",
 ] as const;
 
 export interface RequiredObjects {

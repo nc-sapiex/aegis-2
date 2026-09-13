@@ -167,7 +167,7 @@ export function ExaminationRegister({
     startTransition(async () => {
       const result = await saveAccountExamResponse({
         engagementId: binaryContext.engagementId,
-        loanAccountId: binaryContext.recordId,
+        recordId: binaryContext.recordId,
         questionId: statementId,
         status,
         note: remarks,
