@@ -4,14 +4,16 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-  type ColumnDef,
   type ColumnFiltersState,
   type SortingState,
 } from "@tanstack/react-table";
+import {
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  useLegacyTable,
+  type LegacyColumnDef,
+} from "@tanstack/react-table/legacy";
 import {
   Table,
   TableBody,
@@ -95,7 +97,7 @@ function ageColorClass(days: number): string {
   return "text-muted-foreground";
 }
 
-const columns: ColumnDef<ObservationRow>[] = [
+const columns: LegacyColumnDef<ObservationRow>[] = [
   {
     accessorKey: "title",
     header: ({ column }) => (
@@ -164,7 +166,7 @@ const columns: ColumnDef<ObservationRow>[] = [
         <SeverityBadge severity={severity} label={formatSeverity(severity)} />
       );
     },
-    sortingFn: (rowA, rowB) => {
+    sortFn: (rowA, rowB) => {
       const a = SEVERITY_ORDER[rowA.getValue("severity") as string] ?? 99;
       const b = SEVERITY_ORDER[rowB.getValue("severity") as string] ?? 99;
       return a - b;
@@ -200,7 +202,7 @@ const columns: ColumnDef<ObservationRow>[] = [
         </Badge>
       );
     },
-    sortingFn: (rowA, rowB) => {
+    sortFn: (rowA, rowB) => {
       const statusA = (rowA.getValue("status") as string).toUpperCase();
       const statusB = (rowB.getValue("status") as string).toUpperCase();
       const a = OBSERVATION_STATUS_ORDER[statusA] ?? 99;
@@ -252,7 +254,7 @@ const columns: ColumnDef<ObservationRow>[] = [
         </span>
       );
     },
-    sortingFn: "basic",
+    sortFn: "basic",
   },
 ];
 
@@ -267,7 +269,7 @@ export function FindingsTable({ observations }: FindingsTableProps) {
   const [severityFilter, setSeverityFilter] = React.useState("all");
   const [statusFilter, setStatusFilter] = React.useState("all");
 
-  const table = useReactTable({
+  const table = useLegacyTable({
     data: observations,
     columns,
     state: { sorting, columnFilters },
