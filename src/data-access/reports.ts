@@ -464,10 +464,146 @@ export async function getAuditReportData(
         },
         orderBy: { createdAt: "desc" },
       },
+      moduleSelections: {
+        where: { tenantId },
+        include: {
+          moduleNode: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              path: true,
+            },
+          },
+        },
+      },
+      examinationResponsesV2: {
+        where: { tenantId },
+        include: {
+          node: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              path: true,
+              description: true,
+              weight: true,
+              isCritical: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
+      accountExamResponses: {
+        where: { tenantId },
+        include: {
+          loanAccount: {
+            select: {
+              id: true,
+              accountNo: true,
+              borrowerName: true,
+              moduleCode: true,
+            },
+          },
+          question: {
+            select: {
+              id: true,
+              moduleCode: true,
+              text: true,
+              weight: true,
+              isCritical: true,
+            },
+          },
+        },
+        orderBy: { respondedAt: "desc" },
+      },
     },
   });
 
   if (!engagement) return null;
+
+  const selectedModules = engagement.moduleSelections
+    .map((selection) => selection.moduleNode)
+    .sort((a, b) => a.path.localeCompare(b.path));
+  const statementNodes =
+    selectedModules.length === 0
+      ? []
+      : await db.examinationNode.findMany({
+          where: {
+            tenantId,
+            isLeaf: true,
+            OR: selectedModules.map((moduleNode) => ({
+              path: { startsWith: `${moduleNode.path}/` },
+            })),
+          },
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            path: true,
+            description: true,
+            weight: true,
+            isCritical: true,
+            riskCategory: true,
+            regulatoryRef: true,
+          },
+          orderBy: { path: "asc" },
+        });
+
+  const moduleCodeForNodePath = (path: string) =>
+    selectedModules.find(
+      (moduleNode) =>
+        path === moduleNode.path || path.startsWith(`${moduleNode.path}/`),
+    )?.code;
+
+  type ModuleStatement = (typeof statementNodes)[number] & { text: string };
+
+  const statementsByModule = new Map<string, ModuleStatement[]>();
+  for (const statement of statementNodes) {
+    const moduleCode = moduleCodeForNodePath(statement.path);
+    if (!moduleCode) continue;
+    const existing = statementsByModule.get(moduleCode) ?? [];
+    existing.push({
+      ...statement,
+      text: statement.description ?? statement.name,
+    });
+    statementsByModule.set(moduleCode, existing);
+  }
+
+  const responsesByModule = new Map<
+    string,
+    typeof engagement.examinationResponsesV2
+  >();
+  for (const response of engagement.examinationResponsesV2) {
+    const moduleCode = moduleCodeForNodePath(response.node.path);
+    if (!moduleCode) continue;
+    const existing = responsesByModule.get(moduleCode) ?? [];
+    existing.push(response);
+    responsesByModule.set(moduleCode, existing);
+  }
+
+  const accountResponsesByModule = new Map<
+    string,
+    typeof engagement.accountExamResponses
+  >();
+  for (const response of engagement.accountExamResponses) {
+    const moduleCode = selectedModules.find(
+      (moduleNode) =>
+        response.question.moduleCode === moduleNode.code ||
+        response.question.moduleCode.startsWith(`${moduleNode.code}-`),
+    )?.code;
+    if (!moduleCode) continue;
+    const existing = accountResponsesByModule.get(moduleCode) ?? [];
+    existing.push(response);
+    accountResponsesByModule.set(moduleCode, existing);
+  }
+
+  const modules = selectedModules.map((moduleNode) => ({
+    ...moduleNode,
+    statements: statementsByModule.get(moduleNode.code) ?? [],
+    responses: responsesByModule.get(moduleNode.code) ?? [],
+    accountExamResponses: accountResponsesByModule.get(moduleNode.code) ?? [],
+  }));
 
   // Fetch BH certificate signer and countersigner names
   let bhCertSignedByUser = null;
@@ -489,6 +625,7 @@ export async function getAuditReportData(
 
   return {
     ...engagement,
+    modules,
     bhCertSignedByName: bhCertSignedByUser?.name || null,
     bhCertCountersignedByName: bhCertCountersignedByUser?.name || null,
   };
