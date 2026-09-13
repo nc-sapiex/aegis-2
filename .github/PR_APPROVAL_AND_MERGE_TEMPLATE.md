@@ -6,6 +6,9 @@
 - [ ] **Documentation:** Documentation (`docs/reference/`, README, or inline docs) is updated if required (`pnpm docs:check`).
 - [ ] **Author Self-Review Attestation:** Author has completed a thorough self-review of changes (required for all PRs, including solo-developer work).
 - [ ] **Reviewer Approval:** Approved by at least one peer reviewer (or self-approved with documented attestation for solo-developer workflows).
+- [ ] **Human Merge Gate:** Merge is performed by a human; do not use automatic merge commands.
+- [ ] **Release Awareness:** Merging to `main` is local-only and does not deploy AEGIS.
+- [ ] **Release Checklist:** Cross-check `docs/ops/release-checklist.md` for current required and advisory gates.
 
 ### Merge Method Selection
 - [ ] **Squash and Merge:** (Recommended for feature branches to keep `main` history clean).

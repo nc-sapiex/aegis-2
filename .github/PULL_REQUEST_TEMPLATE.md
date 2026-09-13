@@ -2,8 +2,8 @@
 <!-- Concise summary of the changes introduced by this PR -->
 
 ## Review & Merge Guidance
-- [ ] Reviewers should use [PR_REVIEW_TEMPLATE.md](PR_REVIEW_TEMPLATE.md) for correctness, security, performance, readability, tests, and edge-case checks.
-- [ ] Before merging, confirm [PR_APPROVAL_AND_MERGE_TEMPLATE.md](PR_APPROVAL_AND_MERGE_TEMPLATE.md) is satisfied.
+- [ ] Reviewers should use [PR_REVIEW_TEMPLATE.md](/.github/PR_REVIEW_TEMPLATE.md) for correctness, security, performance, readability, tests, and edge-case checks.
+- [ ] Before merging, confirm [PR_APPROVAL_AND_MERGE_TEMPLATE.md](/.github/PR_APPROVAL_AND_MERGE_TEMPLATE.md) is satisfied.
 
 ## Motivation & Context
 <!-- Why is this change required? What problem does it solve? Link any related issue(s) -->
@@ -40,4 +40,4 @@
 - [ ] Code follows project style guidelines (`pnpm lint` and formatting).
 - [ ] I have updated related documentation if applicable.
 - [ ] No secrets, private credentials, or debug artifacts are included.
-- [ ] All CI checks pass locally.
+- [ ] Required local checks pass; advisory checks are reviewed separately.
