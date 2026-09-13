@@ -1,38 +1,41 @@
-# Branch Protection Configuration
+# Branch Protection
 
-## Main Branch Protection
+`main` on `nc-sapiex/aegis-2` is **not protected** as of 2026-09-13.
 
-Configured on: 2026-02-11
+## Suggested required checks
 
-### Required Status Checks
+Every job that runs on all non-docs changes:
 
-- lint
-- typecheck
-- build
-- e2e
+- `lint`
+- `typecheck`
+- `unit-test`
+- `integration-test`
+- `security-audit`
+- `docker-build`
+- `e2e-smoke / playwright`
 
-### Settings
+Do not require:
 
-- **Require branches to be up to date**: Yes (strict: true)
-- **Enforce for administrators**: Yes
-- **Allow force pushes**: No
-- **Allow branch deletion**: No
-- **Require pull request reviews**: No (solo developer workflow)
-- **Restrict who can push**: No restrictions
+- `docs-check` — path-filtered, so a PR that doesn't touch
+  its paths never reports it and would wait forever.
+- Full E2E — runs nightly from `e2e.yml`, not on PRs.
 
-### Configuration Method
+CI itself skips docs-only PRs (`paths-ignore` in `ci.yml`), so with the checks
+above required, a docs-only PR also blocks. Either merge those as an admin or
+drop `enforce_admins`.
 
-Branch protection configured via GitHub API:
+## Apply
 
 ```bash
-gh api -X PUT "repos/naveenchhikara/AEGIS/branches/main/protection" \
+gh api -X PUT "repos/nc-sapiex/aegis-2/branches/main/protection" \
   --input - <<'PAYLOAD'
 {
   "required_status_checks": {
     "strict": true,
-    "contexts": ["lint", "typecheck", "build", "e2e"]
+    "contexts": ["lint", "typecheck", "unit-test", "integration-test",
+                 "security-audit", "docker-build", "e2e-smoke / playwright"]
   },
-  "enforce_admins": true,
+  "enforce_admins": false,
   "required_pull_request_reviews": null,
   "restrictions": null,
   "allow_force_pushes": false,
@@ -41,26 +44,9 @@ gh api -X PUT "repos/naveenchhikara/AEGIS/branches/main/protection" \
 PAYLOAD
 ```
 
-### Verification
+## Verify
 
 ```bash
-gh api "repos/naveenchhikara/AEGIS/branches/main/protection" \
-  --jq '{required_checks: .required_status_checks.contexts, enforce_admins: .enforce_admins.enabled, allow_force_pushes: .allow_force_pushes.enabled}'
+gh api "repos/nc-sapiex/aegis-2/branches/main/protection" \
+  --jq '{checks: .required_status_checks.contexts, force_push: .allow_force_pushes.enabled}'
 ```
-
-Expected output:
-
-```json
-{
-  "allow_force_pushes": false,
-  "enforce_admins": true,
-  "required_checks": ["lint", "typecheck", "build", "e2e"]
-}
-```
-
-## Effect
-
-- Direct pushes to main are blocked unless all 4 status checks pass
-- Pull requests cannot be merged unless all 4 status checks pass
-- Applies to all users including repository administrators
-- Force push protection prevents rewriting history on main branch

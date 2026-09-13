@@ -1,0 +1,42 @@
+name: Docs
+
+# docs/reference is generated from prisma/schema.prisma and src/. The generator
+# only uses Node built-ins, so this needs no pnpm install.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "src/**"
+      - "prisma/schema.prisma"
+      - "scripts/generate-reference-docs.mjs"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "src/**"
+      - "prisma/schema.prisma"
+      - "scripts/generate-reference-docs.mjs"
+      - ".github/workflows/docs.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  docs-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Check generated reference docs are current
+        run: node scripts/generate-reference-docs.mjs --check
