@@ -11,9 +11,14 @@ const prismaClientSingleton = () => {
   // Increase pool size to handle concurrent RLS transactions
   // Default pg.Pool max is 10; dashboard SSR fires 10-15 parallel queries
   // each wrapped in a transaction for tenant isolation
-  const adapter = new PrismaPg({ connectionString, max: 25 });
+  const max = Number(process.env.PG_POOL_MAX ?? 25);
+  const adapter = new PrismaPg({ connectionString, max });
   return new PrismaClient({
     adapter,
+    transactionOptions: {
+      maxWait: Number(process.env.PG_TX_MAX_WAIT_MS ?? 5000),
+      timeout: Number(process.env.PG_TX_TIMEOUT_MS ?? 10000),
+    },
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]
