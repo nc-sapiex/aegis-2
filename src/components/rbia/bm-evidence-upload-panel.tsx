@@ -63,6 +63,12 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function isWithinUploadLimit(file: File): boolean {
+  if (file.size <= MAX_FILE_SIZE) return true;
+  toast.error(`File must be under ${formatFileSize(MAX_FILE_SIZE)}`);
+  return false;
+}
+
 async function readFileHeader(file: File): Promise<string> {
   const chunk = file.slice(0, 4096);
   const buffer = await chunk.arrayBuffer();
@@ -238,10 +244,7 @@ export function BmEvidenceUploadPanel({
       let file = acceptedFiles[0];
       if (!file) return;
 
-      if (file.size > MAX_FILE_SIZE) {
-        toast.error(`File must be under ${formatFileSize(MAX_FILE_SIZE)}`);
-        return;
-      }
+      if (!isWithinUploadLimit(file)) return;
 
       if (isHeicFile(file)) {
         try {
@@ -252,10 +255,7 @@ export function BmEvidenceUploadPanel({
         }
       }
 
-      if (file.size > MAX_FILE_SIZE) {
-        toast.error(`File must be under ${formatFileSize(MAX_FILE_SIZE)}`);
-        return;
-      }
+      if (!isWithinUploadLimit(file)) return;
 
       const newEntry: UploadEntry = {
         id: crypto.randomUUID(),
