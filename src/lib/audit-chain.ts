@@ -14,6 +14,35 @@ export type ChainableRow = {
   newData: unknown;
 };
 
+function normalizeJson(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => normalizeJson(entry));
+  }
+
+  if (
+    value !== null &&
+    typeof value === "object" &&
+    !Buffer.isBuffer(value) &&
+    !(value instanceof Date)
+  ) {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, entry]) => [key, normalizeJson(entry)]),
+    );
+  }
+
+  return value;
+}
+
+function serializeJson(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "null";
+  }
+
+  return JSON.stringify(normalizeJson(value));
+}
+
 function canonicalString(row: ChainableRow, prevHash: Buffer): string {
   return [
     prevHash.toString("hex"),
@@ -24,12 +53,8 @@ function canonicalString(row: ChainableRow, prevHash: Buffer): string {
     row.operation,
     row.actorUserId ?? "",
     row.changedAt.toISOString(),
-    row.oldData === null || row.oldData === undefined
-      ? "null"
-      : JSON.stringify(row.oldData),
-    row.newData === null || row.newData === undefined
-      ? "null"
-      : JSON.stringify(row.newData),
+    serializeJson(row.oldData),
+    serializeJson(row.newData),
   ].join("|");
 }
 

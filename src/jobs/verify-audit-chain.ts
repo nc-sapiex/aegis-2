@@ -1,7 +1,7 @@
 import { withAuditedMutation, systemActor } from "@/data-access/audited-mutation";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
-import { verifyChain, type LinkedRow } from "@/lib/audit-chain";
+import { GENESIS_HASH, verifyChain, type LinkedRow } from "@/lib/audit-chain";
 
 type TenantRecord = { id: string };
 
@@ -20,6 +20,7 @@ type AuditLogRecord = {
 };
 
 type UserRecord = { id: string };
+const VERIFY_BATCH_SIZE = 1000;
 
 type VerifyAuditChainDb = {
   tenant: {
@@ -27,8 +28,9 @@ type VerifyAuditChainDb = {
   };
   auditLog: {
     findMany(args: {
-      where: { tenantId: string };
+      where: { tenantId: string; sequenceNumber?: { gt: bigint } };
       orderBy: { sequenceNumber: "asc" };
+      take: number;
       select: {
         tenantId: true;
         sequenceNumber: true;
@@ -91,39 +93,63 @@ export async function verifyAuditChain(): Promise<void> {
   const tenants = await db.tenant.findMany({ select: { id: true } });
 
   for (const tenant of tenants) {
-    const rows = await db.auditLog.findMany({
-      where: { tenantId: tenant.id },
-      orderBy: { sequenceNumber: "asc" },
-      select: {
-        tenantId: true,
-        sequenceNumber: true,
-        tableName: true,
-        recordId: true,
-        operation: true,
-        userId: true,
-        createdAt: true,
-        oldData: true,
-        newData: true,
-        prevHash: true,
-        rowHash: true,
-      },
-    });
+    let verdict: { ok: true } | { ok: false; firstBadSequence: bigint } = {
+      ok: true,
+    };
+    let expectedPrevHash = GENESIS_HASH;
+    let lastSequenceNumber: bigint | undefined;
 
-    const linked: LinkedRow[] = rows.map((row) => ({
-      tenantId: row.tenantId,
-      sequenceNumber: row.sequenceNumber,
-      tableName: row.tableName,
-      recordId: row.recordId,
-      operation: row.operation,
-      actorUserId: row.userId,
-      changedAt: row.createdAt,
-      oldData: row.oldData,
-      newData: row.newData,
-      prevHash: row.prevHash,
-      rowHash: row.rowHash,
-    }));
+    while (true) {
+      const rows = await db.auditLog.findMany({
+        where: {
+          tenantId: tenant.id,
+          ...(lastSequenceNumber === undefined
+            ? {}
+            : { sequenceNumber: { gt: lastSequenceNumber } }),
+        },
+        orderBy: { sequenceNumber: "asc" },
+        take: VERIFY_BATCH_SIZE,
+        select: {
+          tenantId: true,
+          sequenceNumber: true,
+          tableName: true,
+          recordId: true,
+          operation: true,
+          userId: true,
+          createdAt: true,
+          oldData: true,
+          newData: true,
+          prevHash: true,
+          rowHash: true,
+        },
+      });
 
-    const verdict = verifyChain(linked);
+      if (rows.length === 0) {
+        break;
+      }
+
+      const linked: LinkedRow[] = rows.map((row) => ({
+        tenantId: row.tenantId,
+        sequenceNumber: row.sequenceNumber,
+        tableName: row.tableName,
+        recordId: row.recordId,
+        operation: row.operation,
+        actorUserId: row.userId,
+        changedAt: row.createdAt,
+        oldData: row.oldData,
+        newData: row.newData,
+        prevHash: row.prevHash,
+        rowHash: row.rowHash,
+      }));
+
+      verdict = verifyChain(linked, expectedPrevHash);
+      if (!verdict.ok) {
+        break;
+      }
+
+      expectedPrevHash = linked[linked.length - 1].rowHash;
+      lastSequenceNumber = linked[linked.length - 1].sequenceNumber;
+    }
 
     await withAuditedMutation(
       systemActor(tenant.id),
