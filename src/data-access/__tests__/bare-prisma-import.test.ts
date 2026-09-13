@@ -24,6 +24,7 @@ const BARE_IMPORT_ALLOWLIST = new Set<string>([
   "src/jobs/overdue-escalation.ts", // lists tenants, then calls prismaForTenant per tenant
   "src/jobs/rbia-overdue-escalation.ts", // lists tenants, then calls prismaForTenant per tenant
   "src/jobs/compliance-escalation.ts", // lists tenants, then calls prismaForTenant per tenant
+  "src/jobs/verify-audit-chain.ts", // lists tenants globally, then verifies each tenant's audit chain and recipients by tenant
   "src/data-access/notifications.ts", // getPendingNotifications polls the global pg-boss queue across all tenants; claimNotifications (same file) uses prismaForTenant
   "tests/integration/harness.ts", // test harness needs the raw client to set up fixtures
 ]);
