@@ -40,8 +40,13 @@ export const env = createEnv({
 
     // AWS SES Email (Mumbai region for RBI data localization)
     // Optional in development - required in production for email notifications
+    MAIL_DRIVER: z.enum(["ses", "smtp", "disabled"]).default("ses"),
     AWS_SES_REGION: z.string().min(1).optional(),
     SES_FROM_EMAIL: z.string().email().optional(),
+    SMTP_HOST: z.string().min(1).optional(),
+    SMTP_PORT: z.coerce.number().int().positive().optional(),
+    SMTP_USER: z.string().min(1).optional(),
+    SMTP_PASSWORD: z.string().min(1).optional(),
 
     // Sentry Error Tracking
     // Optional — error tracking degrades gracefully when not configured
@@ -81,8 +86,13 @@ export const env = createEnv({
     AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
     S3_BUCKET_NAME: process.env.S3_BUCKET_NAME,
+    MAIL_DRIVER: process.env.MAIL_DRIVER,
     AWS_SES_REGION: process.env.AWS_SES_REGION,
     SES_FROM_EMAIL: process.env.SES_FROM_EMAIL,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASSWORD: process.env.SMTP_PASSWORD,
     SENTRY_DSN: process.env.SENTRY_DSN,
     SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
     NODE_ENV: process.env.NODE_ENV,

@@ -1,6 +1,6 @@
 import "server-only";
 import { renderEmailTemplate } from "@/emails/render";
-import { sendEmail } from "@/lib/ses-client";
+import { getMailer } from "@/lib/mail/mailer";
 import { logger } from "@/lib/logger";
 import { env } from "@/env";
 
@@ -15,7 +15,7 @@ interface SendInvitationEmailParams {
 /**
  * Deliver an invitation link.
  *
- * The URL carries a live bearer credential, so it is built here, handed to SES,
+ * The URL carries a live bearer credential, so it is built here, handed to the mail driver,
  * and discarded. Only the addressee, the expiry, and the delivery outcome are
  * recorded. Never returns the link, and never throws: a delivery failure is an
  * operational problem to be retried by resending, not a reason to unwind the
@@ -34,7 +34,7 @@ export async function sendInvitationEmail(
       expiresOn: params.expiresAt.toISOString().slice(0, 10),
     });
 
-    const result = await sendEmail({
+    const result = await getMailer().send({
       to: params.to,
       subject,
       htmlBody: html,

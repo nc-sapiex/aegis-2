@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { sendEmail } from "@/lib/ses-client";
+import { getMailer } from "@/lib/mail/mailer";
 import { renderEmailTemplate } from "@/emails/render";
 import {
   getPendingNotifications,
@@ -17,7 +17,7 @@ import { logger } from "@/lib/logger";
  * 1. Fetch pending notifications (sendAfter <= now, status = PENDING)
  * 2. Group by batchKey (null = individual, non-null = batched)
  * 3. Render email template based on notification type
- * 4. Send via SES
+ * 4. Send via the configured mail driver
  * 5. Mark as SENT (creates EmailLog) or FAILED (with retry backoff)
  */
 
@@ -137,7 +137,7 @@ async function processOneNotification(
     const payload = notification.payload as Record<string, unknown>;
     const rendered = await renderNotificationEmail(notification.type, payload);
 
-    const result = await sendEmail({
+    const result = await getMailer().send({
       to: notification.recipient.email,
       subject: rendered.subject,
       htmlBody: rendered.html,
@@ -207,7 +207,7 @@ async function processBatchedNotifications(
 
     const rendered = await renderNotificationEmail("BULK_DIGEST", payload);
 
-    const result = await sendEmail({
+    const result = await getMailer().send({
       to: recipient.email,
       subject: rendered.subject,
       htmlBody: rendered.html,
