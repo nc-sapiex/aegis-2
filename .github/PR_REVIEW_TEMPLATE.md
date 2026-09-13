@@ -3,7 +3,7 @@
 ### Correctness & Logic
 - [ ] Logic is sound and meets stated requirements.
 - [ ] Boundary conditions and edge cases are properly handled.
-- [ ] Tenant isolation rules are strictly preserved (`where: { tenantId }` / `getRequiredSession()`).
+- [ ] Tenant isolation rules are strictly preserved (`getRequiredSession()`, `prismaForTenant(tenantId)`, and `where: { tenantId }`).
 - [ ] No regressions introduced to existing behavior.
 
 ### Security & Compliance
