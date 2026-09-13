@@ -23,16 +23,30 @@ async function seedOverdueComplianceItem(
       select: { id: true },
     });
     const user = await createUser(tenantId, ["AUDITOR"]);
+    const moduleNode = await integrationPrisma.examinationNode.create({
+      data: {
+        tenantId,
+        code: "MOD-001",
+        name: "Test Module",
+        path: "MOD-001",
+        depth: 1,
+        isLeaf: false,
+        weight: 1,
+        isCritical: false,
+        applicableBranchTypes: [],
+        displayOrder: 1,
+      },
+      select: { id: true },
+    });
     const observation = await integrationPrisma.observation.create({
       data: {
         tenantId,
         title: "Overdue item",
-        condition: "c",
-        criteria: "c",
-        cause: "c",
-        effect: "c",
+        description: "Overdue compliance item details",
         recommendation: "r",
         severity: "HIGH",
+        pertainsTo: "FINANCE",
+        moduleId: moduleNode.id,
         status: "ISSUED",
         branchId: branch.id,
         createdById: user.id,

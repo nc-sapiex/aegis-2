@@ -293,17 +293,19 @@ function FindingRow({
             {!isAP && (
               <div className="space-y-2 text-sm">
                 <p>
-                  <span className="font-medium">Condition: </span>
+                  <span className="font-medium">Description: </span>
                   <span className="text-muted-foreground">
-                    {(item.data as ObservationData).condition}
+                    {(item.data as ObservationData).description}
                   </span>
                 </p>
-                <p>
-                  <span className="font-medium">Criteria: </span>
-                  <span className="text-muted-foreground">
-                    {(item.data as ObservationData).criteria}
-                  </span>
-                </p>
+                {(item.data as ObservationData).recommendation && (
+                  <p>
+                    <span className="font-medium">Recommendation: </span>
+                    <span className="text-muted-foreground">
+                      {(item.data as ObservationData).recommendation}
+                    </span>
+                  </p>
+                )}
               </div>
             )}
 

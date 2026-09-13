@@ -103,7 +103,7 @@ export async function createActionPoint(
             title: validated.title,
             description: validated.description,
             severity: validated.severity,
-            moduleCode: validated.moduleCode,
+            moduleId: validated.moduleId,
             sourceResponseId: validated.sourceResponseId ?? null,
             status: "DRAFT",
             createdById: session.user.id,
@@ -381,7 +381,13 @@ export async function promoteToObservation(
         // Verify the ActionPoint exists and belongs to tenant
         const ap = await tx.actionPoint.findFirst({
           where: { id: validated.actionPointId, tenantId },
-          select: { id: true, engagementId: true, branchId: true },
+          select: {
+            id: true,
+            engagementId: true,
+            branchId: true,
+            moduleId: true,
+            sourceResponseId: true,
+          },
         });
         if (!ap) {
           throw new Error("Action Point not found");
@@ -393,19 +399,21 @@ export async function promoteToObservation(
           select: { id: true, branchId: true },
         });
 
-        // Create the formal Observation with 5C fields + sourceActionPointId link
+        // Create the formal Observation + sourceActionPointId link
         return tx.observation.create({
           data: {
             tenantId,
             title: validated.title,
-            condition: validated.condition,
-            criteria: validated.criteria,
-            cause: validated.cause,
-            effect: validated.effect,
-            recommendation: validated.recommendation,
+            description: validated.description,
+            recommendation: validated.recommendation ?? null,
             severity: validated.severity,
+            riskCategory: validated.riskCategory ?? null,
+            pertainsTo: validated.pertainsTo,
+            amountInvolved: validated.amountInvolved,
+            branchComments: validated.branchComments ?? null,
+            moduleId: ap.moduleId,
+            sourceResponseId: ap.sourceResponseId,
             status: "DRAFT",
-            observationType: "FORMAL",
             engagementId: validated.engagementId,
             branchId: engagement?.branchId ?? ap.branchId,
             sourceActionPointId: ap.id,

@@ -25,14 +25,29 @@ async function seedObservation(tenantId: string, createdById: string) {
       data: {
         tenantId,
         title: "Concurrency probe",
-        condition: "c",
-        criteria: "c",
-        cause: "c",
-        effect: "c",
+        description: "Concurrency probe observation",
         recommendation: "r",
         severity: "HIGH",
+        pertainsTo: "FINANCE",
         status: "DRAFT",
         branchId: branch.id,
+        moduleId: (
+          await integrationPrisma.examinationNode.create({
+            data: {
+              tenantId,
+              code: "MOD-001",
+              name: "Test Module",
+              path: "MOD-001",
+              depth: 1,
+              isLeaf: false,
+              weight: 1,
+              isCritical: false,
+              applicableBranchTypes: [],
+              displayOrder: 1,
+            },
+            select: { id: true },
+          })
+        ).id,
         createdById,
         version: 1,
       },

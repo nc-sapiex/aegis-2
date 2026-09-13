@@ -35,21 +35,20 @@ const ActionPointFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(200),
   description: z.string().min(10, "Description must be at least 10 characters"),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
-  moduleCode: z.string().min(1, "Module code is required"),
+  moduleId: z.string().uuid("Module ID must be a valid UUID"),
 });
 
 type ActionPointFormValues = z.infer<typeof ActionPointFormSchema>;
 
 const ObservationFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(200),
-  condition: z.string().min(10, "Condition must be at least 10 characters"),
-  criteria: z.string().min(10, "Criteria must be at least 10 characters"),
-  cause: z.string().min(10, "Cause must be at least 10 characters"),
-  effect: z.string().min(10, "Effect must be at least 10 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
   recommendation: z
     .string()
-    .min(10, "Recommendation must be at least 10 characters"),
+    .min(10, "Recommendation must be at least 10 characters")
+    .optional(),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
+  pertainsTo: z.enum(["FINANCE", "OPERATIONS", "LEGAL_RECOVERY", "HR", "IT"]),
 });
 
 type ObservationFormValues = z.infer<typeof ObservationFormSchema>;
@@ -110,13 +109,13 @@ export function FindingForm({
             title: existingData.title,
             description: existingData.description,
             severity: existingData.severity,
-            moduleCode: existingData.moduleCode,
+            moduleId: existingData.moduleId,
           }
         : {
             title: "",
             description: "",
             severity: "MEDIUM",
-            moduleCode: "",
+            moduleId: "",
           },
   });
 
@@ -128,33 +127,27 @@ export function FindingForm({
       mode === "promote" && existingData && "serialNo" in existingData
         ? {
             title: existingData.title,
-            condition: existingData.description,
-            criteria: "",
-            cause: "",
-            effect: "",
+            description: existingData.description,
             recommendation: "",
             severity: existingData.severity,
+            pertainsTo: "OPERATIONS",
           }
         : mode === "create-observation" &&
             existingData &&
-            "condition" in existingData
+            !("serialNo" in existingData)
           ? {
               title: existingData.title,
-              condition: existingData.condition,
-              criteria: existingData.criteria,
-              cause: existingData.cause,
-              effect: existingData.effect,
-              recommendation: existingData.recommendation,
+              description: existingData.description,
+              recommendation: existingData.recommendation ?? "",
               severity: existingData.severity,
+              pertainsTo: existingData.pertainsTo,
             }
           : {
               title: "",
-              condition: "",
-              criteria: "",
-              cause: "",
-              effect: "",
+              description: "",
               recommendation: "",
               severity: "MEDIUM",
+              pertainsTo: "OPERATIONS",
             },
   });
 
@@ -182,7 +175,7 @@ export function FindingForm({
             title: values.title,
             description: values.description,
             severity: values.severity,
-            moduleCode: values.moduleCode,
+            moduleId: values.moduleId,
           });
           if (!result.success) {
             toast.error(result.error);
@@ -206,12 +199,10 @@ export function FindingForm({
             actionPointId: sourceActionPointId,
             engagementId,
             title: values.title,
-            condition: values.condition,
-            criteria: values.criteria,
-            cause: values.cause,
-            effect: values.effect,
+            description: values.description,
             recommendation: values.recommendation,
             severity: values.severity,
+            pertainsTo: values.pertainsTo,
           });
           if (!result.success) {
             toast.error(result.error);
@@ -271,67 +262,19 @@ export function FindingForm({
               )}
             </div>
 
-            {/* 5C Fields */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="obs-condition">Condition (What is)</Label>
-                <Textarea
-                  id="obs-condition"
-                  placeholder="Describe the current condition..."
-                  rows={3}
-                  {...obsForm.register("condition")}
-                />
-                {obsForm.formState.errors.condition && (
-                  <p className="text-xs text-red-600">
-                    {obsForm.formState.errors.condition.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="obs-criteria">Criteria (What should be)</Label>
-                <Textarea
-                  id="obs-criteria"
-                  placeholder="Reference standard or requirement..."
-                  rows={3}
-                  {...obsForm.register("criteria")}
-                />
-                {obsForm.formState.errors.criteria && (
-                  <p className="text-xs text-red-600">
-                    {obsForm.formState.errors.criteria.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="obs-cause">Cause (Why it happened)</Label>
-                <Textarea
-                  id="obs-cause"
-                  placeholder="Root cause of the gap..."
-                  rows={3}
-                  {...obsForm.register("cause")}
-                />
-                {obsForm.formState.errors.cause && (
-                  <p className="text-xs text-red-600">
-                    {obsForm.formState.errors.cause.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="obs-effect">Effect (Impact)</Label>
-                <Textarea
-                  id="obs-effect"
-                  placeholder="Impact on the bank..."
-                  rows={3}
-                  {...obsForm.register("effect")}
-                />
-                {obsForm.formState.errors.effect && (
-                  <p className="text-xs text-red-600">
-                    {obsForm.formState.errors.effect.message}
-                  </p>
-                )}
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="obs-description">Description</Label>
+              <Textarea
+                id="obs-description"
+                placeholder="Describe the finding..."
+                rows={4}
+                {...obsForm.register("description")}
+              />
+              {obsForm.formState.errors.description && (
+                <p className="text-xs text-red-600">
+                  {obsForm.formState.errors.description.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -347,6 +290,30 @@ export function FindingForm({
                   {obsForm.formState.errors.recommendation.message}
                 </p>
               )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Pertains to</Label>
+              <Select
+                value={obsForm.watch("pertainsTo")}
+                onValueChange={(v) =>
+                  obsForm.setValue(
+                    "pertainsTo",
+                    v as ObservationFormValues["pertainsTo"],
+                  )
+                }
+              >
+                <SelectTrigger className="w-56">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FINANCE">Finance</SelectItem>
+                  <SelectItem value="OPERATIONS">Operations</SelectItem>
+                  <SelectItem value="LEGAL_RECOVERY">Legal Recovery</SelectItem>
+                  <SelectItem value="HR">HR</SelectItem>
+                  <SelectItem value="IT">IT</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Severity */}
@@ -456,19 +423,19 @@ export function FindingForm({
                 </Select>
               </div>
 
-              {/* Module Code */}
+              {/* Module ID */}
               {mode !== "edit-ap" && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="ap-module">Module Code</Label>
+                  <Label htmlFor="ap-module">Module ID</Label>
                   <Input
                     id="ap-module"
-                    placeholder="e.g. CASH, LOANS"
+                    placeholder="Module UUID"
                     className="w-40"
-                    {...apForm.register("moduleCode")}
+                    {...apForm.register("moduleId")}
                   />
-                  {apForm.formState.errors.moduleCode && (
+                  {apForm.formState.errors.moduleId && (
                     <p className="text-xs text-red-600">
-                      {apForm.formState.errors.moduleCode.message}
+                      {apForm.formState.errors.moduleId.message}
                     </p>
                   )}
                 </div>

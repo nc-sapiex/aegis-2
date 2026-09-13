@@ -140,7 +140,6 @@ export async function getExaminationResponsesForSection(
           riskRating: true,
           respondedById: true,
           respondedAt: true,
-          observationId: true,
           evidence: {
             where: { deletedAt: null },
             select: {

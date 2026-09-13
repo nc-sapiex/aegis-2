@@ -115,7 +115,7 @@ export async function saveExaminationResponse(
         // in the response upsert or copying its metadata into an ActionPoint.
         const node = await tx.examinationNode.findFirst({
           where: { id: validated.nodeId, tenantId },
-          select: { code: true, name: true, path: true },
+          select: { id: true, code: true, name: true, path: true },
         });
         if (!node) {
           throw new Error("Examination node not found");
@@ -189,6 +189,16 @@ export async function saveExaminationResponse(
                   ? "MEDIUM"
                   : "LOW";
 
+            const moduleCode =
+              node.path.split("/").filter(Boolean)[1] ?? node.code;
+            const moduleNode = await tx.examinationNode.findFirst({
+              where: { tenantId, code: moduleCode, depth: 1, isActive: true },
+              select: { id: true },
+            });
+            if (!moduleNode) {
+              throw new Error("Module not found for examination node");
+            }
+
             await tx.actionPoint.create({
               data: {
                 tenantId,
@@ -198,8 +208,7 @@ export async function saveExaminationResponse(
                 title: node.name,
                 description: validated.workingNotes ?? node.name,
                 severity: severityFromScore,
-                moduleCode:
-                  node.path.split("/").filter(Boolean)[1] ?? node.code,
+                moduleId: moduleNode.id,
                 sourceResponseId: upsertedResponse.id,
                 status: "DRAFT",
                 createdById: session.user.id,

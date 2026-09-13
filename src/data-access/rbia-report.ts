@@ -80,6 +80,7 @@ export type RbiaReportActionPoint = {
   title: string;
   description: string;
   severity: Severity;
+  moduleId: string;
   moduleCode: string;
   status: ActionPointStatus;
   bmResponseText: string | null;
@@ -88,11 +89,8 @@ export type RbiaReportActionPoint = {
 
 export type RbiaReportObservation = {
   title: string;
-  condition: string;
-  criteria: string;
-  cause: string;
-  effect: string;
-  recommendation: string;
+  description: string;
+  recommendation: string | null;
   severity: Severity;
   status: ObservationStatus;
 };
@@ -208,7 +206,10 @@ export async function getRbiaReportData(
           title: true,
           description: true,
           severity: true,
-          moduleCode: true,
+          moduleId: true,
+          module: {
+            select: { code: true },
+          },
           status: true,
           bmResponseText: true,
           bmResponseDate: true,
@@ -221,10 +222,7 @@ export async function getRbiaReportData(
         orderBy: { createdAt: "asc" },
         select: {
           title: true,
-          condition: true,
-          criteria: true,
-          cause: true,
-          effect: true,
+          description: true,
           recommendation: true,
           severity: true,
           status: true,
@@ -302,7 +300,10 @@ export async function getRbiaReportData(
   return {
     engagement: engagement as unknown as RbiaReportEngagement,
     branchScore: typedBranchScore,
-    actionPoints,
+    actionPoints: actionPoints.map(({ module, ...ap }) => ({
+      ...ap,
+      moduleCode: module.code,
+    })),
     observations,
     meetings: typedMeetings,
   };

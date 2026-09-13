@@ -180,7 +180,7 @@ export async function transitionObservation(input: TransitionObservationInput) {
             severity: true,
             assignedToId: true,
             dueDate: true,
-            condition: true,
+            description: true,
             branchId: true,
             engagementId: true,
             branch: { select: { name: true } },
@@ -196,7 +196,7 @@ export async function transitionObservation(input: TransitionObservationInput) {
               severity: obs.severity,
               branchName: obs.branch?.name ?? "",
               dueDate: obs.dueDate?.toISOString() ?? "",
-              conditionExcerpt: (obs.condition ?? "").slice(0, 200),
+              conditionExcerpt: (obs.description ?? "").slice(0, 200),
             },
           });
         }

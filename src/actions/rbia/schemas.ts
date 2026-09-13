@@ -195,7 +195,7 @@ export const CreateActionPointSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(200),
   description: z.string().min(10, "Description must be at least 10 characters"),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
-  moduleCode: z.string().min(1),
+  moduleId: z.string().uuid(),
   sourceResponseId: z.string().uuid().optional(),
 });
 
@@ -222,12 +222,13 @@ export const PromoteToObservationSchema = z.object({
   actionPointId: z.string().uuid(),
   engagementId: z.string().uuid(),
   title: z.string().min(5).max(200),
-  condition: z.string().min(10),
-  criteria: z.string().min(10),
-  cause: z.string().min(10),
-  effect: z.string().min(10),
-  recommendation: z.string().min(10),
+  description: z.string().min(10),
+  recommendation: z.string().min(10).optional(),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
+  riskCategory: z.string().max(200).optional(),
+  pertainsTo: z.enum(["FINANCE", "OPERATIONS", "LEGAL_RECOVERY", "HR", "IT"]),
+  amountInvolved: z.coerce.number().nonnegative().max(9999999999999.99).optional(),
+  branchComments: z.string().max(5000).optional(),
 });
 
 export type PromoteToObservationInput = z.infer<

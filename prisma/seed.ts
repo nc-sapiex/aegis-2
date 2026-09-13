@@ -910,6 +910,48 @@ async function main() {
   // Assign auditors cyclically
   const auditorPool = [userCAE.id, userAuditor.id, userAuditee.id];
 
+  const tenantAModule =
+    (await prisma.examinationNode.findFirst({
+      where: { tenantId: tenantA.id, depth: 1 },
+      select: { id: true },
+    })) ??
+    (await prisma.examinationNode.create({
+      data: {
+        tenantId: tenantA.id,
+        code: "OPS",
+        name: "Operations",
+        path: "OPS",
+        depth: 1,
+        isLeaf: false,
+        weight: 1,
+        isCritical: false,
+        applicableBranchTypes: [],
+        displayOrder: 1,
+      },
+      select: { id: true },
+    }));
+
+  const tenantBModule =
+    (await prisma.examinationNode.findFirst({
+      where: { tenantId: tenantB.id, depth: 1 },
+      select: { id: true },
+    })) ??
+    (await prisma.examinationNode.create({
+      data: {
+        tenantId: tenantB.id,
+        code: "OPS",
+        name: "Operations",
+        path: "OPS",
+        depth: 1,
+        isLeaf: false,
+        weight: 1,
+        isCritical: false,
+        applicableBranchTypes: [],
+        displayOrder: 1,
+      },
+      select: { id: true },
+    }));
+
   let obsCount = 0;
   for (let i = 0; i < findings.length; i++) {
     const f = findings[i];
@@ -923,12 +965,11 @@ async function main() {
       data: {
         tenantId: tenantA.id,
         title: f.title,
-        condition: f.observation,
-        criteria: f.riskImpact,
-        cause: f.rootCause,
-        effect: f.riskImpact,
+        description: f.observation,
         recommendation: f.actionPlan,
         severity: mapSeverity(f.severity),
+        pertainsTo: "OPERATIONS",
+        moduleId: tenantAModule.id,
         status: mapObservationStatus(f.status),
         assignedToId,
         branchId: branches[branchIdx].id,
@@ -962,12 +1003,11 @@ async function main() {
     data: {
       tenantId: tenantB.id,
       title: "Test Bank Finding — Cash Reserve",
-      condition: "CRR maintenance below threshold",
-      criteria: "RBI minimum CRR requirement",
-      cause: "Liquidity management gap",
-      effect: "Regulatory penalty risk",
+      description: "CRR maintenance below threshold",
       recommendation: "Improve daily CRR monitoring",
       severity: Severity.MEDIUM,
+      pertainsTo: "FINANCE",
+      moduleId: tenantBModule.id,
       status: ObservationStatus.DRAFT,
       branchId: branchB.id,
       createdById: userBankB.id,

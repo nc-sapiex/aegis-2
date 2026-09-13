@@ -4,10 +4,10 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `6f0d837` (plan1/task-6)
+> Source commit: `09b85f3` (copilot/task-21-findings-without-5c)
 
 Every table AEGIS maintains, with its columns, types and relationships.
-**76 models** and **22 enumerations**.
+**75 models** and **24 enumerations**.
 
 Conventions used throughout the schema:
 
@@ -89,7 +89,6 @@ Conventions used throughout the schema:
 - [EngagementMeeting](#engagementmeeting)
 - [ActionPoint](#actionpoint)
 - [BmResponseBatch](#bmresponsebatch)
-- [PositiveObservation](#positiveobservation)
 - [ExaminationQuestion](#examinationquestion)
 - [LoanAccount](#loanaccount)
 - [SamplingConfig](#samplingconfig)
@@ -181,7 +180,6 @@ Conventions used throughout the schema:
 | `auditPlans` | AuditPlan[] | no | FK→AuditPlan |  |  |
 | `auditEngagements` | AuditEngagement[] | no | FK→AuditEngagement |  |  |
 | `examinationNodes` | ExaminationNode[] | no | FK→ExaminationNode |  | v6.0 RBIA relations |
-| `positiveObservations` | PositiveObservation[] | no | FK→PositiveObservation |  |  |
 | `examinationQuestions` | ExaminationQuestion[] | no | FK→ExaminationQuestion |  | v7.0 Sample-Based Examination relations |
 | `loanAccounts` | LoanAccount[] | no | FK→LoanAccount |  |  |
 | `samplingConfigs` | SamplingConfig[] | no | FK→SamplingConfig |  |  |
@@ -311,11 +309,8 @@ Indexes and constraints:
 | `tenantId` | String `@db.Uuid` | no |  |  |  |
 | `tenant` | Tenant | no | FK→Tenant |  | relation |
 | `title` | String | no |  |  |  |
-| `condition` | String `@db.Text` | no |  |  |  |
-| `criteria` | String `@db.Text` | no |  |  |  |
-| `cause` | String `@db.Text` | no |  |  |  |
-| `effect` | String `@db.Text` | no |  |  |  |
-| `recommendation` | String `@db.Text` | no |  |  |  |
+| `description` | String `@db.Text` | no |  |  |  |
+| `recommendation` | String `@db.Text` | yes |  |  |  |
 | `severity` | Severity | no |  |  |  |
 | `status` | ObservationStatus | no |  | `DRAFT` |  |
 | `assignedToId` | String `@db.Uuid` | yes |  |  |  |
@@ -335,8 +330,15 @@ Indexes and constraints:
 | `auditeeResponse` | String `@db.Text` | yes |  |  | Auditee response fields |
 | `actionPlan` | String `@db.Text` | yes |  |  |  |
 | `riskCategory` | String | yes |  |  | Risk categorization |
-| `observationType` | String | no |  | `"AUTO_LEGACY"` | v6.0: discriminator for observation type |
+| `pertainsTo` | ObservationPertainsTo | no |  |  |  |
+| `amountInvolved` | Decimal `@db.Decimal` | yes |  |  |  |
+| `branchComments` | String `@db.Text` | yes |  |  |  |
+| `moduleId` | String `@db.Uuid` | no |  |  |  |
+| `module` | ExaminationNode | no | FK→ExaminationNode |  | relation |
+| `sourceResponseId` | String `@db.Uuid` | yes |  |  |  |
+| `sourceResponse` | ExaminationResponse | yes | FK→ExaminationResponse |  | relation |
 | `sourceActionPointId` | String `@db.Uuid` | yes |  |  | v6.0: link back to the ActionPoint that was promoted to this Observation (Phase 20) |
+| `sourceActionPoint` | ActionPoint | yes | FK→ActionPoint |  | relation |
 | `engagementId` | String `@db.Uuid` | yes |  |  | Engagement tracking (Phase 12 — links observation to audit engagement) |
 | `engagement` | AuditEngagement | yes | FK→AuditEngagement |  | relation |
 | `repeatOfId` | String `@db.Uuid` | yes |  |  | Repeat finding relation (Phase 12 — self-referential) |
@@ -348,7 +350,6 @@ Indexes and constraints:
 | `evidence` | Evidence[] | no | FK→Evidence |  |  |
 | `auditeeResponses` | AuditeeResponse[] | no | FK→AuditeeResponse |  |  |
 | `rbiCirculars` | ObservationRbiCircular[] | no | FK→ObservationRbiCircular |  |  |
-| `examinationResponses` | AuditExaminationResponse[] | no | FK→AuditExaminationResponse |  |  |
 | `complianceItem` | ComplianceItem | yes | FK→ComplianceItem |  |  |
 | `issues` | Issue[] | no | FK→Issue |  |  |
 
@@ -360,6 +361,9 @@ Indexes and constraints:
 - `@@index([tenantId, branchId, auditAreaId, status])`
 - `@@index([engagementId])`
 - `@@index([repeatOfId])`
+- `@@index([moduleId])`
+- `@@index([sourceResponseId])`
+- `@@index([sourceActionPointId])`
 
 ## ObservationTimeline
 
@@ -679,7 +683,6 @@ Indexes and constraints:
 | `meetings` | EngagementMeeting[] | no | FK→EngagementMeeting |  |  |
 | `actionPointsV2` | ActionPoint[] | no | FK→ActionPoint |  |  |
 | `bmResponseBatch` | BmResponseBatch | yes | FK→BmResponseBatch |  |  |
-| `positiveObservations` | PositiveObservation[] | no | FK→PositiveObservation |  |  |
 | `loanAccounts` | LoanAccount[] | no | FK→LoanAccount |  | v7.0 Sample-Based Examination relations |
 | `samplingConfigs` | SamplingConfig[] | no | FK→SamplingConfig |  |  |
 | `accountExamResponses` | AccountExamResponse[] | no | FK→AccountExamResponse |  |  |
@@ -849,8 +852,6 @@ Indexes and constraints:
 | `observation` | String `@db.Text` | yes |  |  |  |
 | `respondedById` | String `@db.Uuid` | yes |  |  |  |
 | `respondedAt` | DateTime | yes |  |  |  |
-| `observationId` | String `@db.Uuid` | yes |  |  | Auto-created observation reference (R17) |
-| `linkedObservation` | Observation | yes | FK→Observation |  | relation |
 | `evidence` | Evidence[] | no | FK→Evidence |  | Evidence attachments |
 | `createdAt` | DateTime | no |  | `now()` |  |
 | `updatedAt` | DateTime | no |  |  |  |
@@ -860,7 +861,6 @@ Indexes and constraints:
 - `@@unique([engagementId, itemId])`
 - `@@index([tenantId])`
 - `@@index([engagementId])`
-- `@@index([observationId])`
 
 ## AuditSectionInstance
 
@@ -1857,6 +1857,8 @@ Indexes and constraints:
 | `updatedAt` | DateTime | no |  |  |  |
 | `responses` | ExaminationResponse[] | no | FK→ExaminationResponse |  | Relations |
 | `moduleSelections` | EngagementModuleSelection[] | no | FK→EngagementModuleSelection |  |  |
+| `actionPoints` | ActionPoint[] | no | FK→ActionPoint |  |  |
+| `observations` | Observation[] | no | FK→Observation |  |  |
 
 Indexes and constraints:
 
@@ -1891,6 +1893,7 @@ Indexes and constraints:
 | `createdAt` | DateTime | no |  | `now()` |  |
 | `updatedAt` | DateTime | no |  |  |  |
 | `actionPoints` | ActionPoint[] | no | FK→ActionPoint |  | Relations to findings |
+| `observations` | Observation[] | no | FK→Observation |  |  |
 
 Indexes and constraints:
 
@@ -1983,6 +1986,9 @@ Indexes and constraints:
 | `title` | String | no |  |  |  |
 | `description` | String `@db.Text` | no |  |  |  |
 | `severity` | Severity | no |  |  |  |
+| `moduleId` | String `@db.Uuid` | no |  |  |  |
+| `module` | ExaminationNode | no | FK→ExaminationNode |  | relation |
+| `kind` | ActionPointKind | no |  | `FINDING` |  |
 | `sourceResponseId` | String `@db.Uuid` | yes |  |  | Source traceability |
 | `sourceResponse` | ExaminationResponse | yes | FK→ExaminationResponse |  | relation |
 | `status` | ActionPointStatus | no |  | `DRAFT` |  |
@@ -1994,6 +2000,7 @@ Indexes and constraints:
 | `closedAt` | DateTime | yes |  |  |  |
 | `carriedForwardToEngagementId` | String `@db.Uuid` | yes |  |  | Carry-forward linkage |
 | `evidence` | Evidence[] | no | FK→Evidence |  | v6.0: Evidence attachments from BM responses relation |
+| `promotedObservations` | Observation[] | no | FK→Observation |  | relation |
 | `createdById` | String `@db.Uuid` | no |  |  |  |
 | `createdAt` | DateTime | no |  | `now()` |  |
 | `updatedAt` | DateTime | no |  |  |  |
@@ -2004,6 +2011,7 @@ Indexes and constraints:
 - `@@index([engagementId])`
 - `@@index([engagementId, status])`
 - `@@index([branchId, status])`
+- `@@index([moduleId])`
 
 ## BmResponseBatch
 
@@ -2026,28 +2034,6 @@ Indexes and constraints:
 
 - `@@index([tenantId])`
 - `@@index([status, deadline])`
-
-## PositiveObservation
-
-*Tenant-scoped:* **yes** — always filter by `tenantId`
-
-| Column | Type | Null | Key | Default | Notes |
-|---|---|---|---|---|---|
-| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
-| `tenantId` | String `@db.Uuid` | no |  |  |  |
-| `tenant` | Tenant | no | FK→Tenant |  | relation |
-| `engagementId` | String `@db.Uuid` | no |  |  |  |
-| `engagement` | AuditEngagement | no | FK→AuditEngagement |  | relation |
-| `title` | String | no |  |  |  |
-| `description` | String `@db.Text` | no |  |  |  |
-| `createdById` | String `@db.Uuid` | no |  |  |  |
-| `createdAt` | DateTime | no |  | `now()` |  |
-| `updatedAt` | DateTime | no |  |  |  |
-
-Indexes and constraints:
-
-- `@@index([tenantId])`
-- `@@index([engagementId])`
 
 ## ExaminationQuestion
 
@@ -2241,6 +2227,14 @@ Indian Financial Year quarters (D16) Q1 = Apr-Jun, Q2 = Jul-Sep, Q3 = Oct-Dec, Q
 ### ActionPointStatus
 
 `DRAFT` · `ISSUED` · `BM_RESPONSE_DUE` · `BM_RESPONDED` · `VERIFIED` · `CLOSED` · `CARRIED_FORWARD`
+
+### ObservationPertainsTo
+
+`FINANCE` · `OPERATIONS` · `LEGAL_RECOVERY` · `HR` · `IT`
+
+### ActionPointKind
+
+`FINDING` · `POSITIVE`
 
 ### MeetingType
 

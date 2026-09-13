@@ -6,6 +6,7 @@ import type {
   Severity,
   ActionPointStatus,
   ObservationStatus,
+  ObservationPertainsTo,
 } from "@/generated/prisma/enums";
 
 /**
@@ -38,6 +39,7 @@ export type ActionPointData = {
   title: string;
   description: string;
   severity: Severity;
+  moduleId: string;
   moduleCode: string;
   status: ActionPointStatus;
   sourceResponse: {
@@ -63,18 +65,20 @@ export type CarryForwardActionPointData = Omit<
 export type ObservationData = {
   id: string;
   title: string;
-  condition: string;
-  criteria: string;
-  cause: string;
-  effect: string;
-  recommendation: string;
+  description: string;
+  recommendation: string | null;
   severity: Severity;
+  riskCategory: string | null;
+  pertainsTo: ObservationPertainsTo;
+  amountInvolved: number | null;
+  branchComments: string | null;
+  moduleId: string;
+  sourceResponseId: string | null;
+  sourceActionPointId: string | null;
   status: ObservationStatus;
   engagementId: string | null;
   branchId: string | null;
-  observationType: string;
   createdAt: Date;
-  // TODO Phase 20: Add sourceActionPointId to Observation schema for promote-to-observation link
 };
 
 export type EngagementFindings = {
@@ -111,7 +115,10 @@ export async function getEngagementActionPoints(
       title: true,
       description: true,
       severity: true,
-      moduleCode: true,
+      moduleId: true,
+      module: {
+        select: { code: true },
+      },
       status: true,
       bmResponseText: true,
       bmResponseDate: true,
@@ -129,8 +136,9 @@ export async function getEngagementActionPoints(
     },
   });
 
-  return rows.map((row) => ({
+  return rows.map(({ module, ...row }) => ({
     ...row,
+    moduleCode: module.code,
     isCarriedForward: false as const,
   }));
 }
@@ -159,21 +167,27 @@ export async function getEngagementObservations(
     select: {
       id: true,
       title: true,
-      condition: true,
-      criteria: true,
-      cause: true,
-      effect: true,
+      description: true,
       recommendation: true,
       severity: true,
+      riskCategory: true,
+      pertainsTo: true,
+      amountInvolved: true,
+      branchComments: true,
+      moduleId: true,
+      sourceResponseId: true,
+      sourceActionPointId: true,
       status: true,
       engagementId: true,
       branchId: true,
-      observationType: true,
       createdAt: true,
     },
   });
 
-  return rows;
+  return rows.map((row) => ({
+    ...row,
+    amountInvolved: row.amountInvolved ? Number(row.amountInvolved) : null,
+  }));
 }
 
 // ─── getCarryForwardActionPoints ─────────────────────────────────────────────
@@ -236,7 +250,10 @@ export async function getCarryForwardActionPoints(
       title: true,
       description: true,
       severity: true,
-      moduleCode: true,
+      moduleId: true,
+      module: {
+        select: { code: true },
+      },
       status: true,
       bmResponseText: true,
       bmResponseDate: true,
@@ -254,8 +271,9 @@ export async function getCarryForwardActionPoints(
     },
   });
 
-  return rows.map((row) => ({
+  return rows.map(({ module, ...row }) => ({
     ...row,
+    moduleCode: module.code,
     isCarriedForward: true as const,
     originalEngagementId: precedingEngagement.id,
   }));
