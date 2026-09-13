@@ -1,7 +1,7 @@
 import { withAuditedMutation, systemActor } from "@/data-access/audited-mutation";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
-import { verifyChain, type LinkedRow } from "@/lib/audit-chain";
+import { GENESIS_HASH, verifyChain, type LinkedRow } from "@/lib/audit-chain";
 
 export async function verifyAuditChain(tenantId?: string): Promise<void> {
   const tenants = await prisma.tenant.findMany({
@@ -38,8 +38,8 @@ export async function verifyAuditChain(tenantId?: string): Promise<void> {
       changedAt: row.createdAt,
       oldData: row.oldData,
       newData: row.newData,
-      prevHash: (row.prevHash as Buffer | null) ?? Buffer.alloc(0),
-      rowHash: (row.rowHash as Buffer | null) ?? Buffer.alloc(0),
+      prevHash: (row.prevHash as Buffer | null) ?? GENESIS_HASH,
+      rowHash: (row.rowHash as Buffer | null) ?? GENESIS_HASH,
     }));
 
     const verdict = verifyChain(linked);

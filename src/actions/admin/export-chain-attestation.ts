@@ -1,10 +1,10 @@
 "use server";
 
 import React from "react";
-import { renderToBuffer } from "@react-pdf/renderer";
+import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { getChainHead, getChainVerifications } from "@/data-access/audit-chain-admin";
 import { getRequiredSession } from "@/data-access/session";
-import { ChainAttestation } from "@/components/pdf-report/chain-attestation";
+import { ChainAttestation, type ChainAttestationProps } from "@/components/pdf-report/chain-attestation";
 import { requirePermission } from "@/lib/guards";
 import { prismaForTenant } from "@/lib/prisma";
 
@@ -26,16 +26,19 @@ export async function exportChainAttestation(): Promise<
       getChainHead(tenantId),
       getChainVerifications(tenantId),
     ]);
+    const attestationProps = {
+      tenantName: tenant.name,
+      generatedAt: new Date(),
+      head,
+      history,
+    } satisfies ChainAttestationProps;
+    const document = React.createElement(
+      ChainAttestation,
+      attestationProps,
+    ) as React.ReactElement<DocumentProps>;
 
     const buffer = Buffer.from(
-      await renderToBuffer(
-        React.createElement(ChainAttestation, {
-          tenantName: tenant.name,
-          generatedAt: new Date(),
-          head,
-          history,
-        }) as any,
-      ),
+      await renderToBuffer(document),
     );
 
     return {

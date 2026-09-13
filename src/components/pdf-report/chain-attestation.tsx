@@ -8,15 +8,21 @@ const styles = StyleSheet.create({
   label: { color: "#555" },
   section: { marginTop: 20 },
   sectionTitle: { marginBottom: 8, fontSize: 13 },
+  historyHeader: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#999",
+    paddingBottom: 4,
+    marginBottom: 4,
+  },
   historyRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: "#ddd",
     paddingVertical: 4,
-    gap: 8,
   },
-  historyDate: { flex: 1 },
-  historyResult: { flex: 1, textAlign: "right" },
+  historyDate: { width: "65%" },
+  historyResult: { width: "35%", textAlign: "right" },
   note: { marginTop: 14, color: "#555", fontSize: 9, lineHeight: 1.4 },
 });
 
@@ -67,14 +73,20 @@ export function ChainAttestation({
           {history.length === 0 ? (
             <Text>No verifications recorded yet.</Text>
           ) : (
-            history.map((item) => (
-                <View key={item.id} style={styles.historyRow}>
-                <Text style={styles.historyDate}>{item.verifiedAt.toISOString()}</Text>
-                <Text style={styles.historyResult}>
-                  {item.ok ? "OK" : `FAILED at #${item.firstBadSequence}`}
-                </Text>
-              </View>
-            ))
+            <>
+                <View style={styles.historyHeader}>
+                  <Text style={styles.historyDate}>Verified at</Text>
+                  <Text style={styles.historyResult}>Result</Text>
+                </View>
+                {history.map((item) => (
+                  <View key={item.id} style={styles.historyRow}>
+                    <Text style={styles.historyDate}>{item.verifiedAt.toISOString()}</Text>
+                    <Text style={styles.historyResult}>
+                      {item.ok ? "OK" : `FAILED at #${item.firstBadSequence}`}
+                    </Text>
+                  </View>
+                ))}
+            </>
           )}
         </View>
         <Text style={styles.note}>

@@ -1,11 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeDb, fakeSession, TENANT_A } from "@/test/factories";
 
-const mockRenderToBuffer = vi.fn();
-const mockGetChainHead = vi.fn();
-const mockGetChainVerifications = vi.fn();
-const mockChainAttestation = vi.fn();
-const mockPrismaForTenant = vi.fn();
+const {
+  mockRenderToBuffer,
+  mockGetChainHead,
+  mockGetChainVerifications,
+  mockChainAttestation,
+  mockPrismaForTenant,
+} = vi.hoisted(() => ({
+  mockRenderToBuffer: vi.fn(),
+  mockGetChainHead: vi.fn(),
+  mockGetChainVerifications: vi.fn(),
+  mockChainAttestation: vi.fn(() => null),
+  mockPrismaForTenant: vi.fn(),
+}));
 
 vi.mock("@/lib/guards", () => ({ requirePermission: vi.fn() }));
 vi.mock("@/data-access/session", () => ({ getRequiredSession: vi.fn() }));
@@ -15,7 +23,7 @@ vi.mock("@/data-access/audit-chain-admin", () => ({
   getChainVerifications: (...args: unknown[]) => mockGetChainVerifications(...args),
 }));
 vi.mock("@/components/pdf-report/chain-attestation", () => ({
-  ChainAttestation: (...args: unknown[]) => mockChainAttestation(...args),
+  ChainAttestation: mockChainAttestation,
 }));
 vi.mock("@/lib/prisma", () => ({ prismaForTenant: (...args: unknown[]) => mockPrismaForTenant(...args) }));
 
@@ -48,15 +56,29 @@ describe("exportChainAttestation", () => {
         firstBadSequence: null,
       },
     ]);
-    mockChainAttestation.mockReturnValue({ type: "pdf-doc" });
     mockRenderToBuffer.mockResolvedValue(Buffer.from("pdf-bytes"));
   });
 
   it("returns a base64 PDF payload and tenant-scoped filename", async () => {
     const result = await exportChainAttestation();
 
+    expect(mockPrismaForTenant).toHaveBeenCalledWith(TENANT_A);
     expect(mockGetChainHead).toHaveBeenCalledWith(TENANT_A);
     expect(mockGetChainVerifications).toHaveBeenCalledWith(TENANT_A);
+    expect(mockRenderToBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        props: expect.objectContaining({
+          tenantName: "Test Bank",
+          head: expect.objectContaining({
+            lastSequence: BigInt(4),
+            lastHash: Buffer.from("abcd", "hex"),
+          }),
+          history: expect.arrayContaining([
+            expect.objectContaining({ id: "verification-1", ok: true }),
+          ]),
+        }),
+      }),
+    );
     expect(result).toEqual({
       success: true,
       data: {
