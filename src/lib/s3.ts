@@ -1,21 +1,8 @@
 import "server-only";
 
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  HeadObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { fileTypeFromBuffer } from "file-type";
 import crypto from "node:crypto";
-
-// ---------------------------------------------------------------------------
-// S3Client singleton — ap-south-1 (Mumbai) for RBI data localisation
-// ---------------------------------------------------------------------------
-const s3Client = new S3Client({ region: "ap-south-1" });
-
-const BUCKET = process.env.S3_BUCKET_NAME ?? "aegis-evidence-dev";
+import { getObjectStore } from "./storage/object-store";
 
 // ---------------------------------------------------------------------------
 // Allowed evidence file types (MIME → extension)
@@ -94,7 +81,7 @@ export function generateBmEvidenceS3Key(
 }
 
 // ---------------------------------------------------------------------------
-// generateUploadUrl — presigned PUT with SSE-S3 encryption
+// generateUploadUrl — presigned PUT
 // ---------------------------------------------------------------------------
 export async function generateUploadUrl(
   s3Key: string,
@@ -104,36 +91,14 @@ export async function generateUploadUrl(
   if (fileSize > MAX_FILE_SIZE) {
     throw new Error(`File size ${fileSize} bytes exceeds the 10 MB limit`);
   }
-
-  const command = new PutObjectCommand({
-    Bucket: BUCKET,
-    Key: s3Key,
-    ContentType: contentType,
-    // ContentLength and ServerSideEncryption omitted from presigned URL:
-    // - Bucket has default SSE-S3 encryption (files encrypted automatically)
-    // - Including these in the signed URL requires matching headers in the
-    //   browser XHR PUT, which causes 403 signature mismatch errors
-  });
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AWS SDK v3 sub-package type mismatch
-  return getSignedUrl(s3Client as any, command, {
-    expiresIn: PRESIGNED_URL_EXPIRY,
-  });
+  return getObjectStore().presignPut(s3Key, contentType);
 }
 
 // ---------------------------------------------------------------------------
 // generateDownloadUrl — presigned GET
 // ---------------------------------------------------------------------------
 export async function generateDownloadUrl(s3Key: string): Promise<string> {
-  const command = new GetObjectCommand({
-    Bucket: BUCKET,
-    Key: s3Key,
-  });
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AWS SDK v3 sub-package type mismatch
-  return getSignedUrl(s3Client as any, command, {
-    expiresIn: PRESIGNED_URL_EXPIRY,
-  });
+  return getObjectStore().presignGet(s3Key);
 }
 
 // ---------------------------------------------------------------------------
@@ -149,28 +114,7 @@ type VerifyNotFound = { exists: false };
 export async function verifyUpload(
   s3Key: string,
 ): Promise<VerifySuccess | VerifyNotFound> {
-  try {
-    const command = new HeadObjectCommand({
-      Bucket: BUCKET,
-      Key: s3Key,
-    });
-
-    const response = await s3Client.send(command);
-
-    return {
-      exists: true,
-      contentLength: response.ContentLength ?? 0,
-      contentType: response.ContentType ?? "application/octet-stream",
-    };
-  } catch (error: unknown) {
-    if (
-      error instanceof Error &&
-      (error.name === "NotFound" || error.name === "NoSuchKey")
-    ) {
-      return { exists: false };
-    }
-    throw error;
-  }
+  return getObjectStore().head(s3Key);
 }
 
 // Re-export constants for use in server actions
@@ -186,13 +130,6 @@ interface UploadOptions {
 }
 
 export async function uploadToS3(options: UploadOptions): Promise<string> {
-  const command = new PutObjectCommand({
-    Bucket: BUCKET,
-    Key: options.key,
-    Body: options.body,
-    ContentType: options.contentType,
-  });
-
-  await s3Client.send(command);
+  await getObjectStore().put(options.key, options.body, options.contentType);
   return options.key;
 }

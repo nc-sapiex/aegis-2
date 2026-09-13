@@ -37,6 +37,8 @@ export const env = createEnv({
     AWS_ACCESS_KEY_ID: z.string().min(1).optional(),
     AWS_SECRET_ACCESS_KEY: z.string().min(1).optional(),
     S3_BUCKET_NAME: z.string().min(1).optional(),
+    STORAGE_DRIVER: z.enum(["s3", "minio", "disabled"]).default("s3"),
+    S3_ENDPOINT: z.string().url().optional(),
 
     // AWS SES Email (Mumbai region for RBI data localization)
     // Optional in development - required in production for email notifications
@@ -81,6 +83,8 @@ export const env = createEnv({
     AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
     S3_BUCKET_NAME: process.env.S3_BUCKET_NAME,
+    STORAGE_DRIVER: process.env.STORAGE_DRIVER,
+    S3_ENDPOINT: process.env.S3_ENDPOINT,
     AWS_SES_REGION: process.env.AWS_SES_REGION,
     SES_FROM_EMAIL: process.env.SES_FROM_EMAIL,
     SENTRY_DSN: process.env.SENTRY_DSN,
