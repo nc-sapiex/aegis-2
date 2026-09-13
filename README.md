@@ -10,6 +10,11 @@ in [`docs/superpowers/specs/2026-09-12-first-customer-readiness-design.md`](docs
 
 **Status:** not deployed. Local development only.
 
+This repository is the rebuilt AEGIS 2.0 platform for RBI-aligned audit work,
+not a production deployment. The current codebase focuses on the core RBIA
+lifecycle, tenant-aware data access, and local-only development workflows; no
+release pipeline or cloud environment is configured in-repo.
+
 ## What is here
 
 The core cycle: onboarding and invitations, RAM risk assessment, annual audit
