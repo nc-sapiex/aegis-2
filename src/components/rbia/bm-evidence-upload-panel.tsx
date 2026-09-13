@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,27 @@ async function readFileHeader(file: File): Promise<string> {
   return btoa(binary);
 }
 
+function isHeicFile(file: File): boolean {
+  const type = file.type.toLowerCase();
+  if (type === "image/heic" || type === "image/heif") return true;
+  return /\.(heic|heif)$/i.test(file.name);
+}
+
+async function convertHeicToJpeg(file: File): Promise<File> {
+  const { default: heic2any } = await import("heic2any");
+  const converted = await heic2any({
+    blob: file,
+    toType: "image/jpeg",
+    quality: 0.9,
+  });
+  const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
+  const outputName = file.name.replace(/\.(heic|heif)$/i, ".jpg");
+  return new File([jpegBlob], outputName, {
+    type: "image/jpeg",
+    lastModified: file.lastModified,
+  });
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function BmEvidenceUploadPanel({
@@ -83,7 +104,12 @@ export function BmEvidenceUploadPanel({
   onUploadComplete,
 }: BmEvidenceUploadPanelProps) {
   const [entry, setEntry] = useState<UploadEntry | null>(null);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    setIsTouchDevice(navigator.maxTouchPoints > 0);
+  }, []);
 
   // Upload a single file through the 4-step presigned URL pattern
   const uploadFile = useCallback(
@@ -203,14 +229,23 @@ export function BmEvidenceUploadPanel({
 
   // Handle file drop
   const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
+    async (acceptedFiles: File[]) => {
       if (entry && entry.status === "uploading") {
         toast.error("Please wait for the current upload to complete");
         return;
       }
 
-      const file = acceptedFiles[0];
+      let file = acceptedFiles[0];
       if (!file) return;
+
+      if (isHeicFile(file)) {
+        try {
+          file = await convertHeicToJpeg(file);
+        } catch {
+          toast.error("Failed to convert HEIC image. Please upload JPEG or PNG.");
+          return;
+        }
+      }
 
       if (file.size > MAX_FILE_SIZE) {
         toast.error(`File must be under ${formatFileSize(MAX_FILE_SIZE)}`);
@@ -277,7 +312,11 @@ export function BmEvidenceUploadPanel({
               : "border-muted-foreground/25 hover:border-primary/50"
           }`}
         >
-          <input {...getInputProps()} />
+          <input
+            {...getInputProps(
+              isTouchDevice ? { capture: "environment" } : undefined,
+            )}
+          />
           <Upload className="text-muted-foreground mx-auto h-8 w-8" />
           <p className="text-muted-foreground mt-2 text-sm">
             {isDragActive

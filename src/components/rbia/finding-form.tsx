@@ -28,6 +28,7 @@ import type {
   ActionPointData,
   ObservationData,
 } from "@/data-access/rbia-findings";
+import type { Severity } from "@/generated/prisma/enums";
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
@@ -62,6 +63,7 @@ interface FindingFormProps {
   mode: "create-ap" | "create-observation" | "edit-ap" | "promote";
   existingData?: ActionPointData | ObservationData | null;
   sourceActionPointId?: string;
+  suggestedSeverity?: Severity | null;
   onCancel: () => void;
   onSuccess: () => void;
 }
@@ -92,6 +94,7 @@ export function FindingForm({
   mode,
   existingData,
   sourceActionPointId,
+  suggestedSeverity,
   onCancel,
   onSuccess,
 }: FindingFormProps) {
@@ -115,7 +118,7 @@ export function FindingForm({
         : {
             title: "",
             description: "",
-            severity: "MEDIUM",
+            severity: suggestedSeverity ?? "MEDIUM",
             moduleCode: "",
           },
   });
@@ -154,7 +157,7 @@ export function FindingForm({
               cause: "",
               effect: "",
               recommendation: "",
-              severity: "MEDIUM",
+              severity: suggestedSeverity ?? "MEDIUM",
             },
   });
 
