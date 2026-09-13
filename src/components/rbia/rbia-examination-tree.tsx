@@ -4,13 +4,15 @@ import * as React from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   flexRender,
-  getCoreRowModel,
-  getExpandedRowModel,
-  useReactTable,
-  type ColumnDef,
   type ExpandedState,
   type OnChangeFn,
 } from "@tanstack/react-table";
+import {
+  getCoreRowModel,
+  getExpandedRowModel,
+  useLegacyTable,
+  type LegacyColumnDef,
+} from "@tanstack/react-table/legacy";
 import {
   Table,
   TableBody,
@@ -786,7 +788,7 @@ export function RbiaExaminationTree({
     scoreDisplay != null ? getRatingBandLabel(scoreDisplay) : null;
 
   // ── Column Definitions ──────────────────────────────────────────────────
-  const columns = React.useMemo<ColumnDef<ExaminationTreeNode>[]>(
+  const columns = React.useMemo<LegacyColumnDef<ExaminationTreeNode>[]>(
     () => [
       {
         accessorKey: "name",
@@ -913,7 +915,7 @@ export function RbiaExaminationTree({
   );
 
   // ── TanStack Table ──────────────────────────────────────────────────────
-  const table = useReactTable({
+  const table = useLegacyTable({
     data: filteredTree,
     columns,
     state: { expanded },
