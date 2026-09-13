@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `6f0d837` (plan1/task-6)
+> Source commit: `fb5c400` (copilot/plan-4-task-17-score-revision)
 
 Which processes read and write which tables.
 
@@ -28,7 +28,7 @@ reachability graph.
 | `loan-portfolio` | 3 | `AuditEngagement`, `LoanAccount` |
 | `observations` | 3 | `ComplianceItem`, `Observation`, `ObservationTimeline` |
 | `ram` | 4 | `Branch`, `RamAssessment`, `RamAssessmentScore` |
-| `rbia` | 5 | `ActionPoint`, `AuditEngagement`, `BmResponseBatch`, `BranchRbiaScore`, `EngagementMeeting`, `EngagementModuleSelection`, `Evidence`, `ExaminationNode`, `ExaminationResponse`, `Observation` |
+| `rbia` | 7 | `ActionPoint`, `AuditEngagement`, `BmResponseBatch`, `BranchRbiaScore`, `EngagementMeeting`, `EngagementModuleSelection`, `EngagementSectionNa`, `Evidence`, `ExaminationNode`, `ExaminationResponse`, `Observation` |
 | `repeat-findings` | 2 | `Observation`, `ObservationTimeline` |
 | `reports` | 3 | `AuditEngagement`, `BoardReport`, `ReportTemplate` |
 | `sampling` | 2 | `LoanAccount`, `SamplingConfig` |

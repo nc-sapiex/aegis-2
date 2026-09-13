@@ -51,6 +51,7 @@ const AUDIT_TRIGGER_TABLES = [
   "AuditExaminationResponse",
   // Remaining scoring tables; their write paths now set session context.
   "ExaminationResponse",
+  "EngagementSectionNa",
   "AccountExamResponse",
   "LoanAccount",
 ] as const;

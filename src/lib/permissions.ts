@@ -112,8 +112,10 @@ export type Permission =
   // Risk Head Dashboard (R90)
   | "dashboard:risk_head"
   // RBIA v6.0 (Phase 20)
+  | "module:manage"
   | "rbia:examine"
   | "rbia:score_freeze"
+  | "rbia:revise_score"
   | "action_point:manage"
   | "action_point:bm_respond";
 
@@ -156,7 +158,9 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "audit_universe:read",
     "audit_universe:manage",
     "dashboard:manager",
+    "module:manage",
     "rbia:score_freeze",
+    "rbia:revise_score",
     "action_point:manage",
   ],
   CAE: [
@@ -200,7 +204,9 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "audit_universe:read",
     "audit_universe:manage",
     "dashboard:cae",
+    "module:manage",
     "rbia:score_freeze",
+    "rbia:revise_score",
     "action_point:manage",
   ],
   CCO: [
@@ -261,6 +267,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "issue:manage",
     "dashboard:auditor",
     "rbia:examine",
+    "rbia:revise_score",
     "action_point:manage",
   ],
   FIELD_AUDITOR: [
@@ -382,6 +389,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "policy:manage",
     "committee:manage",
     "dashboard:cae",
+    "module:manage",
   ],
 };
 

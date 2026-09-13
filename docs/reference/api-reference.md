@@ -4,15 +4,15 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `6f0d837` (plan1/task-6)
+> Source commit: `fb5c400` (copilot/plan-4-task-17-score-revision)
 
 AEGIS has two callable surfaces.
 
 **HTTP endpoints** (10) are conventional routes under `/api`, used
 for file downloads, streamed exports and health checks.
 
-**Server actions** (91 exported
-functions across 51 modules) are the primary surface. They are
+**Server actions** (93 exported
+functions across 53 modules) are the primary surface. They are
 invoked directly from React components rather than over HTTP, so they have no
 URL — the function signature is the contract. Every one runs on the server and
 derives the caller's tenant from the session.
@@ -183,6 +183,8 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 | `rbia/findings.ts` | yes | `createActionPoint`, `updateActionPoint`, `deleteActionPoint`, `promoteToObservation`, `submitBmResponse` | ActionPoint, AuditEngagement, BmResponseBatch, Observation |
 | `rbia/freeze.ts` | yes | `freezeRbiaScore` | ActionPoint, AuditEngagement, BmResponseBatch, BranchRbiaScore, EngagementModuleSelection, ExaminationNode, ExaminationResponse |
 | `rbia/meetings.ts` | — | `recordMeeting`, `signOffMeeting` | AuditEngagement, EngagementMeeting |
+| `rbia/revise-score.ts` | yes | `reviseScore` | ExaminationResponse |
+| `rbia/section-not-applicable.ts` | yes | `setSectionNotApplicable` | EngagementSectionNa, ExaminationNode, ExaminationResponse |
 
 ### repeat-findings
 
