@@ -1,6 +1,8 @@
 import "server-only";
 import { prismaForTenant } from "./prisma";
 import type { AuthSession as Session } from "@/lib/auth";
+import { isBranchScopedObservationReader } from "@/lib/access-scope";
+import { getUserBranches } from "./auditee";
 
 /**
  * Data Access Layer for observations.
@@ -53,6 +55,17 @@ export async function getObservations(
   if (options?.branchId) where.branchId = options.branchId;
   if (options?.auditAreaId) where.auditAreaId = options.auditAreaId;
 
+  if (isBranchScopedObservationReader(session.user.roles)) {
+    const branchIds = await getUserBranches(session);
+    if (branchIds.length === 0) {
+      return { observations: [], total: 0 };
+    }
+    if (options?.branchId && !branchIds.includes(options.branchId)) {
+      return { observations: [], total: 0 };
+    }
+    where.branchId = options?.branchId ?? { in: branchIds };
+  }
+
   const [observations, total] = await Promise.all([
     db.observation.findMany({
       where: { tenantId, ...where },
@@ -88,11 +101,18 @@ export async function getObservationById(
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
 
+  const scopedWhere: Record<string, unknown> = {
+    id,
+    tenantId, // Belt-and-suspenders
+  };
+  if (isBranchScopedObservationReader(session.user.roles)) {
+    const branchIds = await getUserBranches(session);
+    if (branchIds.length === 0) return null;
+    scopedWhere.branchId = { in: branchIds };
+  }
+
   const observation = await db.observation.findFirst({
-    where: {
-      id,
-      tenantId, // Belt-and-suspenders
-    },
+    where: scopedWhere,
     include: {
       timeline: {
         orderBy: { createdAt: "asc" },
@@ -145,18 +165,27 @@ export async function getObservationSummary(session: Session): Promise<{
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
 
+  const where: Record<string, unknown> = { tenantId };
+  if (isBranchScopedObservationReader(session.user.roles)) {
+    const branchIds = await getUserBranches(session);
+    if (branchIds.length === 0) {
+      return { total: 0, bySeverity: {}, byStatus: {} };
+    }
+    where.branchId = { in: branchIds };
+  }
+
   const [severityGroups, statusGroups, total] = await Promise.all([
     db.observation.groupBy({
       by: ["severity"],
-      where: { tenantId },
+      where,
       _count: { _all: true },
     }),
     db.observation.groupBy({
       by: ["status"],
-      where: { tenantId },
+      where,
       _count: { _all: true },
     }),
-    db.observation.count({ where: { tenantId } }),
+    db.observation.count({ where }),
   ]);
 
   const bySeverity: Record<string, number> = {};
