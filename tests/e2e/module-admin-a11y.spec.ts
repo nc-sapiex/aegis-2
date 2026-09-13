@@ -20,7 +20,33 @@ test("the add-statement side panel traps focus and closes on Escape", async ({
 }) => {
   await page.goto("/settings/modules");
   await page.getByRole("button", { name: "Add bank statement" }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  const dialog = page.getByRole("dialog");
+
+  await expect(dialog).toBeVisible();
+  await expect
+    .poll(() =>
+      dialog.evaluate((node) => node.contains(node.ownerDocument.activeElement)),
+    )
+    .toBe(true);
+
+  for (let index = 0; index < 6; index += 1) {
+    await page.keyboard.press("Tab");
+    await expect
+      .poll(() =>
+        dialog.evaluate((node) => node.contains(node.ownerDocument.activeElement)),
+      )
+      .toBe(true);
+  }
+
+  for (let index = 0; index < 6; index += 1) {
+    await page.keyboard.press("Shift+Tab");
+    await expect
+      .poll(() =>
+        dialog.evaluate((node) => node.contains(node.ownerDocument.activeElement)),
+      )
+      .toBe(true);
+  }
+
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(dialog).not.toBeVisible();
 });
