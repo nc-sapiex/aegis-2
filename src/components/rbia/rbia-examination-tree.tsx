@@ -1047,7 +1047,7 @@ export function RbiaExaminationTree({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => {
+              table.getRowModel().rows.map((row, rowIndex, rows) => {
                 const node = row.original;
                 const override = optimisticScores.get(node.id);
                 const currentLabel =
@@ -1057,11 +1057,16 @@ export function RbiaExaminationTree({
                   node.isLeaf &&
                   currentLabel === "NON_COMPLIANT";
                 const showNotes = expandedNotes.has(node.id);
+                const isSection = row.depth === 0;
+                const isLastSection =
+                  isSection &&
+                  !rows.slice(rowIndex + 1).some((nextRow) => nextRow.depth === 0);
 
                 return (
                   <React.Fragment key={row.id}>
                     <TableRow
-                      data-section={row.depth === 0 ? "" : undefined}
+                      data-section={isSection ? "" : undefined}
+                      data-last-section={isLastSection ? "" : undefined}
                       className={cn(
                         "transition-colors",
                         node.isCritical &&

@@ -192,7 +192,7 @@ html[lang="gu"] h1 {
     display: block !important;
   }
 
-  .examination-register [data-section] {
+  .examination-register [data-section]:not([data-last-section]) {
     break-after: page;
   }
 }

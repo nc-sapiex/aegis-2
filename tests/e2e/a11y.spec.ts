@@ -3,7 +3,9 @@ import AxeBuilder from "@axe-core/playwright";
 
 test.use({ storageState: "playwright/.auth/auditor.json" });
 
-test("examination register has no critical axe violations", async ({ page }) => {
+test(
+  "examination register has no critical/serious axe violations @smoke",
+  async ({ page }) => {
   await page.goto("/audit-execution");
 
   const rbiaLink = page.locator('a[href*="/rbia"]').first();
@@ -15,6 +17,9 @@ test("examination register has no critical axe violations", async ({ page }) => 
   await page.goto(href!);
 
   const results = await new AxeBuilder({ page }).analyze();
-  const critical = results.violations.filter((v) => v.impact === "critical");
-  expect(critical).toEqual([]);
-});
+  const blocking = results.violations.filter(
+    (v) => v.impact === "critical" || v.impact === "serious",
+  );
+  expect(blocking).toEqual([]);
+  },
+);
