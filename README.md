@@ -83,6 +83,8 @@ pnpm docs:reference      # regenerate docs/reference/ after schema or action cha
 
 - [`CLAUDE.md`](CLAUDE.md) — conventions, invariants, gotchas
 - [`docs/architecture.md`](docs/architecture.md) — how the system is put together, kept current as each plan lands
+- [`docs/SEED-PROCESS-MANUAL.md`](docs/SEED-PROCESS-MANUAL.md) — local demo data pipeline
+- [`src/data-access/README.md`](src/data-access/README.md) — tenant-scoped query pattern
 - [`docs/superpowers/specs/`](docs/superpowers/specs/) — the 2.0 design
 - [`docs/reference/`](docs/reference/) — generated inventories
 - [`CONTEXT.md`](CONTEXT.md) — domain glossary

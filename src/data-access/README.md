@@ -8,18 +8,31 @@ For how this layer fits the rest of the system, see
 
 ---
 
-## There is no row-level security
+## There is no row-level security yet
 
-`prismaForTenant(tenantId)` reads like an RLS helper. It is not one: it
-validates that the tenant id is a well-formed UUID and returns the shared
-singleton client, adding **no filtering**. No RLS policies are in effect.
+`prismaForTenant(tenantId)` validates that the tenant id is a well-formed UUID
+and returns a per-tenant client (`src/lib/tenant-client.ts`) that sets
+`app.current_tenant_id` once per transaction. That GUC is what Task 4's RLS
+policies will read. It still adds **no row filtering of its own**.
 
 **Every `WHERE tenantId` in this directory is load-bearing.** Removing one does
-not fall back to a database guarantee, because there isn't one. The history
-(the removed `SET LOCAL` wrapping, the P2028 timeouts) and the verified
-production RLS state are in
-[`docs/architecture.md`](../../docs/architecture.md#invariant-1--tenant-isolation)
-and the architecture note in `src/lib/prisma.ts`.
+not fall back to a database guarantee, because there isn't one yet. The GUC
+contract, the removed per-query `SET LOCAL` wrapping, and the P2028 history
+are in
+[`docs/architecture.md`](../../docs/architecture.md#invariant-1--tenant-isolation).
+
+### Tenant-client constraints
+
+- **Use `tx` inside `withAuditedMutation`.** Calling `prismaForTenant` from
+  inside that callback opens a second short transaction on another pooled
+  connection. The outer write would not roll back with it, and the actor GUCs
+  `setSessionContext` wrote on `tx` would never reach the inner write.
+- **`$transaction` already sets the GUC.** Standalone operations are wrapped
+  as `[set_config, op]`. Operations already inside a transaction are left
+  alone. Do not re-wrap them.
+- **`TENANT_CLIENT=singleton` is spike-only.** `src/lib/prisma.ts` honours it
+  only when `NODE_ENV !== "production"`, so a stray value cannot strip
+  tenant scoping in a deployed environment. Do not use it in app code.
 
 ---
 
@@ -42,10 +55,10 @@ export async function getSomething() {
   const session = await getRequiredSession();
   const tenantId = session.user.tenantId;
 
-  // 2. tenant-scoped client (validates the UUID)
+  // 2. tenant-scoped client (validates the UUID, sets the tenant GUC)
   const db = prismaForTenant(tenantId);
 
-  // 3. explicit WHERE — this is the actual isolation control
+  // 3. explicit WHERE — this is still the actual isolation control
   const result = await db.someModel.findFirst({ where: { tenantId } });
 
   // 4. assert on the way out
@@ -116,6 +129,8 @@ under
 - `$queryRaw` / `$executeRaw` without an explicit tenant predicate.
 - Taking `tenantId` as a function argument from a caller that got it from a URL.
 - Using `prisma` directly instead of `prismaForTenant(tenantId)`.
+- Calling `prismaForTenant` from inside `withAuditedMutation` instead of using
+  the `tx` that wrapper already opened.
 - Skipping the runtime assertion because "the `WHERE` already covers it" — the
   assertion is what catches a `WHERE` that was edited away.
 - Adding a `NODE_ENV`-conditional cache to the Prisma singleton. That was a

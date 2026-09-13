@@ -6,7 +6,10 @@ the score, raise a finding, and watch it flow into the compliance registry.
 Every screen and permission named below is real — verified against the route
 files and server actions, not a UI guess. If you get a redirect to
 `/dashboard` at any step, it means your role lacks the permission named for
-that step; see [`docs/reference/rbac-matrix.md`](../reference/rbac-matrix.md)
+that step; see the `ROLE_PERMISSIONS` map in
+[`src/lib/permissions.ts`](../../src/lib/permissions.ts) (how checks compose
+is in
+[`docs/architecture.md` § Invariant 3](../architecture.md#invariant-3--authorization))
 to find a role that has it.
 
 You'll need a seeded tenant with at least one branch and a user holding
@@ -100,8 +103,13 @@ whole examination surface:
   `TEAM_ASSIGNED`, `OPENING_MEETING`, or `IN_PROGRESS`, and only if the
   branch score isn't already frozen.
 - **Loan Portfolio** — bulk-import the branch's loan book here first if this
-  module needs it; see
-  [`docs/how-to/excel-import-export.md`](../how-to/excel-import-export.md).
+  module needs it. Download the Excel template from
+  `GET /api/loan-portfolio/template?moduleCode=…` (`rbia:examine`), parse it
+  client-side (`src/lib/loan-portfolio/`), then submit
+  `importLoanPortfolio` (`src/actions/loan-portfolio/import-loan-portfolio.ts`).
+  Replacement is blocked if any imported account already has an examination
+  response. Do not use `importLoanReviewCsv` — that writes the unused v5
+  `LoanReview` table.
 - **Sampling** — runs the deterministic bucket-fill sampling algorithm
   (`src/lib/sampling-engine.ts`) against the imported loan portfolio to pick
   which accounts get examined —
@@ -192,4 +200,4 @@ stage:
 [`docs/architecture.md`](../architecture.md),
 [`docs/explanation/scoring-engines.md`](../explanation/scoring-engines.md),
 [`docs/explanation/state-machines-and-maker-checker.md`](../explanation/state-machines-and-maker-checker.md),
-[`docs/reference/rbac-matrix.md`](../reference/rbac-matrix.md).
+[`src/lib/permissions.ts`](../../src/lib/permissions.ts).
