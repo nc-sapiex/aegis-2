@@ -167,6 +167,7 @@ export async function saveExaminationResponse(
         if (validated.flagForActionPoint) {
           const existingAp = await tx.actionPoint.findFirst({
             where: {
+              tenantId,
               sourceResponseId: upsertedResponse.id,
               engagementId: validated.engagementId,
             },
@@ -175,7 +176,7 @@ export async function saveExaminationResponse(
           if (!existingAp) {
             // Atomic serial number within transaction
             const maxSerial = await tx.actionPoint.aggregate({
-              where: { engagementId: validated.engagementId },
+              where: { tenantId, engagementId: validated.engagementId },
               _max: { serialNo: true },
             });
             const nextSerialNo = (maxSerial._max.serialNo ?? 0) + 1;
@@ -423,6 +424,7 @@ export async function removeModuleSelectionAction(
       const leafIds = descendantLeaves.map((n) => n.id);
       const scoredCount = await db.examinationResponse.count({
         where: {
+          tenantId,
           engagementId: validated.engagementId,
           nodeId: { in: leafIds },
         },

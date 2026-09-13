@@ -208,7 +208,7 @@ export async function claimNotifications(
   );
 
   return prisma.notificationQueue.findMany({
-    where: { claimId },
+    where: { tenantId, claimId },
     include: { recipient: { select: { id: true, name: true, email: true } } },
   });
 }

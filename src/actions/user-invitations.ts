@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { prisma, prismaForTenant } from "@/lib/prisma";
 import { getRequiredSession } from "@/data-access/session";
 import { hasPermission } from "@/lib/permissions";
 import { headers } from "next/headers";
@@ -78,7 +78,7 @@ export async function sendUserInvitations(users: InviteUserInput[]) {
         }),
     );
 
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await prismaForTenant(tenantId).tenant.findUnique({
       where: { id: tenantId },
       select: { shortName: true },
     });
@@ -260,7 +260,7 @@ export async function resendInvitation(userId: string) {
   const tenantId = session.user.tenantId;
 
   try {
-    const user = await prisma.user.findFirst({
+    const user = await prismaForTenant(tenantId).user.findFirst({
       where: { id: userId, tenantId, status: "INVITED" },
     });
 
@@ -285,7 +285,7 @@ export async function resendInvitation(userId: string) {
         }),
     );
 
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await prismaForTenant(tenantId).tenant.findUnique({
       where: { id: tenantId },
       select: { shortName: true },
     });
@@ -321,7 +321,7 @@ export async function revokeInvitation(userId: string) {
   const tenantId = session.user.tenantId;
 
   try {
-    const user = await prisma.user.findFirst({
+    const user = await prismaForTenant(tenantId).user.findFirst({
       where: { id: userId, tenantId, status: "INVITED" },
     });
 

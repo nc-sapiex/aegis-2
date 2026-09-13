@@ -1,6 +1,6 @@
 import "server-only";
 
-import { prisma } from "@/lib/prisma";
+import { prismaForTenant } from "@/lib/prisma";
 import type { AuditLogEntry } from "@/types";
 import { headers } from "next/headers";
 
@@ -43,6 +43,7 @@ export async function getAuditTrailEntries(
   tenantId: string,
   filters: AuditTrailFilters = {},
 ): Promise<AuditTrailResult> {
+  const db = prismaForTenant(tenantId);
   const page = filters.page ?? 1;
   const pageSize = filters.pageSize ?? 50;
   const skip = (page - 1) * pageSize;
@@ -80,8 +81,8 @@ export async function getAuditTrailEntries(
 
   // Execute count and query in parallel
   const [total, entries] = await Promise.all([
-    prisma.auditLog.count({ where }),
-    prisma.auditLog.findMany({
+    db.auditLog.count({ where: { tenantId, ...where } }),
+    db.auditLog.findMany({
       where,
       orderBy: { sequenceNumber: "desc" },
       skip,
@@ -113,7 +114,7 @@ export async function getAuditTrailEntries(
 
   let userMap = new Map<string, string>();
   if (userIds.length > 0) {
-    const users = await prisma.user.findMany({
+    const users = await db.user.findMany({
       where: {
         id: { in: userIds },
         tenantId, // Belt-and-suspenders
@@ -153,7 +154,7 @@ export async function getAuditTrailEntries(
  * Get distinct table names for filter dropdown.
  */
 export async function getAuditTableNames(tenantId: string): Promise<string[]> {
-  const result = await prisma.auditLog.findMany({
+  const result = await prismaForTenant(tenantId).auditLog.findMany({
     where: { tenantId },
     distinct: ["tableName"],
     select: { tableName: true },
@@ -166,7 +167,7 @@ export async function getAuditTableNames(tenantId: string): Promise<string[]> {
  * Get distinct action types for filter dropdown.
  */
 export async function getAuditActionTypes(tenantId: string): Promise<string[]> {
-  const result = await prisma.auditLog.findMany({
+  const result = await prismaForTenant(tenantId).auditLog.findMany({
     where: {
       tenantId,
       actionType: { not: null },
@@ -189,7 +190,9 @@ export async function detectAuditGaps(
 ): Promise<{ missingSequence: bigint }[]> {
   // LIMIT 100 prevents O(max-min) work when sequence range is very large.
   // Returns first 100 gaps only — sufficient for tamper detection alerts.
-  const gaps = await prisma.$queryRaw<{ missing_sequence: bigint }[]>`
+  const gaps = await prismaForTenant(tenantId).$queryRaw<
+    { missing_sequence: bigint }[]
+  >`
     SELECT s.i AS missing_sequence
     FROM generate_series(
       (SELECT MIN("sequenceNumber") FROM "AuditLog" WHERE "tenantId" = ${tenantId}::uuid),

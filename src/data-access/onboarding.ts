@@ -1,6 +1,6 @@
 import "server-only";
 
-import { prisma } from "@/lib/prisma";
+import { prismaForTenant } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { withAuditedMutation } from "./audited-mutation";
 import {
@@ -94,7 +94,7 @@ export async function saveOnboardingProgress(
   step: number,
   stepData: Record<string, unknown>,
 ) {
-  return prisma.onboardingProgress.upsert({
+  return prismaForTenant(tenantId).onboardingProgress.upsert({
     where: { tenantId },
     create: {
       tenantId,
@@ -114,7 +114,7 @@ export async function saveOnboardingProgress(
 }
 
 export async function getOnboardingProgressFromDb(tenantId: string) {
-  return prisma.onboardingProgress.findUnique({
+  return prismaForTenant(tenantId).onboardingProgress.findUnique({
     where: { tenantId },
   });
 }
@@ -309,7 +309,7 @@ export async function completeOnboardingTransaction(
   // mailer never throws and logs failures, so an unconfigured SES leaves the
   // invitees in place to be re-sent from the admin users screen.
   if (preparedInvites.length > 0) {
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await prismaForTenant(data.tenantId).tenant.findUnique({
       where: { id: data.tenantId },
       select: { shortName: true },
     });
