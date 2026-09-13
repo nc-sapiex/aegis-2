@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -86,6 +86,9 @@ export function EvidenceUploader({
   const [entries, setEntries] = useState<UploadEntry[]>([]);
   const activeCountRef = useRef(0);
   const queueRef = useRef<UploadEntry[]>([]);
+  const uploadFileRef = useRef<(entry: UploadEntry) => Promise<void>>(
+    async () => {},
+  );
 
   // Update a specific entry by id
   const updateEntry = useCallback(
@@ -106,10 +109,9 @@ export function EvidenceUploader({
       const entry = queueRef.current.shift();
       if (entry) {
         activeCountRef.current++;
-        void uploadFile(entry);
+        void uploadFileRef.current(entry);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Full upload flow for a single file
@@ -226,9 +228,12 @@ export function EvidenceUploader({
         processQueue();
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [observationId, onUploadComplete, updateEntry, processQueue],
   );
+
+  useEffect(() => {
+    uploadFileRef.current = uploadFile;
+  }, [uploadFile]);
 
   // Handle files dropped/selected
   const onDrop = useCallback(
