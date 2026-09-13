@@ -18,6 +18,12 @@ import {
  * and the session GUCs a caller sets on `tx` are visible to the audit trigger
  * that fires on the write.
  *
+ * These also pin a Prisma internal. `createTenantClient` reads
+ * `__internalParams.transaction` to tell whether an operation is already inside
+ * a transaction, which is not covered by Prisma's semver. If a `@prisma/client`
+ * bump changes that field's shape the wrapper silently re-wraps everything, and
+ * the rollback and audit-attribution cases below are what fail. Keep them.
+ *
  * The failure being guarded is not a crash. A wrapper that moves each
  * operation onto its own connection still writes the row and still writes an
  * AuditLog entry — with `actionType` and `userId` null, because the trigger
@@ -130,6 +136,27 @@ describe("prismaForTenant against PostgreSQL", () => {
 
       expect(seen).toBe(tenantId);
     });
+
+    // The direct form of the same claim: two operations in one transaction must
+    // report the same transaction id. A per-operation wrapper gives each its own
+    // transaction on its own connection, so the two ids differ — which is the
+    // mechanism behind both the lost rollback and the lost audit context.
+    it("runs every operation in the transaction under one transaction id", async () => {
+      const db = prismaForTenant(tenantId);
+
+      const [first, second] = await db.$transaction(async (tx) => {
+        const a = await tx.$queryRaw<
+          { txid: string }[]
+        >`SELECT txid_current()::text AS txid`;
+        const b = await tx.$queryRaw<
+          { txid: string }[]
+        >`SELECT txid_current()::text AS txid`;
+        return [a[0]?.txid, b[0]?.txid];
+      });
+
+      expect(first).toBeDefined();
+      expect(second).toBe(first);
+    });
   });
 
   describe("$transaction(array)", () => {
@@ -150,6 +177,34 @@ describe("prismaForTenant against PostgreSQL", () => {
       expect(Array.isArray(branches)).toBe(true);
       expect(branches).toHaveLength(1);
       expect(count).toBe(1);
+    });
+
+    // Alignment alone would still pass if each operation were re-wrapped in its
+    // own batch. These two assert the batch is really shared: the GUC set by the
+    // prepended statement is visible to the caller's operations, and both run
+    // under one transaction id.
+    it("carries the tenant GUC into the caller's operations", async () => {
+      const db = prismaForTenant(tenantId);
+
+      const [rows] = await db.$transaction([
+        db.$queryRaw<
+          { guc: string }[]
+        >`SELECT current_setting('app.current_tenant_id', true) AS guc`,
+      ]);
+
+      expect(rows[0]?.guc).toBe(tenantId);
+    });
+
+    it("runs the caller's operations under one transaction id", async () => {
+      const db = prismaForTenant(tenantId);
+
+      const [a, b] = await db.$transaction([
+        db.$queryRaw<{ txid: string }[]>`SELECT txid_current()::text AS txid`,
+        db.$queryRaw<{ txid: string }[]>`SELECT txid_current()::text AS txid`,
+      ]);
+
+      expect(a[0]?.txid).toBeDefined();
+      expect(b[0]?.txid).toBe(a[0]?.txid);
     });
   });
 
