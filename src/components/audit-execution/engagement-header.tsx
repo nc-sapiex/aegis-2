@@ -7,10 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Building2, Calendar, Clock, CheckCircle2, XCircle } from "@/lib/icons";
 import { transitionEngagementStatus } from "@/actions/audit-execution/transition-engagement-status";
-import type {
-  AvailableEngagementTransition,
-  EngagementStatus,
-} from "@/lib/engagement-state-machine";
+import type { AvailableEngagementTransition } from "@/lib/engagement-state-machine";
 
 interface EngagementHeaderProps {
   engagement: {
@@ -78,7 +75,7 @@ export function EngagementHeader({
     (transition) => transition.to === "CANCELLED",
   );
 
-  function handleTransition(targetStatus: EngagementStatus) {
+  function handleTransition(targetStatus: AvailableEngagementTransition["to"]) {
     setError(null);
     startTransition(async () => {
       const result = await transitionEngagementStatus({

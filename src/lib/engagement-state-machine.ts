@@ -46,7 +46,7 @@ export type EngagementContext = {
  * Definition for a single state transition.
  */
 export type EngagementTransitionDef = {
-  to: EngagementStatus;
+  to: Exclude<EngagementStatus, "PLANNED">;
   label: string;
   allowedRoles: Role[];
   prerequisite?: (ctx: EngagementContext) => TransitionResult;
