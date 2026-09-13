@@ -590,7 +590,7 @@ export async function getAuditReportData(
     typeof engagement.accountExamResponses
   >();
   for (const response of engagement.accountExamResponses) {
-    const moduleCode = selectedModules.find(
+    const moduleCode = modulesBySpecificity.find(
       (moduleNode) =>
         response.question.moduleCode === moduleNode.code ||
         response.question.moduleCode.startsWith(`${moduleNode.code}-`),
