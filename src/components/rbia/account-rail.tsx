@@ -49,7 +49,7 @@ export function AccountRail({
           <button
             key={a.recordId}
             type="button"
-            aria-current={a.current ? "true" : undefined}
+            aria-pressed={a.current}
             onClick={() => handleSelect(a.recordId)}
             className="flex w-full justify-between border-l-2 py-1 pl-2 text-left text-sm"
             style={{

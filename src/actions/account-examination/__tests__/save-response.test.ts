@@ -23,6 +23,8 @@ import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/data-access/prisma";
 import { withAuditedMutation } from "@/data-access/audited-mutation";
 import { requireTeamMembership } from "@/data-access/access-guards";
+import { revalidatePath } from "next/cache";
+import { ACCOUNT_EXAM_NOT_APPLICABLE_PREFIX } from "@/lib/account-exam-status";
 import {
   ENGAGEMENT_A,
   LOAN_ACCOUNT_A,
@@ -152,6 +154,40 @@ describe("saveAccountExamResponse", () => {
     expect(requireTeamMembership).toHaveBeenCalledWith(
       { userId: USER_A, tenantId: TENANT_A },
       ENGAGEMENT_A,
+    );
+  });
+
+  it("encodes NOT_APPLICABLE as persisted compliant status with prefixed note", async () => {
+    vi.mocked(getRequiredSession).mockResolvedValue(
+      fakeSession({ roles: ["FIELD_AUDITOR"] }) as never,
+    );
+    const db = examinationDb({ id: QUESTION_A });
+    vi.mocked(prismaForTenant).mockReturnValue(db);
+
+    const result = await saveAccountExamResponse({
+      ...INPUT,
+      status: "NOT_APPLICABLE",
+      note: "Document not relevant for this account.",
+    });
+
+    expect(result).toEqual({
+      success: true,
+      data: { id: "response-1", status: "NOT_APPLICABLE" },
+    });
+    expect(db.accountExamResponse.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          status: "COMPLIANT",
+          note: `${ACCOUNT_EXAM_NOT_APPLICABLE_PREFIX}Document not relevant for this account.`,
+        }),
+        create: expect.objectContaining({
+          status: "COMPLIANT",
+          note: `${ACCOUNT_EXAM_NOT_APPLICABLE_PREFIX}Document not relevant for this account.`,
+        }),
+      }),
+    );
+    expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith(
+      `/audit-execution/${ENGAGEMENT_A}/rbia/examination/CRD-HLN`,
     );
   });
 });

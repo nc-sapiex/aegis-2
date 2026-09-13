@@ -7,6 +7,7 @@ import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
 import { requireTeamMembership } from "@/data-access/access-guards";
 import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
+import { encodeAccountExamNote } from "@/lib/account-exam-status";
 import {
   SaveAccountExamResponseSchema,
   type SaveAccountExamResponseInput,
@@ -151,58 +152,51 @@ export async function saveAccountExamResponse(
       };
     }
 
-    // 6. Persist AccountExamResponse through audited mutation. In binary-mode
-    // register flows, NOT_APPLICABLE clears any existing saved response.
+    // 6. Persist AccountExamResponse through audited mutation.
     let responseId: string | null = null;
     let responseStatus: "COMPLIANT" | "VIOLATION" | "NOT_APPLICABLE" = status;
 
-    if (status === "NOT_APPLICABLE") {
-      await withAuditedMutation(
-        userActor(session),
-        "account_exam_response.saved",
-        (tx) =>
-          tx.accountExamResponse.deleteMany({
-            where: { engagementId, loanAccountId, questionId, tenantId },
-          }),
-      );
-    } else {
-      const response = await withAuditedMutation(
-        userActor(session),
-        "account_exam_response.saved",
-        (tx) =>
-          tx.accountExamResponse.upsert({
-            where: {
-              engagementId_loanAccountId_questionId: {
-                engagementId,
-                loanAccountId,
-                questionId,
-              },
-            },
-            update: {
-              status,
-              note: note ?? null,
-              respondedById: userId,
-              respondedAt: new Date(),
-            },
-            create: {
-              tenantId,
+    const persisted = encodeAccountExamNote(status, note);
+
+    const response = await withAuditedMutation(
+      userActor(session),
+      "account_exam_response.saved",
+      (tx) =>
+        tx.accountExamResponse.upsert({
+          where: {
+            engagementId_loanAccountId_questionId: {
               engagementId,
               loanAccountId,
               questionId,
-              status,
-              note: note ?? null,
-              respondedById: userId,
-              respondedAt: new Date(),
             },
-            select: { id: true, status: true },
-          }),
-      );
-      responseId = response.id;
-      responseStatus = response.status;
-    }
+          },
+          update: {
+            status: persisted.status,
+            note: persisted.note,
+            respondedById: userId,
+            respondedAt: new Date(),
+          },
+          create: {
+            tenantId,
+            engagementId,
+            loanAccountId,
+            questionId,
+            status: persisted.status,
+            note: persisted.note,
+            respondedById: userId,
+            respondedAt: new Date(),
+          },
+          select: { id: true },
+        }),
+    );
+    responseId = response.id;
+    responseStatus = status;
 
     // 7. Revalidate the examination page
     revalidatePath(`/audit-execution/${engagementId}/rbia`);
+    revalidatePath(
+      `/audit-execution/${engagementId}/rbia/examination/${loanAccount.moduleCode}`,
+    );
 
     logger.info(
       {

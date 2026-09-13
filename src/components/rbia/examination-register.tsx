@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { saveAccountExamResponse } from "@/actions/account-examination/save-response";
 
 type ScaleStatus =
@@ -67,7 +67,9 @@ function BinaryTick({
           className="h-[22px] min-h-11 w-[22px] min-w-11 rounded-full border border-[color:var(--border-strong)] data-[selected=true]:bg-[color:var(--primary)]"
           data-selected={status === option}
           aria-label={option.replaceAll("_", " ").toLowerCase()}
-        />
+        >
+          {status === option ? "✓" : ""}
+        </button>
       ))}
     </div>
   );
@@ -103,7 +105,9 @@ function ScaleTick({
           className="h-[22px] min-h-11 w-[22px] min-w-11 rounded border border-[color:var(--border-strong)] data-[selected=true]:bg-[color:var(--primary)]"
           data-selected={status === option}
           aria-label={option.replaceAll("_", " ").toLowerCase()}
-        />
+        >
+          {status === option ? "✓" : ""}
+        </button>
       ))}
     </div>
   );
@@ -139,13 +143,22 @@ export function ExaminationRegister({
 
   const [rows, setRows] =
     useState<Record<string, RegisterResponse>>(initialRows);
+  const [savedRows, setSavedRows] =
+    useState<Record<string, RegisterResponse>>(initialRows);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setRows(initialRows);
+    setSavedRows(initialRows);
+  }, [initialRows]);
 
   const saveBinary = (
     statementId: string,
     status: BinaryStatus,
     remarks: string | null,
+    rollback: RegisterResponse,
+    attempted: RegisterResponse,
   ) => {
     if (!binaryContext?.canRespond || disabled) {
       return;
@@ -162,34 +175,52 @@ export function ExaminationRegister({
 
       if (!result.success) {
         setSaveError(result.error);
+        setRows((current) => {
+          const live = current[statementId];
+          if (
+            live?.status === attempted.status &&
+            live?.remarks === attempted.remarks
+          ) {
+            return { ...current, [statementId]: rollback };
+          }
+          return current;
+        });
       } else {
         setSaveError(null);
+        setSavedRows((current) => ({
+          ...current,
+          [statementId]: attempted,
+        }));
       }
     });
   };
 
   const setStatus = (statementId: string, nextStatus: RegisterStatus) => {
     const previous = rows[statementId] ?? { status: null, remarks: null };
+    const previousSaved = savedRows[statementId] ?? {
+      status: null,
+      remarks: null,
+    };
     const next = { ...previous, status: nextStatus };
     setRows((current) => ({ ...current, [statementId]: next }));
 
     if (mode === "binary") {
       saveBinary(
         statementId,
-        (nextStatus as BinaryStatus) ?? "NOT_APPLICABLE",
+        nextStatus as BinaryStatus,
         next.remarks,
+        previousSaved,
+        next,
       );
     }
   };
 
   const setRemarks = (statementId: string, nextRemarks: string) => {
-    const previous = rows[statementId] ?? { status: null, remarks: null };
-    const next = { ...previous, remarks: nextRemarks || null };
+    const next = {
+      ...(rows[statementId] ?? { status: null, remarks: null }),
+      remarks: nextRemarks || null,
+    };
     setRows((current) => ({ ...current, [statementId]: next }));
-
-    if (mode === "binary" && next.status) {
-      saveBinary(statementId, next.status as BinaryStatus, next.remarks);
-    }
   };
 
   const renderTick = (statementId: string, status: RegisterStatus) => {
@@ -219,7 +250,11 @@ export function ExaminationRegister({
 
   return (
     <div className="space-y-3">
-      {saveError ? <p className="text-sm text-red-600">{saveError}</p> : null}
+      {saveError ? (
+        <p role="alert" aria-live="polite" className="text-sm text-red-600">
+          {saveError}
+        </p>
+      ) : null}
       <div className="overflow-x-auto rounded-md border">
         <table className="w-full min-w-[900px] border-collapse text-sm">
           <thead>
@@ -282,6 +317,35 @@ export function ExaminationRegister({
                       onChange={(event) =>
                         setRemarks(statement.id, event.target.value)
                       }
+                      onBlur={() => {
+                        if (mode !== "binary" || !row.status) {
+                          return;
+                        }
+
+                        const current = rows[statement.id] ?? {
+                          status: null,
+                          remarks: null,
+                        };
+                        const lastSaved = savedRows[statement.id] ?? {
+                          status: null,
+                          remarks: null,
+                        };
+
+                        if (
+                          current.status === lastSaved.status &&
+                          current.remarks === lastSaved.remarks
+                        ) {
+                          return;
+                        }
+
+                        saveBinary(
+                          statement.id,
+                          current.status as BinaryStatus,
+                          current.remarks,
+                          lastSaved,
+                          current,
+                        );
+                      }}
                       placeholder="Add remarks"
                       className="min-h-16 w-full rounded border border-[color:var(--border)] p-2 text-sm"
                       disabled={

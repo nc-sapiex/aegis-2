@@ -39,5 +39,21 @@ test.describe("RBIA sample-account register", () => {
       page.getByRole("columnheader", { name: "Violation" }),
     ).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "N/A" })).toBeVisible();
+
+    const registerRows = page.locator("tbody tr");
+    await expect(registerRows.first()).toBeVisible();
+    const firstRow = registerRows.first();
+
+    await firstRow.getByRole("radio", { name: "compliant" }).click();
+    await expect(firstRow.getByText("Compliant")).toBeVisible();
+
+    const accountButtons = page.locator(
+      'nav[aria-label="Sampled accounts"] button',
+    );
+    if ((await accountButtons.count()) > 1) {
+      const selectedBefore = await page.locator("h2 + p").textContent();
+      await accountButtons.nth(1).click();
+      await expect(page.locator("h2 + p")).not.toHaveText(selectedBefore ?? "");
+    }
   });
 });
