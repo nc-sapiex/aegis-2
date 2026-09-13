@@ -52,13 +52,11 @@ export default async function AuditExecutionPage({ params }: PageProps) {
     ),
     hasFrozenScore: engagement.branchRbiaScore?.frozenAt != null,
   };
-  const availableStatusTransitions = canManageTeam
-    ? getAvailableEngagementTransitions(
-        engagement.status,
-        userRoles as Role[],
-        transitionContext,
-      )
-    : [];
+  const availableStatusTransitions = getAvailableEngagementTransitions(
+    engagement.status,
+    userRoles as Role[],
+    transitionContext,
+  );
 
   // Fetch available auditors for team assignment (R13)
   const tenantId = session.user.tenantId;
