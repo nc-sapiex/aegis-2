@@ -88,22 +88,48 @@ export async function setSectionNotApplicable(input: SectionNotApplicableInput) 
         });
 
         if (leafNodes.length === 0) return 0;
+        const leafNodeIds = leafNodes.map((node) => node.id);
 
-        const result = await tx.examinationResponse.updateMany({
+        const clearedCount = await tx.examinationResponse.count({
           where: {
             tenantId,
             engagementId: input.engagementId,
-            nodeId: { in: leafNodes.map((node) => node.id) },
+            nodeId: { in: leafNodeIds },
+            OR: [{ scoreLabel: { not: null } }, { isNotApplicable: true }],
+          },
+        });
+
+        await tx.examinationResponse.createMany({
+          data: leafNodeIds.map((nodeId) => ({
+            tenantId,
+            engagementId: input.engagementId,
+            nodeId,
+            score: null,
+            scoreLabel: null,
+            isNotApplicable: true,
+            notApplicableReason: input.reason.trim(),
+            respondedById: session.user.id,
+            respondedAt: new Date(),
+          })),
+          skipDuplicates: true,
+        });
+
+        await tx.examinationResponse.updateMany({
+          where: {
+            tenantId,
+            engagementId: input.engagementId,
+            nodeId: { in: leafNodeIds },
           },
           data: {
             score: null,
             scoreLabel: null,
-            isNotApplicable: false,
-            notApplicableReason: null,
+            isNotApplicable: true,
+            notApplicableReason: input.reason.trim(),
           },
         });
-        return result.count;
+        return clearedCount;
       },
+      input.reason.trim(),
     );
 
     return {

@@ -24,6 +24,12 @@ function readString(record: Record<string, unknown> | null, key: string) {
   return typeof value === "string" ? value : null;
 }
 
+function toIsoTimestamp(value: string | null, fallback: Date): string {
+  if (!value) return fallback.toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? fallback.toISOString() : parsed.toISOString();
+}
+
 export async function getResponse(
   tenantId: string,
   engagementId: string,
@@ -80,16 +86,10 @@ export async function getResponseHistory(
   const db = prismaForTenant(tenantId);
   const response = await getResponse(tenantId, engagementId, nodeId);
   if (!response) return null;
-  const originalUser = response.respondedById
-    ? await db.user.findFirst({
-        where: { tenantId, id: response.respondedById },
-        select: { name: true },
-      })
-    : null;
-
   const logs = await db.auditLog.findMany({
     where: {
       tenantId,
+      recordId: response.id,
       tableName: "ExaminationResponse",
       actionType: "rbia.score_revised",
       operation: "UPDATE",
@@ -103,21 +103,16 @@ export async function getResponseHistory(
       createdAt: true,
     },
   });
-
-  const revisionsInScope = logs.filter((log) => {
-    const oldData = asRecord(log.oldData);
-    const newData = asRecord(log.newData);
-    const oldEngagementId = readString(oldData, "engagementId");
-    const oldNodeId = readString(oldData, "nodeId");
-    const newEngagementId = readString(newData, "engagementId");
-    const newNodeId = readString(newData, "nodeId");
-    return (
-      (oldEngagementId === engagementId && oldNodeId === nodeId) ||
-      (newEngagementId === engagementId && newNodeId === nodeId)
-    );
-  });
-
-  const userIds = [...new Set(revisionsInScope.map((log) => log.userId).filter(Boolean))] as string[];
+  const firstRevisionOldData = asRecord(logs[0]?.oldData);
+  const originalResponderId =
+    readString(firstRevisionOldData, "respondedById") ?? response.respondedById;
+  const userIds = [
+    ...new Set(
+      [originalResponderId, ...logs.map((log) => log.userId).filter(Boolean)].filter(
+        Boolean,
+      ),
+    ),
+  ] as string[];
   const users = userIds.length
     ? await db.user.findMany({
         where: { tenantId, id: { in: userIds } },
@@ -128,12 +123,20 @@ export async function getResponseHistory(
 
   return {
     original: {
-      scoreLabel: response.scoreLabel ?? "UNSCORED",
+      scoreLabel:
+        readString(firstRevisionOldData, "scoreLabel") ??
+        response.scoreLabel ??
+        "UNSCORED",
       reason: "Original response",
-      revisedByName: originalUser?.name ?? "Unknown",
-      revisedAt: (response.respondedAt ?? new Date(0)).toISOString(),
+      revisedByName: originalResponderId
+        ? (userNameById.get(originalResponderId) ?? "Unknown")
+        : "Unknown",
+      revisedAt: toIsoTimestamp(
+        readString(firstRevisionOldData, "respondedAt"),
+        response.respondedAt ?? new Date(0),
+      ),
     },
-    revisions: revisionsInScope.map((log) => {
+    revisions: logs.map((log) => {
       const newData = asRecord(log.newData);
       return {
         scoreLabel: readString(newData, "scoreLabel") ?? "UNSCORED",

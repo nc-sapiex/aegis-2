@@ -71,8 +71,8 @@ export async function reviseScore(input: ReviseScoreInput) {
           data: {
             score: SCORE_VALUES[input.newScoreLabel],
             scoreLabel: input.newScoreLabel,
-            respondedById: session.user.id,
-            respondedAt: new Date(),
+            isNotApplicable: false,
+            notApplicableReason: null,
           },
         });
         if (updated.count !== 1) {

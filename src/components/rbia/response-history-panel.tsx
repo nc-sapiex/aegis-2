@@ -14,8 +14,6 @@ export function ResponseHistoryPanel({
 }) {
   return (
     <div
-      role="dialog"
-      aria-modal="true"
       className="fixed right-0 top-0 h-full w-[440px] border-l border-[color:var(--border)] bg-[color:var(--background)] p-4"
     >
       <h2 className="text-[16px] font-medium">Score history</h2>
