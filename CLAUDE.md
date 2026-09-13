@@ -100,6 +100,15 @@ SKIP_ENV_VALIDATION=1 pnpm build
 - `src/env.ts` requires `DATABASE_URL`, `BETTER_AUTH_SECRET` (min 32),
   `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`. AWS vars are optional and the
   features that need them fail loudly, they do not fall back.
+- Inside `withAuditedMutation`, use the `tx` argument. Calling
+  `prismaForTenant` from that callback opens a second transaction on another
+  pooled connection and drops the actor GUCs the audit trigger needs.
+  `TENANT_CLIENT=singleton` is a spike-only escape hatch and is ignored when
+  `NODE_ENV=production`.
+- `pnpm db:seed` wipes tenants. Re-run `pnpm seed:rbia-housing`,
+  `pnpm seed:exam-questions`, then `pnpm seed:lifecycle` afterwards. The
+  lifecycle script no longer seeds GRC (risk register / controls / work
+  program). Counts and pitfalls: [`docs/SEED-PROCESS-MANUAL.md`](docs/SEED-PROCESS-MANUAL.md).
 - `docs/reference/` is generated and byte-checked in CI; it is in
   `.prettierignore` and must stay there.
 - pnpm is pinned by `packageManager`; settings live in `pnpm-workspace.yaml`,

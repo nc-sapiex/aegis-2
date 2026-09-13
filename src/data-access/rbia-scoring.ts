@@ -1,6 +1,7 @@
 import "server-only";
 import { prismaForTenant } from "./prisma";
 import type { AuthSession as Session } from "@/lib/auth";
+import { isDescendantPath } from "@/lib/examination-path";
 
 /**
  * Data Access Layer for RBIA scoring.
@@ -178,7 +179,7 @@ export async function getEngagementModuleScores(
   // Q1: Module-level nodes (depth 1)
   const modules = await db.examinationNode.findMany({
     where: { tenantId, depth: 1, isActive: true },
-    select: { id: true, code: true, name: true },
+    select: { id: true, code: true, name: true, path: true },
   });
 
   if (modules.length === 0) return [];
@@ -201,18 +202,17 @@ export async function getEngagementModuleScores(
     responses.filter((r) => r.score !== null).map((r) => r.nodeId),
   );
 
-  // Group leaf nodes by their module (first path segment = module node id)
-  // Path format: "moduleId.subId.leafId" or "moduleId.leafId"
+  // Group leaf nodes by the depth-1 module whose slash-separated path is a
+  // prefix. The old split(".") + lookup-by-UUID never matched seeded paths
+  // (`ROOT/CREDIT/CREDIT-001`) so every module reported 0 leaves.
   const leafsByModule = new Map<string, string[]>();
+  for (const mod of modules) {
+    leafsByModule.set(mod.id, []);
+  }
   for (const leaf of leafNodes) {
-    // The path starts with the root node id; module is at index 1 (depth 1)
-    const segments = leaf.path.split(".");
-    // depth-1 module id is segments[1] (segments[0] is root)
-    const moduleId = segments.length >= 2 ? segments[1] : null;
-    if (!moduleId) continue;
-    const existing = leafsByModule.get(moduleId) ?? [];
-    existing.push(leaf.id);
-    leafsByModule.set(moduleId, existing);
+    const mod = modules.find((m) => isDescendantPath(leaf.path, m.path));
+    if (!mod) continue;
+    leafsByModule.get(mod.id)!.push(leaf.id);
   }
 
   // Build result rows

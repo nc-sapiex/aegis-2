@@ -82,6 +82,13 @@ PLANNED → TEAM_ASSIGNED → OPENING_MEETING → IN_PROGRESS → EXIT_MEETING �
 Every non-terminal state can transition to `CANCELLED`; `COMPLETED` and
 `CANCELLED` are terminal (empty transition arrays).
 
+The only write path is `transitionEngagementStatus` in
+`src/actions/audit-execution/transition-engagement-status.ts`. It requires
+`audit_execution:manage_team`, validates the target against the eight-state
+enum, and evaluates `canTransitionEngagement` (role + prerequisite) before
+updating. The older `updateEngagementStatus` action is gone; the engagement
+header calls this typed transition.
+
 Four of the five forward transitions carry a **prerequisite** beyond the role
 check — a fact about the engagement's real-world state, not about who's
 asking:

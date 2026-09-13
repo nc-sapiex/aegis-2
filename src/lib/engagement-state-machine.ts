@@ -46,11 +46,16 @@ export type EngagementContext = {
  * Definition for a single state transition.
  */
 export type EngagementTransitionDef = {
-  to: EngagementStatus;
+  to: Exclude<EngagementStatus, "PLANNED">;
   label: string;
   allowedRoles: Role[];
   prerequisite?: (ctx: EngagementContext) => TransitionResult;
 };
+
+export type AvailableEngagementTransition = Pick<
+  EngagementTransitionDef,
+  "to" | "label"
+>;
 
 // ─── Transition Map ─────────────────────────────────────────────────────────
 
@@ -227,4 +232,21 @@ export function canTransitionEngagement(
   }
 
   return { allowed: true };
+}
+
+/**
+ * Get all currently available engagement transitions for a user.
+ */
+export function getAvailableEngagementTransitions(
+  currentStatus: EngagementStatus,
+  userRoles: Role[],
+  ctx: EngagementContext,
+): AvailableEngagementTransition[] {
+  return ENGAGEMENT_TRANSITIONS[currentStatus]
+    .filter(
+      (transition) =>
+        canTransitionEngagement(currentStatus, transition.to, userRoles, ctx)
+          .allowed,
+    )
+    .map(({ to, label }) => ({ to, label }));
 }

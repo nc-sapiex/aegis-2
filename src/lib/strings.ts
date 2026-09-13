@@ -11,7 +11,9 @@ type Vars = Record<string, string | number>;
 function lookup(ns: string, key: string, vars?: Vars): string {
   const table = (en as Record<string, Record<string, string>>)[ns];
   let s = table?.[key] ?? `${ns}.${key}`;
-  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
+  if (vars)
+    for (const [k, v] of Object.entries(vars))
+      s = s.replaceAll(`{${k}}`, String(v));
   return s;
 }
 

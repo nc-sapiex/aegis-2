@@ -8,6 +8,7 @@ import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
 import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { SCORE_VALUES } from "@/lib/rbia-scoring-engine";
+import { descendantPathPrefix } from "@/lib/examination-path";
 import {
   SaveExaminationResponseSchema,
   AutoSelectModulesSchema,
@@ -410,12 +411,13 @@ export async function removeModuleSelectionAction(
       };
     }
 
-    // Find all leaf descendants of this module using materialized path prefix
+    // Find all leaf descendants of this module using materialized path prefix.
+    // Path is slash-separated; a "." prefix matches no children and skips ENGG-06.
     const descendantLeaves = await db.examinationNode.findMany({
       where: {
         tenantId,
         isLeaf: true,
-        path: { startsWith: moduleNode.path + "." },
+        path: { startsWith: descendantPathPrefix(moduleNode.path) },
       },
       select: { id: true },
     });

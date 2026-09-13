@@ -86,6 +86,16 @@ export async function generateSampleAction(input: GenerateSampleInput) {
       criteriaBuckets: config.criteriaBuckets as unknown as BucketAllocation[],
     });
 
+    // An empty selection with a non-empty portfolio used to lock the config
+    // (sampleGenerated=true, sampleCount=0) and block account examination.
+    if (samplingResult.totalSelected === 0) {
+      return {
+        success: false as const,
+        error:
+          "Sampling produced no accounts. Increase the sample size or adjust bucket percentages, then try again.",
+      };
+    }
+
     // 4. Persist sampling results in a transaction. Marking accounts sampled
     // writes LoanAccount, which carries an audit trigger, so the transaction
     // runs through withAuditedMutation to set the context the trigger reads.

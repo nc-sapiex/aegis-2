@@ -12,18 +12,25 @@ cross-cutting rules (audit triggers, tenant scoping) stay in the root `CLAUDE.md
 - A fresh database needs `pnpm db:bootstrap` after `db:push`; `db:push` alone
   leaves it with no audit triggers, dashboard views, or composite FKs
 
-## Row Level Security is quarantined — do not revive it
+## Row Level Security is not enabled — do not apply the superseded file
 
-`prisma/migrations/superseded/add_rls_policies.sql` is quarantined for a reason
-worth knowing. It sets `FORCE ROW LEVEL SECURITY` on 11 tables keyed to
-`app.current_tenant_id` — a GUC only audited transactions set, through
-`setSessionContext()` in `src/lib/session-context.ts` or the legacy
-`setAuditContext()`. Ordinary reads never set it, so applying the file makes
-those tables return **zero rows** rather than erroring, and raises an
-invalid-UUID error wherever a pooled connection exposes the GUC as `''`.
+`prisma/migrations/superseded/add_rls_policies.sql` is history. Read it; do not
+apply it. It would create an `aegis_app` role and `FORCE ROW LEVEL SECURITY` on
+11 tables against a hand-written policy set that is not the Task 4 generator
+in `docs/superpowers/plans/2026-09-13-tenant-isolation-rls.md`.
 
-The RLS enforcement model is still undecided. Do not revive this file to settle
-it. Four `copilot/*` branches on the remote hold the competing proposals.
+Reads via `prismaForTenant` now set `app.current_tenant_id` once per
+transaction (`src/lib/tenant-client.ts`). Audited writes still set the same
+GUC through `setSessionContext`. Policies themselves are not in this repo
+yet — they arrive in Task 4, gated by the load spike. Until then, `WHERE
+tenantId` is the isolation control.
+
+Do not revive the superseded file to "turn RLS on early". A database built
+from current `main` already has the dated schema additions in
+`20260904_f07_f15_schema_additions.sql` and
+`20260905_account_unique_accountid_providerid.sql`; those matter only for
+databases pushed before they landed. Apply them with `pnpm db:apply`, oldest
+first — see [`docs/ops/release-checklist.md`](../docs/ops/release-checklist.md).
 
 ## Session GUCs read back as `''`, not NULL
 
