@@ -24,7 +24,6 @@ function disabledMailer(): Mailer {
   return {
     async send() {
       throw new Error("Mail is disabled (MAIL_DRIVER=disabled)");
-    }
     },
   };
 }

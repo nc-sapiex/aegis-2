@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendMailMock = vi.fn(async () => ({ messageId: "smtp-msg-1" }));
+const createTransportMock = vi.fn(() => ({ sendMail: sendMailMock }));
 vi.mock("nodemailer", () => ({
-  default: { createTransport: vi.fn(() => ({ sendMail: sendMailMock })) },
+  default: { createTransport: createTransportMock },
 }));
 
 const sesSendMock = vi.fn(async () => ({ MessageId: "ses-msg-1" }));
@@ -19,6 +20,7 @@ describe("getMailer", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.unstubAllEnvs();
+    createTransportMock.mockClear();
     sendMailMock.mockClear();
     sesSendMock.mockClear();
   });
@@ -41,6 +43,34 @@ describe("getMailer", () => {
         to: "a@b.com",
         subject: "Hi",
         html: "<p>hi</p>",
+      }),
+    );
+    expect(createTransportMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: "smtp.example.com",
+        port: 587,
+        secure: false,
+      }),
+    );
+  });
+
+  it("smtp driver enables secure transport on port 465", async () => {
+    vi.stubEnv("MAIL_DRIVER", "smtp");
+    vi.stubEnv("SMTP_HOST", "smtp.example.com");
+    vi.stubEnv("SMTP_PORT", "465");
+    vi.stubEnv("SMTP_USER", "user");
+    vi.stubEnv("SMTP_PASSWORD", "pass");
+    const { getMailer } = await import("../mailer");
+    await getMailer().send({
+      to: "a@b.com",
+      subject: "Hi",
+      htmlBody: "<p>hi</p>",
+    });
+    expect(createTransportMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: "smtp.example.com",
+        port: 465,
+        secure: true,
       }),
     );
   });
@@ -68,15 +98,12 @@ describe("getMailer", () => {
     );
   });
 
-  it("the disabled driver returns a structured error on first use", async () => {
+  it("the disabled driver throws on first use", async () => {
     vi.stubEnv("MAIL_DRIVER", "disabled");
     const { getMailer } = await import("../mailer");
     await expect(
       getMailer().send({ to: "a@b.com", subject: "Hi", htmlBody: "x" }),
-    ).resolves.toEqual({
-      success: false,
-      error: "Mail is disabled (MAIL_DRIVER=disabled)",
-    });
+    ).rejects.toThrow("Mail is disabled (MAIL_DRIVER=disabled)");
   });
 
   it("a transport failure returns a structured error, never throws", async () => {
