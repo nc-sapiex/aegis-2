@@ -1,11 +1,8 @@
 import {
   LayoutDashboard,
-  ShieldCheck,
   Shield,
   ClipboardList,
-  ClipboardCheck,
   Search,
-  FileBarChart,
   FileText,
   UserCheck,
   Settings,
@@ -15,14 +12,12 @@ import {
   Activity,
   BarChart3,
   Calendar,
-  AlertTriangle,
-  CheckCircle2,
-  Landmark,
-  Building2,
-  TrendingUp,
-  Monitor,
 } from "@/lib/icons";
-import type { Permission, Role } from "./permissions";
+import {
+  getPermissions,
+  type Permission,
+  type Role,
+} from "./permissions";
 
 /**
  * Navigation item structure for sidebar.
@@ -154,14 +149,7 @@ export const navItems: NavItem[] = [
  * @returns Filtered array of nav items user can access
  */
 export function filterNavByRoles(roles: Role[]): NavItem[] {
-  const permissions = new Set<Permission>();
-
-  // Collect all permissions from all user's roles
-  for (const role of roles) {
-    for (const perm of getPermissionsForRole(role)) {
-      permissions.add(perm);
-    }
-  }
+  const permissions = new Set<Permission>(getPermissions(roles));
 
   // Filter nav items: user needs at least one permission that matches nav item's requirement
   return navItems.filter((item) => {
@@ -192,199 +180,4 @@ export function filterNavByRoles(roles: Role[]): NavItem[] {
 
     return permissions.has(item.requiredPermission);
   });
-}
-
-/**
- * Get all permissions for a specific role.
- * Helper for filterNavByRoles.
- *
- * Note: In production, this should import from permissions.ts's ROLE_PERMISSIONS
- * to avoid duplication. For now, defined inline to avoid circular import.
- */
-function getPermissionsForRole(role: Role): Permission[] {
-  const rolePermissions: Record<Role, Permission[]> = {
-    AUDITOR: [
-      "observation:create",
-      "observation:read",
-      "compliance:read",
-      "audit_plan:read",
-      "dashboard:auditor",
-    ],
-    AUDIT_MANAGER: [
-      "observation:read",
-      "observation:review",
-      "observation:close_low_medium",
-      "audit_plan:create",
-      "audit_plan:manage",
-      "compliance:read",
-      "compliance:update",
-      "report:read",
-      "report:add_commentary",
-      "dashboard:manager",
-    ],
-    CAE: [
-      "observation:read",
-      "observation:approve",
-      "observation:close_high_critical",
-      "audit_plan:read",
-      "audit_plan:manage",
-      "compliance:read",
-      "compliance:update",
-      "compliance:mark_na",
-      "report:read",
-      "report:generate",
-      "report:add_commentary",
-      "audit_trail:read",
-      "admin:manage_users",
-      "admin:manage_roles",
-      "admin:manage_settings",
-      "calendar:manage",
-      "dashboard:cae",
-    ],
-    CCO: [
-      "compliance:read",
-      "compliance:update",
-      "observation:read",
-      "report:read",
-      "dashboard:cco",
-    ],
-    CEO: [
-      "dashboard:ceo",
-      "report:read",
-      "observation:read",
-      "compliance:read",
-    ],
-    AUDITEE: ["observation:read"],
-    BOARD_OBSERVER: ["dashboard:ceo", "observation:read", "report:read"],
-    LEAD_AUDITOR: [
-      "observation:create",
-      "observation:read",
-      "compliance:read",
-      "audit_plan:read",
-      "audit_execution:read",
-      "audit_execution:manage_team",
-      "audit_execution:manage_sections",
-      "examination:respond",
-      "examination:read",
-      "ram:read",
-      "dashboard:auditor",
-      "report:add_commentary",
-    ],
-    FIELD_AUDITOR: [
-      "observation:create",
-      "observation:read",
-      "compliance:read",
-      "audit_plan:read",
-      "audit_execution:read",
-      "examination:respond",
-      "examination:read",
-      "ram:read",
-      "dashboard:auditor",
-    ],
-    BRANCH_HEAD: [
-      "observation:read",
-      "compliance:read",
-      "examination:read",
-      "bh_certificate:sign",
-      "compliance:branch_response",
-    ],
-    ZONAL_AUDITOR: [
-      "observation:read",
-      "compliance:read",
-      "compliance:zac_review",
-      "audit_plan:read",
-      "audit_execution:read",
-      "examination:read",
-      "risk_register:read",
-      "issue:read",
-      "dashboard:auditor",
-    ],
-    ACE_OFFICER: [
-      "observation:read",
-      "compliance:read",
-      "compliance:ace_process",
-      "issue:read",
-      "issue:manage",
-      "issue:accept_risk",
-      "risk_register:read",
-      "control_library:read",
-      "qa_assessment:read",
-      "qa_assessment:manage",
-      "audit_universe:read",
-      "dashboard:cae",
-    ],
-    CONCURRENT_AUDITOR: [
-      "observation:create",
-      "observation:read",
-      "concurrent_audit:read",
-      "concurrent_audit:execute",
-      "compliance:read",
-      "examination:respond",
-      "examination:read",
-      "dashboard:auditor",
-    ],
-    IS_AUDITOR: [
-      "observation:create",
-      "observation:read",
-      "compliance:read",
-      "audit_plan:read",
-      "audit_execution:read",
-      "examination:respond",
-      "examination:read",
-      "control_library:read",
-      "work_program:read",
-      "work_program:execute",
-      "issue:read",
-      "issue:manage",
-      "is_audit:read",
-      "is_audit:manage",
-      "dashboard:auditor",
-    ],
-    RISK_HEAD: [
-      "risk_register:read",
-      "risk_register:manage",
-      "risk_mis:read",
-      "control_library:read",
-      "control_library:manage",
-      "issue:read",
-      "issue:manage",
-      "issue:accept_risk",
-      "audit_universe:read",
-      "compliance:read",
-      "observation:read",
-      "policy:read",
-      "housekeeping:read",
-      "dashboard:risk_head",
-    ],
-    ACB_MEMBER: [
-      "board:workspace",
-      "board:agenda",
-      "observation:read",
-      "compliance:read",
-      "compliance:acb_report",
-      "risk_register:read",
-      "risk_mis:read",
-      "issue:read",
-      "report:read",
-      "policy:read",
-      "committee:read",
-      "regulatory:read",
-      "dashboard:ceo",
-    ],
-    SYSTEM_ADMIN: [
-      "admin:system",
-      "admin:manage_users",
-      "admin:manage_roles",
-      "admin:manage_settings",
-      "template:manage",
-      "calendar:manage",
-      "audit_universe:read",
-      "audit_universe:manage",
-      "policy:manage",
-      "committee:manage",
-      "dashboard:cae",
-    ],
-  };
-
-  return rolePermissions[role] || [];
 }

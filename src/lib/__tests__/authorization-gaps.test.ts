@@ -4,6 +4,7 @@ import { join } from "path";
 
 const PAGE_ROOT = "src/app/(dashboard)";
 const ACTION_ROOT = "src/actions";
+const PAGE_DEFAULT_EXPORT = /export\s+default\s+async\s+function(?:\s+\w+)?\s*\(/g;
 const PAGE_GUARD_CALLS = [
   "requirePermission(",
   "requireAnyPermission(",
@@ -32,8 +33,10 @@ function walk(dir: string): string[] {
 
 function exportedServerActions(source: string): { name: string; body: string }[] {
   const actions: { name: string; body: string }[] = [];
-  const pattern = /export\s+async\s+function\s+(\w+)\s*\(/g;
-  const matches = [...source.matchAll(pattern)];
+  const matches = [
+    ...source.matchAll(/export\s+async\s+function\s+(\w+)\s*\(/g),
+    ...source.matchAll(/export\s+const\s+(\w+)\s*=\s*async\s*\(/g),
+  ].sort((a, b) => a.index - b.index);
 
   for (const [index, match] of matches.entries()) {
     const nextMatch = matches[index + 1];
@@ -44,6 +47,15 @@ function exportedServerActions(source: string): { name: string; body: string }[]
   }
 
   return actions;
+}
+
+function defaultExportPageBody(source: string): string | null {
+  const match = PAGE_DEFAULT_EXPORT.exec(source);
+  PAGE_DEFAULT_EXPORT.lastIndex = 0;
+  if (!match?.index && match?.index !== 0) return null;
+
+  const nextExport = source.indexOf("\nexport ", match.index + 1);
+  return source.slice(match.index, nextExport === -1 ? source.length : nextExport);
 }
 
 describe("authorization gaps", () => {
@@ -62,7 +74,11 @@ describe("authorization gaps", () => {
   it("every (dashboard) page.tsx calls a page guard", () => {
     const unguarded = dashboardPages.filter((file) => {
       const source = readFileSync(join(process.cwd(), file), "utf-8");
-      return !PAGE_GUARD_CALLS.some((call) => source.includes(call));
+      const pageBody = defaultExportPageBody(source);
+      return (
+        pageBody === null ||
+        !PAGE_GUARD_CALLS.some((call) => pageBody.includes(call))
+      );
     });
 
     expect(

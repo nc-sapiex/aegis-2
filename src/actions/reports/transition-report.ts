@@ -33,17 +33,6 @@ export async function transitionReportStatus(input: TransitionReportInput) {
   const userRoles = session.user.roles;
   const tenantId = session.user.tenantId;
 
-  const canManageReports =
-    hasPermission(userRoles, "report:add_commentary") ||
-    hasPermission(userRoles, "report:approve");
-
-  if (!canManageReports) {
-    return {
-      success: false as const,
-      error: "You do not have permission to transition reports.",
-    };
-  }
-
   // ─── Step 2: Input Validation ──────────────────────────────────
   const parsed = TransitionReportSchema.safeParse(input);
   if (!parsed.success) {
@@ -84,6 +73,17 @@ export async function transitionReportStatus(input: TransitionReportInput) {
 
     const currentStatus = (engagement.reportStatus ?? "DRAFT") as ReportStatus;
     const targetStatus = validated.targetStatus;
+    const requiredPermission =
+      targetStatus === "APPROVED" || targetStatus === "ISSUED"
+        ? "report:approve"
+        : "report:add_commentary";
+
+    if (!hasPermission(userRoles, requiredPermission)) {
+      return {
+        success: false as const,
+        error: `You do not have permission to transition reports to ${targetStatus}.`,
+      };
+    }
 
     // ─── Step 4: Validate transition is allowed ────────────────────
     const allowedTargets = REPORT_TRANSITIONS[currentStatus];

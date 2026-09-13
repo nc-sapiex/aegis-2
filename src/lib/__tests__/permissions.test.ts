@@ -92,6 +92,10 @@ describe("ROLE_PERMISSIONS structure", () => {
     );
   });
 
+  it("AUDIT_MANAGER can approve reports", () => {
+    expect(hasPermission([Role.AUDIT_MANAGER], "report:approve")).toBe(true);
+  });
+
   it("CCO has compliance:read and compliance:update", () => {
     expect(hasPermission([Role.CCO], "compliance:read")).toBe(true);
     expect(hasPermission([Role.CCO], "compliance:update")).toBe(true);

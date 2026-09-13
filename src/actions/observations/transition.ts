@@ -16,6 +16,41 @@ import type { TransitionObservationInput } from "./schemas";
 import { createNotification } from "@/data-access/notifications";
 import { logger } from "@/lib/logger";
 
+function requiredPermissionsForTransition(
+  currentStatus: ObservationStatus,
+  targetStatus: ObservationStatus,
+  severity: Severity,
+): Permission[] {
+  if (currentStatus === "DRAFT" && targetStatus === "SUBMITTED") {
+    return ["observation:create"];
+  }
+
+  if (
+    (currentStatus === "SUBMITTED" &&
+      (targetStatus === "REVIEWED" || targetStatus === "DRAFT")) ||
+    (currentStatus === "REVIEWED" &&
+      (targetStatus === "ISSUED" || targetStatus === "SUBMITTED"))
+  ) {
+    return ["observation:review"];
+  }
+
+  if (currentStatus === "ISSUED" && targetStatus === "RESPONSE") {
+    return ["observation:read"];
+  }
+
+  if (currentStatus === "RESPONSE" && targetStatus === "COMPLIANCE") {
+    return ["observation:create", "observation:review"];
+  }
+
+  if (currentStatus === "COMPLIANCE" && targetStatus === "CLOSED") {
+    return severity === "HIGH" || severity === "CRITICAL"
+      ? ["observation:close_high_critical"]
+      : ["observation:close_low_medium", "observation:close_high_critical"];
+  }
+
+  return [];
+}
+
 /**
  * Generic state transition action for observations (OBS-02 through OBS-06).
  *
@@ -32,21 +67,6 @@ export async function transitionObservation(input: TransitionObservationInput) {
   const session = await getRequiredSession();
   const userRoles = session.user.roles;
   const tenantId = session.user.tenantId;
-
-  const canManageObservation = [
-    "observation:create",
-    "observation:review",
-    "observation:approve",
-    "observation:close_low_medium",
-    "observation:close_high_critical",
-  ] satisfies Permission[];
-
-  if (!canManageObservation.some((permission) => hasPermission(userRoles, permission))) {
-    return {
-      success: false as const,
-      error: "You do not have permission to transition observations.",
-    };
-  }
 
   // Step 2: Validate input
   const parsed = TransitionObservationSchema.safeParse(input);
@@ -87,6 +107,23 @@ export async function transitionObservation(input: TransitionObservationInput) {
     const currentStatus = observation.status as ObservationStatus;
     const targetStatus = validated.targetStatus as ObservationStatus;
     const severity = observation.severity as Severity;
+    const requiredPermissions = requiredPermissionsForTransition(
+      currentStatus,
+      targetStatus,
+      severity,
+    );
+
+    if (
+      requiredPermissions.length === 0 ||
+      !requiredPermissions.some((permission) =>
+        hasPermission(userRoles, permission),
+      )
+    ) {
+      return {
+        success: false as const,
+        error: `You do not have permission to transition observations to ${targetStatus}.`,
+      };
+    }
 
     const transitionResult = canTransition(
       currentStatus,

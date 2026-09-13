@@ -141,6 +141,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "compliance:update",
     "report:read",
     "report:add_commentary",
+    "report:approve",
     "ram:read",
     "ram:create",
     "template:manage",
