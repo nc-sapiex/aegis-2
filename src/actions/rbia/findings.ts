@@ -408,13 +408,10 @@ export async function promoteToObservation(
         if (!ap) {
           throw new Error("Action Point not found");
         }
-        if (validated.engagementId !== ap.engagementId) {
-          throw new Error("Action Point does not belong to the provided engagement");
-        }
 
         // Load engagement for branchId fallback
         const engagement = await tx.auditEngagement.findFirst({
-          where: { id: validated.engagementId, tenantId },
+          where: { id: ap.engagementId, tenantId },
           select: { id: true, branchId: true },
         });
 
@@ -443,7 +440,7 @@ export async function promoteToObservation(
     );
 
     // Revalidate both findings and observations views
-    revalidatePath(`/audit-execution/${validated.engagementId}/rbia/findings`);
+    revalidatePath(`/audit-execution/${observation.engagementId}/rbia/findings`);
     revalidatePath("/findings");
     return { success: true, data: { id: observation.id } };
   } catch (error) {
@@ -458,9 +455,6 @@ export async function promoteToObservation(
 
     if (message === "Action Point not found") {
       return { success: false, error: message, code: "NOT_FOUND" };
-    }
-    if (message.includes("provided engagement")) {
-      return { success: false, error: message, code: "CONFLICT" };
     }
     return {
       success: false,

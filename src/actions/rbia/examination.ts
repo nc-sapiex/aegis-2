@@ -189,10 +189,16 @@ export async function saveExaminationResponse(
                   ? "MEDIUM"
                   : "LOW";
 
-            const moduleCode =
-              node.path.split("/").filter(Boolean)[0] ?? node.code;
+            const pathCodes = node.path
+              .split("/")
+              .filter((segment): segment is string => segment.length > 0);
             const moduleNode = await tx.examinationNode.findFirst({
-              where: { tenantId, code: moduleCode, depth: 1, isActive: true },
+              where: {
+                tenantId,
+                depth: 1,
+                isActive: true,
+                code: { in: pathCodes },
+              },
               select: { id: true },
             });
             if (!moduleNode) {

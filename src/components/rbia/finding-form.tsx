@@ -45,7 +45,11 @@ const ObservationFormSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters"),
   recommendation: z
     .preprocess(
-      (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+      (v) => {
+        if (typeof v !== "string") return v;
+        const trimmed = v.trim();
+        return trimmed === "" ? undefined : trimmed;
+      },
       z.string().min(10, "Recommendation must be at least 10 characters").optional(),
     ),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
@@ -198,7 +202,6 @@ export function FindingForm({
         if (mode === "promote" && sourceActionPointId) {
           const result = await promoteToObservation({
             actionPointId: sourceActionPointId,
-            engagementId,
             title: values.title,
             description: values.description,
             recommendation: values.recommendation,
@@ -294,7 +297,7 @@ export function FindingForm({
             </div>
 
             <div className="space-y-1.5">
-              <Label>Pertains to</Label>
+              <Label htmlFor="obs-pertains-to">Pertains to</Label>
               <Select
                 value={obsForm.watch("pertainsTo")}
                 onValueChange={(v) =>
@@ -304,7 +307,7 @@ export function FindingForm({
                   )
                 }
               >
-                <SelectTrigger className="w-56">
+                <SelectTrigger id="obs-pertains-to" className="w-56">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

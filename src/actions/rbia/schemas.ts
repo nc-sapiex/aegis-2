@@ -220,7 +220,6 @@ export type DeleteActionPointInput = z.infer<typeof DeleteActionPointSchema>;
 
 export const PromoteToObservationSchema = z.object({
   actionPointId: z.string().uuid(),
-  engagementId: z.string().uuid(),
   title: z.string().min(5).max(200),
   description: z.string().min(10),
   recommendation: z.string().min(10).optional(),
