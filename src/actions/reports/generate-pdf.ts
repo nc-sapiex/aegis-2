@@ -4,10 +4,14 @@ import React from "react";
 import { revalidatePath } from "next/cache";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getRequiredSession } from "@/data-access/session";
-import { hasPermission, type Role } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
-import { getAuditReportData } from "@/data-access/reports";
+import {
+  getAuditReportData,
+  getEngagementModuleSections,
+} from "@/data-access/reports";
 import { AuditSummaryDocument } from "@/components/pdf-report/audit-summary-document";
+import { GenericRbiaReportDocument } from "@/components/pdf-report/generic-module-section";
 import { uploadToS3 } from "@/lib/s3";
 import { prismaForTenant } from "@/data-access/prisma";
 import { GenerateReportSchema, type GenerateReportInput } from "./schemas";
@@ -78,12 +82,18 @@ export async function generatePdfReport(input: GenerateReportInput) {
     let reportLabel: string;
 
     if (isRbia) {
-      // ponytail: RBIA PDF is rendered by the data-driven reporting engine
-      // (spec 2026-09-12 §6.2); the hand-coded document was not carried into 2.0.
-      return {
-        success: false as const,
-        error: "RBIA report rendering is not available yet in AEGIS 2.0.",
-      };
+      const modules = await getEngagementModuleSections(
+        session,
+        parsed.data.engagementId,
+      );
+      const buffer = await renderToBuffer(
+        React.createElement(GenericRbiaReportDocument, {
+          auditData,
+          modules,
+        }) as any,
+      );
+      pdfBuffer = Buffer.from(buffer);
+      reportLabel = "rbia";
     } else {
       // Legacy audit — use existing AuditSummaryDocument
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

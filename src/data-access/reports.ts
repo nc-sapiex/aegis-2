@@ -3,6 +3,13 @@ import { prismaForTenant } from "./prisma";
 import type { BoardReportData } from "@/components/pdf-report/board-report";
 import { formatDateIndian } from "@/lib/excel-export";
 import type { AuthSession } from "@/lib/auth";
+import { computeModuleComplianceScores } from "@/lib/instance-scoring";
+import {
+  buildModuleSection,
+  type EngagementStatementLike,
+  type ModuleSectionData,
+  type ResponseLike,
+} from "@/lib/reporting/module-section";
 import { withAuditedMutation, userActor } from "./audited-mutation";
 
 function extractTenantId(session: AuthSession): string {
@@ -413,6 +420,11 @@ export async function getAuditReportData(
           ramScore: true,
         },
       },
+      tenant: {
+        select: {
+          name: true,
+        },
+      },
       observations: {
         where: { tenantId },
         include: {
@@ -492,6 +504,223 @@ export async function getAuditReportData(
     bhCertSignedByName: bhCertSignedByUser?.name || null,
     bhCertCountersignedByName: bhCertCountersignedByUser?.name || null,
   };
+}
+
+function pathBelongsToModule(path: string, modulePath: string): boolean {
+  return (
+    path === modulePath ||
+    path.startsWith(`${modulePath}/`) ||
+    path.startsWith(`${modulePath}.`)
+  );
+}
+
+/**
+ * Build the generic reporting-engine sections for the selected RBIA modules on
+ * an engagement.
+ */
+export async function getEngagementModuleSections(
+  session: AuthSession,
+  engagementId: string,
+): Promise<ModuleSectionData[]> {
+  type ModuleRow = {
+    id: string;
+    code: string;
+    name: string;
+    path: string;
+    displayOrder: number;
+  };
+  type LeafNodeRow = {
+    id: string;
+    code: string;
+    name: string;
+    path: string;
+    description: string | null;
+    weight: unknown;
+    isCritical: boolean;
+  };
+  type NodeResponseRow = {
+    nodeId: string;
+    scoreLabel: string | null;
+    isNotApplicable: boolean;
+  };
+  type QuestionRow = {
+    id: string;
+    moduleCode: string;
+    text: string;
+    weight: unknown;
+    isCritical: boolean;
+    displayOrder: number;
+  };
+  type AccountResponseRow = {
+    questionId: string;
+    status: "COMPLIANT" | "VIOLATION";
+  };
+
+  const tenantId = extractTenantId(session);
+  const db = prismaForTenant(tenantId);
+
+  const engagement = await db.auditEngagement.findFirst({
+    where: { id: engagementId, tenantId },
+    select: { id: true },
+  });
+
+  if (!engagement) {
+    return [];
+  }
+
+  const selections = (await db.engagementModuleSelection.findMany({
+    where: { engagementId, tenantId },
+    select: {
+      moduleNode: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          path: true,
+          displayOrder: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  })) as Array<{ moduleNode: ModuleRow }>;
+
+  if (selections.length === 0) {
+    return [];
+  }
+
+  const modules = selections
+    .map((selection) => selection.moduleNode)
+    .sort((a, b) => a.displayOrder - b.displayOrder);
+  const moduleCodes = modules.map((module) => module.code);
+
+  const [leafNodes, nodeResponses, questions, accountResponses] =
+    (await Promise.all([
+      db.examinationNode.findMany({
+      where: {
+        tenantId,
+        isActive: true,
+        isLeaf: true,
+        OR: modules.flatMap((module) => [
+          { path: { startsWith: `${module.path}/` } },
+          { path: { startsWith: `${module.path}.` } },
+        ]),
+      },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        path: true,
+        description: true,
+        weight: true,
+        isCritical: true,
+      },
+      orderBy: [{ path: "asc" }, { code: "asc" }],
+      }),
+      db.examinationResponse.findMany({
+      where: { tenantId, engagementId },
+      select: {
+        nodeId: true,
+        scoreLabel: true,
+        isNotApplicable: true,
+      },
+      }),
+      db.examinationQuestion.findMany({
+      where: {
+        tenantId,
+        isActive: true,
+        moduleCode: { in: moduleCodes },
+      },
+      select: {
+        id: true,
+        moduleCode: true,
+        text: true,
+        weight: true,
+        isCritical: true,
+        displayOrder: true,
+      },
+      orderBy: [{ moduleCode: "asc" }, { displayOrder: "asc" }, { id: "asc" }],
+      }),
+      db.accountExamResponse.findMany({
+      where: { tenantId, engagementId },
+      select: {
+        questionId: true,
+        status: true,
+      },
+      }),
+    ])) as [LeafNodeRow[], NodeResponseRow[], QuestionRow[], AccountResponseRow[]];
+
+  return modules.map((module) => {
+    const moduleLeafNodes = leafNodes.filter((node) =>
+      pathBelongsToModule(node.path, module.path),
+    );
+    const nodeIdToCode = new Map(moduleLeafNodes.map((node) => [node.id, node.code]));
+
+    const checklistStatements: EngagementStatementLike[] = moduleLeafNodes.map(
+      (node) => ({
+        nodeId: node.code,
+        questionId: null,
+        text: node.description ?? node.name,
+        weight: Number(node.weight),
+        isCritical: node.isCritical,
+      }),
+    );
+
+    const checklistResponses: ResponseLike[] = nodeResponses
+      .filter((response) => nodeIdToCode.has(response.nodeId))
+      .map((response) => ({
+        nodeId: nodeIdToCode.get(response.nodeId),
+        scoreLabel: response.isNotApplicable
+          ? "NOT_APPLICABLE"
+          : response.scoreLabel,
+      }));
+
+    const moduleQuestions = questions.filter(
+      (question) => question.moduleCode === module.code,
+    );
+    const questionTallies = new Map(
+      moduleQuestions.map((question) => [question.id, [] as { status: "COMPLIANT" | "VIOLATION" }[]]),
+    );
+
+    for (const response of accountResponses) {
+      const existing = questionTallies.get(response.questionId);
+      if (existing) {
+        existing.push({ status: response.status });
+      }
+    }
+
+    const questionResults = computeModuleComplianceScores(questionTallies);
+    const questionStatements: EngagementStatementLike[] = moduleQuestions.map(
+      (question) => ({
+        nodeId: null,
+        questionId: question.id,
+        text: question.text,
+        weight: Number(question.weight),
+        isCritical: question.isCritical,
+      }),
+    );
+    const questionResponses: ResponseLike[] = questionResults.map((result) => ({
+      questionId: result.questionId,
+      scoreLabel: result.scoreLabel,
+    }));
+
+    const kinds: string[] = [];
+    if (checklistStatements.length > 0) {
+      kinds.push("CHECKLIST");
+    }
+    if (questionStatements.length > 0) {
+      kinds.push("POPULATION_SAMPLE");
+    }
+
+    return buildModuleSection(
+      {
+        code: module.code,
+        name: module.name,
+        kinds: kinds.length > 0 ? kinds : ["CHECKLIST"],
+      },
+      [...checklistStatements, ...questionStatements],
+      [...checklistResponses, ...questionResponses],
+    );
+  });
 }
 
 /**

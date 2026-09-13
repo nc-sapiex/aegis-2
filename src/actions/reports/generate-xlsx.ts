@@ -1,15 +1,77 @@
 "use server";
 
+import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/data-access/session";
-import { hasPermission, type Role } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
-import { getAuditReportData } from "@/data-access/reports";
+import {
+  getAuditReportData,
+  getEngagementModuleSections,
+} from "@/data-access/reports";
 import { generateAuditReportXLSX } from "@/lib/excel-export/audit-report-generator";
+import { buildModuleSheetRows } from "@/lib/excel-export/generic-module-sheet";
 import { prismaForTenant } from "@/data-access/prisma";
 import { uploadToS3 } from "@/lib/s3";
 import { GenerateReportSchema, type GenerateReportInput } from "./schemas";
 import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
+
+type AuditReportData = NonNullable<
+  Awaited<ReturnType<typeof getAuditReportData>>
+>;
+
+async function buildGenericRbiaWorkbook(
+  auditData: AuditReportData,
+  engagementId: string,
+  modules: Awaited<ReturnType<typeof getEngagementModuleSections>>,
+): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "AEGIS Audit System";
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  const summarySheet = workbook.addWorksheet("RBIA Summary");
+  summarySheet.addRow(["Internal Audit Report"]);
+  summarySheet.addRow(["Engagement ID", engagementId]);
+  summarySheet.addRow(["Audit Number", auditData.auditNumber ?? "N/A"]);
+  summarySheet.addRow([
+    "Branch",
+    auditData.branch ? `${auditData.branch.name} (${auditData.branch.code})` : "N/A",
+  ]);
+  summarySheet.addRow(["Audit Type", auditData.auditType ?? "RBIA"]);
+  summarySheet.addRow([
+    "Period",
+    auditData.periodFrom && auditData.periodTo
+      ? `${new Date(auditData.periodFrom).toLocaleDateString("en-IN")} to ${new Date(auditData.periodTo).toLocaleDateString("en-IN")}`
+      : "N/A",
+  ]);
+  summarySheet.addRow([
+    "Overall Risk Rating",
+    auditData.overallRiskRating ?? "Not Computed",
+  ]);
+  summarySheet.addRow(["Modules Covered", modules.length]);
+  summarySheet.getRow(1).font = { bold: true, size: 16 };
+  summarySheet.getColumn(1).width = 24;
+  summarySheet.getColumn(2).width = 48;
+
+  for (const section of modules) {
+    const sheet = workbook.addWorksheet(section.moduleName.substring(0, 31));
+    const rows = buildModuleSheetRows(section);
+
+    rows.forEach((row) => {
+      sheet.addRow(row);
+    });
+
+    sheet.getRow(1).font = { bold: true, size: 12 };
+    sheet.getRow(2).font = { bold: true };
+    sheet.getColumn(1).width = 18;
+    sheet.getColumn(2).width = 72;
+    sheet.getColumn(3).width = 24;
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer);
+}
 
 /**
  * Generate XLSX audit report and upload to S3.
@@ -65,18 +127,21 @@ export async function generateXlsxReport(input: GenerateReportInput) {
 
     // R29: Allow draft/in-progress reports (not just COMPLETED)
     const isDraft = auditData.status !== "COMPLETED";
+    const isRbia = auditData.auditType === "RBIA";
 
     // Generate XLSX
     logger.info(
-      { engagementId: parsed.data.engagementId, isDraft },
+      { engagementId: parsed.data.engagementId, isDraft, isRbia },
       "Generating XLSX audit report",
     );
 
-    // R32: Pass template data to generator for custom formatting
-    const buffer = await generateAuditReportXLSX(
-      auditData,
-      templateData ?? undefined,
-    );
+    const buffer = isRbia
+      ? await buildGenericRbiaWorkbook(
+          auditData,
+          parsed.data.engagementId,
+          await getEngagementModuleSections(session, parsed.data.engagementId),
+        )
+      : await generateAuditReportXLSX(auditData, templateData ?? undefined);
 
     // Upload to S3
     const statusTag = isDraft ? "_DRAFT" : "";
