@@ -84,16 +84,28 @@ async function seedLoanAccount(
 }
 
 async function seedQuestion(tenantId: string, moduleCode = "CRD-HLN") {
-  return withFixtures(() =>
-    integrationOwner.examinationQuestion.create({
+  return withFixtures(async () => {
+    const auditModule = await integrationOwner.auditModule.upsert({
+      where: { tenantId_code: { tenantId, code: moduleCode } },
+      create: {
+        tenantId,
+        code: moduleCode,
+        name: moduleCode,
+        domain: "CREDIT",
+        kinds: ["POPULATION_SAMPLE"],
+      },
+      update: {},
+      select: { id: true },
+    });
+    return integrationOwner.examinationQuestion.create({
       data: {
         tenantId,
-        moduleCode,
+        moduleId: auditModule.id,
         text: `Is the documentation complete? ${randomUUID()}`,
       },
       select: { id: true },
-    }),
-  );
+    });
+  });
 }
 
 describe("saveAccountExamResponse", () => {

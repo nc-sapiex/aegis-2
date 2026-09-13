@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `28b1e1e` (tenant-isolation-rls-rebased)
+> Source commit: `c76a732` (module-framework/foundation)
 
 Which processes read and write which tables.
 
@@ -37,13 +37,13 @@ reachability graph.
 
 | Job | Audited | Tables touched directly |
 |---|---|---|
-| `compliance-escalation` | — | — |
-| `deadline-reminder` | yes | `NotificationQueue`, `Observation` |
+| `compliance-escalation` | — | `Tenant` |
+| `deadline-reminder` | yes | `NotificationQueue`, `Observation`, `Tenant` |
 | `notification-processor` | — | — |
-| `overdue-escalation` | yes | `NotificationQueue`, `Observation`, `User` |
-| `rbia-overdue-escalation` | yes | `BmResponseBatch`, `NotificationQueue`, `User` |
-| `snapshot-metrics` | — | `DashboardSnapshot` |
-| `weekly-digest` | yes | `NotificationQueue`, `Observation`, `User` |
+| `overdue-escalation` | yes | `NotificationQueue`, `Observation`, `Tenant`, `User` |
+| `rbia-overdue-escalation` | yes | `BmResponseBatch`, `NotificationQueue`, `Tenant`, `User` |
+| `snapshot-metrics` | — | `DashboardSnapshot`, `Tenant` |
+| `weekly-digest` | yes | `NotificationQueue`, `Observation`, `Tenant`, `User` |
 
 ## Most widely accessed tables
 
@@ -64,8 +64,8 @@ Tables reached from the greatest number of domains — the ones where a schema c
 | `ComplianceItem` | 2 | `compliance`, `observations` |
 | `NotificationQueue` | 2 | `compliance`, `jobs` |
 | `BmResponseBatch` | 2 | `jobs`, `rbia` |
+| `Tenant` | 2 | `(root)`, `jobs` |
 | `AccountExamResponse` | 1 | `account-examination` |
-| `AuditCalendar` | 1 | `admin` |
 
 ### Domain access graph
 

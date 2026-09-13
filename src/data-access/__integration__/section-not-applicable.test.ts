@@ -60,9 +60,20 @@ describe("setSectionNotApplicable", () => {
         },
         select: { id: true },
       });
+      const auditModule = await integrationOwner.auditModule.create({
+        data: {
+          tenantId: tenant.id,
+          code: "GOV",
+          name: "Govt Business",
+          domain: "GOVT",
+          kinds: ["CHECKLIST"],
+        },
+        select: { id: true },
+      });
       const moduleNode = await integrationOwner.examinationNode.create({
         data: {
           tenantId: tenant.id,
+          moduleId: auditModule.id,
           code: "GOV",
           name: "Govt Business",
           path: "ROOT/GOV",
@@ -76,6 +87,7 @@ describe("setSectionNotApplicable", () => {
       const node = await integrationOwner.examinationNode.create({
         data: {
           tenantId: tenant.id,
+          moduleId: auditModule.id,
           code: "GOV-01",
           name: "Q",
           path: "ROOT/GOV/GOV-01",
@@ -89,6 +101,7 @@ describe("setSectionNotApplicable", () => {
       const unansweredNode = await integrationOwner.examinationNode.create({
         data: {
           tenantId: tenant.id,
+          moduleId: auditModule.id,
           code: "GOV-02",
           name: "Q2",
           path: "ROOT/GOV/GOV-02",
@@ -110,7 +123,7 @@ describe("setSectionNotApplicable", () => {
       });
       return {
         engagementId: engagement.id,
-        moduleId: moduleNode.id,
+        moduleId: auditModule.id,
         nodeId: node.id,
         unansweredNodeId: unansweredNode.id,
       };
@@ -190,9 +203,20 @@ describe("setSectionNotApplicable", () => {
         },
         select: { id: true },
       });
+      const auditModule = await integrationOwner.auditModule.create({
+        data: {
+          tenantId: tenant.id,
+          code: "GOV",
+          name: "Govt Business",
+          domain: "GOVT",
+          kinds: ["CHECKLIST"],
+        },
+        select: { id: true },
+      });
       const moduleNode = await integrationOwner.examinationNode.create({
         data: {
           tenantId: tenant.id,
+          moduleId: auditModule.id,
           code: "GOV",
           name: "Govt Business",
           path: "ROOT/GOV",
@@ -206,6 +230,7 @@ describe("setSectionNotApplicable", () => {
       const answeredNode = await integrationOwner.examinationNode.create({
         data: {
           tenantId: tenant.id,
+          moduleId: auditModule.id,
           code: "GOV-01",
           name: "Q1",
           path: "ROOT/GOV/GOV-01",
@@ -219,6 +244,7 @@ describe("setSectionNotApplicable", () => {
       const unansweredNode = await integrationOwner.examinationNode.create({
         data: {
           tenantId: tenant.id,
+          moduleId: auditModule.id,
           code: "GOV-02",
           name: "Q2",
           path: "ROOT/GOV/GOV-02",
@@ -241,7 +267,7 @@ describe("setSectionNotApplicable", () => {
       });
       return {
         engagementId: engagement.id,
-        moduleId: moduleNode.id,
+        moduleId: auditModule.id,
         unansweredNodeId: unansweredNode.id,
       };
     });

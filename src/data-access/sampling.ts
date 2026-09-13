@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prismaForTenant } from "./prisma";
+import { getModuleIdByCode } from "./audit-modules";
 import type { AuthSession as Session } from "@/lib/auth";
 import type { LoanAccountForSampling } from "@/lib/sampling-engine";
 
@@ -23,11 +24,13 @@ export async function getSamplingConfig(
 ) {
   const tenantId = session.user.tenantId;
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+  if (!moduleId) return null;
 
   return db.samplingConfig.findFirst({
     where: {
       engagementId,
-      moduleCode,
+      moduleId,
       tenantId,
     },
   });
@@ -52,11 +55,13 @@ export async function getSamplingConfigWithCreator(
 ) {
   const tenantId = session.user.tenantId;
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+  if (!moduleId) return null;
 
   const config = await db.samplingConfig.findFirst({
     where: {
       engagementId,
-      moduleCode,
+      moduleId,
       tenantId,
     },
   });

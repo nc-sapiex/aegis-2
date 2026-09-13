@@ -5,6 +5,7 @@ import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/data-access/prisma";
 import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
 import { requireTeamMembership } from "@/data-access/access-guards";
+import { getModuleIdByCode } from "@/data-access/audit-modules";
 import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import {
@@ -134,15 +135,22 @@ export async function saveAccountExamResponse(
     // 5b. Verify the question belongs to this tenant and to the module the
     // sampled account was drawn from. AccountExamResponse.questionId is a bare
     // foreign key, so nothing else stops an unrelated question being attached.
-    const question = await db.examinationQuestion.findFirst({
-      where: {
-        id: questionId,
-        tenantId,
-        moduleCode: loanAccount.moduleCode,
-        isActive: true,
-      },
-      select: { id: true },
-    });
+    const moduleId = await getModuleIdByCode(
+      db,
+      tenantId,
+      loanAccount.moduleCode,
+    );
+    const question = moduleId
+      ? await db.examinationQuestion.findFirst({
+          where: {
+            id: questionId,
+            tenantId,
+            moduleId,
+            isActive: true,
+          },
+          select: { id: true },
+        })
+      : null;
 
     if (!question) {
       return {

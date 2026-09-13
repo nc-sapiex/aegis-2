@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `28b1e1e` (tenant-isolation-rls-rebased)
+> Source commit: `c76a732` (module-framework/foundation)
 
 AEGIS has two callable surfaces.
 

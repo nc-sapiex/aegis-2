@@ -56,6 +56,9 @@ function examinationDb(question: { id: string } | null) {
         moduleCode: "CRD-HLN",
       }),
     },
+    auditModule: {
+      findUnique: vi.fn().mockResolvedValue({ id: "module-crd-hln" }),
+    },
     examinationQuestion: { findFirst: vi.fn().mockResolvedValue(question) },
     accountExamResponse: {
       upsert: vi
@@ -145,7 +148,7 @@ describe("saveAccountExamResponse", () => {
       where: {
         id: QUESTION_A,
         tenantId: TENANT_A,
-        moduleCode: "CRD-HLN",
+        moduleId: "module-crd-hln",
         isActive: true,
       },
       select: { id: true },

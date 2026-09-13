@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/data-access/prisma";
+import { getModuleIdByCode } from "@/data-access/audit-modules";
 import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { SaveCriteriaSchema, type SaveCriteriaInput } from "./schemas";
@@ -46,9 +47,17 @@ export async function saveSamplingCriteria(input: SaveCriteriaInput) {
   const db = prismaForTenant(tenantId);
 
   try {
+    const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+    if (!moduleId) {
+      return {
+        success: false as const,
+        error: `Unknown module: ${moduleCode}.`,
+      };
+    }
+
     // Check if an existing config has already generated a sample (locked)
     const existing = await db.samplingConfig.findFirst({
-      where: { engagementId, moduleCode, tenantId },
+      where: { engagementId, moduleId, tenantId },
       select: { id: true, sampleGenerated: true, isLocked: true },
     });
 
@@ -63,12 +72,12 @@ export async function saveSamplingCriteria(input: SaveCriteriaInput) {
     // Upsert the SamplingConfig — create if missing, update criteria if found
     const config = await db.samplingConfig.upsert({
       where: {
-        engagementId_moduleCode: { engagementId, moduleCode },
+        engagementId_moduleId: { engagementId, moduleId },
       },
       create: {
         tenantId,
         engagementId,
-        moduleCode,
+        moduleId,
         sampleSizePct,
         criteriaBuckets,
         createdById: session.user.id,

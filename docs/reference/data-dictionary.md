@@ -4,10 +4,10 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `28b1e1e` (tenant-isolation-rls-rebased)
+> Source commit: `c76a732` (module-framework/foundation)
 
 Every table AEGIS maintains, with its columns, types and relationships.
-**77 models** and **22 enumerations**.
+**78 models** and **25 enumerations**.
 
 Conventions used throughout the schema:
 
@@ -82,6 +82,7 @@ Conventions used throughout the schema:
 - [RbiMasterDirection](#rbimasterdirection)
 - [RbiChecklistItem](#rbichecklistitem)
 - [OnboardingProgress](#onboardingprogress)
+- [AuditModule](#auditmodule)
 - [ExaminationNode](#examinationnode)
 - [ExaminationResponse](#examinationresponse)
 - [BranchRbiaScore](#branchrbiascore)
@@ -181,7 +182,8 @@ Conventions used throughout the schema:
 | `auditAreas` | AuditArea[] | no | FK→AuditArea |  |  |
 | `auditPlans` | AuditPlan[] | no | FK→AuditPlan |  |  |
 | `auditEngagements` | AuditEngagement[] | no | FK→AuditEngagement |  |  |
-| `examinationNodes` | ExaminationNode[] | no | FK→ExaminationNode |  | v6.0 RBIA relations |
+| `auditModules` | AuditModule[] | no | FK→AuditModule |  | v6.0 RBIA relations |
+| `examinationNodes` | ExaminationNode[] | no | FK→ExaminationNode |  |  |
 | `positiveObservations` | PositiveObservation[] | no | FK→PositiveObservation |  |  |
 | `examinationQuestions` | ExaminationQuestion[] | no | FK→ExaminationQuestion |  | v7.0 Sample-Based Examination relations |
 | `loanAccounts` | LoanAccount[] | no | FK→LoanAccount |  |  |
@@ -537,6 +539,12 @@ Indexes and constraints:
 | `staffStrength` | Int | yes |  |  |  |
 | `ramScore` | Decimal `@db.Decimal` | yes |  |  |  |
 | `lastAuditDate` | DateTime | yes |  |  |  |
+| `hasForex` | Boolean | no |  | `false` | Module applicability profile (spec §6.2) |
+| `hasCurrencyChest` | Boolean | no |  | `false` |  |
+| `hasGovtBusiness` | Boolean | no |  | `false` |  |
+| `hasLockers` | Boolean | no |  | `false` |  |
+| `hasAtm` | Boolean | no |  | `false` |  |
+| `loanProducts` | String[] | no |  | `[]` |  |
 | `createdAt` | DateTime | no |  | `now()` |  |
 | `updatedAt` | DateTime | no |  |  |  |
 | `observations` | Observation[] | no | FK→Observation |  | Relations |
@@ -1837,6 +1845,37 @@ Indexes and constraints:
 
 - `@@index([tenantId])`
 
+## AuditModule
+
+*Tenant-scoped:* **yes** — always filter by `tenantId`
+
+| Column | Type | Null | Key | Default | Notes |
+|---|---|---|---|---|---|
+| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
+| `tenantId` | String `@db.Uuid` | no |  |  |  |
+| `tenant` | Tenant | no | FK→Tenant |  | relation |
+| `code` | String | no |  |  |  |
+| `name` | String | no |  |  |  |
+| `domain` | ModuleDomain | no |  |  |  |
+| `kinds` | ExaminationKind[] | no |  |  |  |
+| `applicability` | Json | no |  | `"{}"` | JSON predicate over the branch profile, e.g. {"hasForex": true} or {"loanProducts": {"contains": "GOLD"}}; {} means always applicable. |
+| `weight` | Decimal `@db.Decimal` | no |  | `1.0` |  |
+| `packId` | String `@db.Uuid` | yes |  |  |  |
+| `packVersion` | String | yes |  |  |  |
+| `isActive` | Boolean | no |  | `true` |  |
+| `createdAt` | DateTime | no |  | `now()` |  |
+| `updatedAt` | DateTime | no |  |  |  |
+| `nodes` | ExaminationNode[] | no | FK→ExaminationNode |  |  |
+| `questions` | ExaminationQuestion[] | no | FK→ExaminationQuestion |  |  |
+| `samplingConfigs` | SamplingConfig[] | no | FK→SamplingConfig |  |  |
+| `sectionNaMarks` | EngagementSectionNa[] | no | FK→EngagementSectionNa |  |  |
+
+Indexes and constraints:
+
+- `@@unique([tenantId, code])`
+- `@@index([tenantId])`
+- `@@index([tenantId, isActive])`
+
 ## ExaminationNode
 
 *Tenant-scoped:* **yes** — always filter by `tenantId`
@@ -1846,6 +1885,9 @@ Indexes and constraints:
 | `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
 | `tenantId` | String `@db.Uuid` | no |  |  |  |
 | `tenant` | Tenant | no | FK→Tenant |  | relation |
+| `moduleId` | String `@db.Uuid` | yes |  |  | Permanently nullable, not a backfill-in-progress artifact: depth 0 (root area) spans multiple modules and never has a single owning AuditModule. depth >= 1 nodes get one via the module-native backfill (scripts/backfill/module-native.ts), whose own orphan check treats only depth >= 1 as backfill candidates. |
+| `module` | AuditModule | yes | FK→AuditModule |  | relation |
+| `origin` | ContentOrigin | no |  | `BANK` |  |
 | `isLeaf` | Boolean | no |  | `false` |  |
 | `parentId` | String `@db.Uuid` | yes |  |  |  |
 | `parent` | ExaminationNode | yes | FK→ExaminationNode |  | relation |
@@ -1859,7 +1901,6 @@ Indexes and constraints:
 | `updatedAt` | DateTime | no |  |  |  |
 | `responses` | ExaminationResponse[] | no | FK→ExaminationResponse |  | Relations |
 | `moduleSelections` | EngagementModuleSelection[] | no | FK→EngagementModuleSelection |  |  |
-| `sectionNaMarks` | EngagementSectionNa[] | no | FK→EngagementSectionNa |  |  |
 
 Indexes and constraints:
 
@@ -1868,6 +1909,7 @@ Indexes and constraints:
 - `@@index([tenantId, path])`
 - `@@index([parentId])`
 - `@@index([tenantId, depth, isActive])`
+- `@@index([tenantId, moduleId])`
 
 ## ExaminationResponse
 
@@ -1885,7 +1927,8 @@ Indexes and constraints:
 | `scoreLabel` | ScoreLabel | yes |  |  |  |
 | `isNotApplicable` | Boolean | no |  | `false` | Explicit N/A. A null score means "not yet examined"; this means "examined and does not apply to this branch". The freeze gate distinguishes them. |
 | `notApplicableReason` | String `@db.Text` | yes |  |  |  |
-| `workingNotes` | String `@db.Text` | yes |  |  |  |
+| `remarks` | String `@db.Text` | yes |  |  |  |
+| `version` | Int | no |  | `1` |  |
 | `flagForObservation` | Boolean | no |  | `false` |  |
 | `flagForActionPoint` | Boolean | no |  | `false` |  |
 | `respondedById` | String `@db.Uuid` | yes |  |  |  |
@@ -1958,7 +2001,7 @@ Indexes and constraints:
 | `engagementId` | String `@db.Uuid` | no |  |  |  |
 | `engagement` | AuditEngagement | no | FK→AuditEngagement |  | relation |
 | `moduleId` | String `@db.Uuid` | no |  |  |  |
-| `module` | ExaminationNode | no | FK→ExaminationNode |  | relation |
+| `module` | AuditModule | no | FK→AuditModule |  | relation |
 | `reason` | String `@db.Text` | no |  |  |  |
 | `markedById` | String `@db.Uuid` | no |  |  |  |
 | `markedAt` | DateTime | no |  | `now()` |  |
@@ -2082,6 +2125,9 @@ Indexes and constraints:
 | `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
 | `tenantId` | String `@db.Uuid` | no |  |  |  |
 | `tenant` | Tenant | no | FK→Tenant |  | relation |
+| `moduleId` | String `@db.Uuid` | no |  |  |  |
+| `module` | AuditModule | no | FK→AuditModule |  | relation |
+| `origin` | ContentOrigin | no |  | `BANK` |  |
 | `text` | String `@db.Text` | no |  |  |  |
 | `bestPracticeTip` | String `@db.Text` | yes |  |  |  |
 | `weight` | Decimal `@db.Decimal` | no |  | `1.0` |  |
@@ -2095,10 +2141,10 @@ Indexes and constraints:
 
 Indexes and constraints:
 
-- `@@unique([tenantId, moduleCode, text])`
+- `@@unique([tenantId, moduleId, text])`
 - `@@index([tenantId])`
-- `@@index([tenantId, moduleCode, isActive])`
-- `@@index([tenantId, moduleCode, displayOrder])`
+- `@@index([tenantId, moduleId, isActive])`
+- `@@index([tenantId, moduleId, displayOrder])`
 
 ## LoanAccount
 
@@ -2144,6 +2190,8 @@ Indexes and constraints:
 | `tenant` | Tenant | no | FK→Tenant |  | relation |
 | `engagementId` | String `@db.Uuid` | no |  |  |  |
 | `engagement` | AuditEngagement | no | FK→AuditEngagement |  | relation |
+| `moduleId` | String `@db.Uuid` | no |  |  |  |
+| `module` | AuditModule | no | FK→AuditModule |  | relation |
 | `sampleSizePct` | Decimal `@db.Decimal` | no |  |  |  |
 | `isLocked` | Boolean | no |  | `false` |  |
 | `lockedAt` | DateTime | yes |  |  |  |
@@ -2156,7 +2204,7 @@ Indexes and constraints:
 
 Indexes and constraints:
 
-- `@@unique([engagementId, moduleCode])`
+- `@@unique([engagementId, moduleId])`
 - `@@index([tenantId])`
 - `@@index([engagementId])`
 
@@ -2261,7 +2309,19 @@ Indian Financial Year quarters (D16) Q1 = Apr-Jun, Q2 = Jul-Sep, Q3 = Oct-Dec, Q
 
 ### ScoreLabel
 
-`FULLY_COMPLIANT` · `LARGELY_COMPLIANT` · `PARTIALLY_COMPLIANT` · `NON_COMPLIANT`
+`FULLY_COMPLIANT` · `LARGELY_COMPLIANT` · `PARTIALLY_COMPLIANT` · `MARGINALLY_COMPLIANT` · `NON_COMPLIANT`
+
+### ModuleDomain
+
+`CREDIT` · `DEPOSITS` · `FOREX` · `CASH` · `KYC` · `IT` · `HR` · `ADMIN` · `GOVT` · `TREASURY` · `OTHER`
+
+### ExaminationKind
+
+`CHECKLIST` · `POPULATION_SAMPLE`
+
+### ContentOrigin
+
+`PACK` · `BANK`
 
 ### ActionPointStatus
 

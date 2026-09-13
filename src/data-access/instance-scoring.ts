@@ -1,5 +1,6 @@
 import "server-only";
 import { prismaForTenant } from "./prisma";
+import { getModuleIdByCode } from "./audit-modules";
 import { withAuditedMutation, userActor } from "./audited-mutation";
 import type { AuthSession as Session } from "@/lib/auth";
 import {
@@ -61,12 +62,15 @@ export async function getQuestionResponseTallies(
 ): Promise<Map<string, ResponseTally[]>> {
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
 
   // Get all active questions for this module
-  const questions = await db.examinationQuestion.findMany({
-    where: { tenantId, moduleCode, isActive: true },
-    select: { id: true },
-  });
+  const questions = moduleId
+    ? await db.examinationQuestion.findMany({
+        where: { tenantId, moduleId, isActive: true },
+        select: { id: true },
+      })
+    : [];
 
   const questionIds = questions.map((q) => q.id);
 
@@ -138,6 +142,7 @@ export async function computeAndApplyInstanceScores(
 ): Promise<{ scoredLeafCount: number; moduleScore: number | null }> {
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
 
   // Step 1: Get response tallies and compute per-question compliance
   const tallies = await getQuestionResponseTallies(
@@ -148,10 +153,12 @@ export async function computeAndApplyInstanceScores(
   const complianceResults = computeModuleComplianceScores(tallies);
 
   // Step 2: Get question weights for weighted average
-  const questions = await db.examinationQuestion.findMany({
-    where: { tenantId, moduleCode, isActive: true },
-    select: { id: true, weight: true },
-  });
+  const questions = moduleId
+    ? await db.examinationQuestion.findMany({
+        where: { tenantId, moduleId, isActive: true },
+        select: { id: true, weight: true },
+      })
+    : [];
   const questionWeightMap = new Map(
     questions.map((q) => [q.id, Number(q.weight)]),
   );
