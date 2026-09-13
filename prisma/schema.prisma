@@ -702,6 +702,14 @@ model Branch {
   lastAuditDate   DateTime?
   lastAuditRating String?   // "VERY_GOOD", "GOOD", "SATISFACTORY", "MODERATE", "POOR"
 
+  // Module applicability profile (spec §6.2)
+  hasForex         Boolean  @default(false)
+  hasCurrencyChest Boolean  @default(false)
+  hasGovtBusiness  Boolean  @default(false)
+  hasLockers       Boolean  @default(false)
+  hasAtm           Boolean  @default(false)
+  loanProducts     String[] @default([])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
