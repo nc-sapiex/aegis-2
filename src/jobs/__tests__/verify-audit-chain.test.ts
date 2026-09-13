@@ -10,7 +10,6 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     tenant: { findMany: (...args: unknown[]) => mockTenantFindMany(...args) },
     auditLog: { findMany: (...args: unknown[]) => mockFindMany(...args) },
-    user: { findMany: (...args: unknown[]) => mockUserFindMany(...args) },
   },
 }));
 
@@ -23,6 +22,9 @@ vi.mock("@/data-access/audited-mutation", () => ({
         },
         notificationQueue: {
           create: (...args: unknown[]) => mockNotificationCreate(...args),
+        },
+        user: {
+          findMany: (...args: unknown[]) => mockUserFindMany(...args),
         },
       }),
   ),
@@ -95,6 +97,71 @@ describe("verifyAuditChain", () => {
           type: "AUDIT_CHAIN_TAMPER_DETECTED",
           status: "PENDING",
           payload: { firstBadSequence: "1" },
+        }),
+      }),
+    );
+  });
+
+  it("writes ok:false when prevHash does not link to the previous row", async () => {
+    const { GENESIS_HASH, hashRow } = await import("@/lib/audit-chain");
+    const firstRow = {
+      tenantId: "t1",
+      sequenceNumber: BigInt(1),
+      tableName: "Branch",
+      recordId: "r1",
+      operation: "INSERT",
+      actorUserId: null,
+      changedAt: new Date("2026-01-01T00:00:00.000Z"),
+      oldData: null,
+      newData: { a: 1 },
+    };
+
+    mockTenantFindMany.mockResolvedValue([{ id: "t1" }]);
+    mockFindMany.mockResolvedValue([
+      {
+        ...firstRow,
+        userId: firstRow.actorUserId,
+        createdAt: firstRow.changedAt,
+        prevHash: GENESIS_HASH,
+        rowHash: hashRow(firstRow, GENESIS_HASH),
+      },
+      {
+        tenantId: "t1",
+        sequenceNumber: BigInt(2),
+        tableName: "Branch",
+        recordId: "r2",
+        operation: "UPDATE",
+        userId: null,
+        createdAt: new Date("2026-01-02T00:00:00.000Z"),
+        oldData: { a: 1 },
+        newData: { a: 2 },
+        prevHash: Buffer.alloc(32, 9),
+        rowHash: Buffer.alloc(32, 3),
+      },
+    ]);
+    mockUserFindMany.mockResolvedValue([{ id: "u1" }]);
+
+    const { verifyAuditChain } = await import("@/jobs/verify-audit-chain");
+
+    await verifyAuditChain();
+
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tenantId: "t1",
+          ok: false,
+          firstBadSequence: BigInt(2),
+        }),
+      }),
+    );
+    expect(mockNotificationCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tenantId: "t1",
+          recipientId: "u1",
+          type: "AUDIT_CHAIN_TAMPER_DETECTED",
+          status: "PENDING",
+          payload: { firstBadSequence: "2" },
         }),
       }),
     );

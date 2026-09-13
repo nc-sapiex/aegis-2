@@ -73,6 +73,12 @@ type VerifyAuditChainTx = {
       };
     }): Promise<unknown>;
   };
+  user: {
+    findMany(args: {
+      where: { tenantId: string; roles: { hasSome: string[] } };
+      select: { id: true };
+    }): Promise<UserRecord[]>;
+  };
 };
 
 const db = prisma as unknown as VerifyAuditChainDb;
@@ -134,7 +140,7 @@ export async function verifyAuditChain(): Promise<void> {
         });
 
         if (!verdict.ok) {
-          const recipients = await db.user.findMany({
+          const recipients = await verifyTx.user.findMany({
             where: {
               tenantId: tenant.id,
               roles: { hasSome: ["CAE", "SYSTEM_ADMIN"] },
