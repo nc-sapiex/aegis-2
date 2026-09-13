@@ -94,6 +94,19 @@ export async function createActionPoint(
         });
         const nextSerialNo = (maxSerial._max.serialNo ?? 0) + 1;
 
+        const module = await tx.examinationNode.findFirst({
+          where: {
+            tenantId,
+            code: validated.moduleCode,
+            depth: 1,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+        if (!module) {
+          throw new Error("Module not found");
+        }
+
         return tx.actionPoint.create({
           data: {
             tenantId,
@@ -103,7 +116,7 @@ export async function createActionPoint(
             title: validated.title,
             description: validated.description,
             severity: validated.severity,
-            moduleId: validated.moduleId,
+            moduleId: module.id,
             sourceResponseId: validated.sourceResponseId ?? null,
             status: "DRAFT",
             createdById: session.user.id,
@@ -127,6 +140,9 @@ export async function createActionPoint(
 
     if (message === "Engagement not found") {
       return { success: false, error: message, code: "NOT_FOUND" };
+    }
+    if (message === "Module not found") {
+      return { success: false, error: message, code: "VALIDATION_ERROR" };
     }
     if (message.includes("active audit phases")) {
       return { success: false, error: message, code: "CONFLICT" };
@@ -392,6 +408,9 @@ export async function promoteToObservation(
         if (!ap) {
           throw new Error("Action Point not found");
         }
+        if (validated.engagementId !== ap.engagementId) {
+          throw new Error("Action Point does not belong to the provided engagement");
+        }
 
         // Load engagement for branchId fallback
         const engagement = await tx.auditEngagement.findFirst({
@@ -414,7 +433,7 @@ export async function promoteToObservation(
             moduleId: ap.moduleId,
             sourceResponseId: ap.sourceResponseId,
             status: "DRAFT",
-            engagementId: validated.engagementId,
+            engagementId: ap.engagementId,
             branchId: engagement?.branchId ?? ap.branchId,
             sourceActionPointId: ap.id,
             createdById: session.user.id,
@@ -439,6 +458,9 @@ export async function promoteToObservation(
 
     if (message === "Action Point not found") {
       return { success: false, error: message, code: "NOT_FOUND" };
+    }
+    if (message.includes("provided engagement")) {
+      return { success: false, error: message, code: "CONFLICT" };
     }
     return {
       success: false,

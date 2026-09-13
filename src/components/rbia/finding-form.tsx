@@ -35,7 +35,7 @@ const ActionPointFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(200),
   description: z.string().min(10, "Description must be at least 10 characters"),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
-  moduleId: z.string().uuid("Module ID must be a valid UUID"),
+  moduleCode: z.string().min(1, "Module code is required"),
 });
 
 type ActionPointFormValues = z.infer<typeof ActionPointFormSchema>;
@@ -44,9 +44,10 @@ const ObservationFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(200),
   description: z.string().min(10, "Description must be at least 10 characters"),
   recommendation: z
-    .string()
-    .min(10, "Recommendation must be at least 10 characters")
-    .optional(),
+    .preprocess(
+      (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+      z.string().min(10, "Recommendation must be at least 10 characters").optional(),
+    ),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
   pertainsTo: z.enum(["FINANCE", "OPERATIONS", "LEGAL_RECOVERY", "HR", "IT"]),
 });
@@ -109,13 +110,13 @@ export function FindingForm({
             title: existingData.title,
             description: existingData.description,
             severity: existingData.severity,
-            moduleId: existingData.moduleId,
+            moduleCode: existingData.moduleCode,
           }
         : {
             title: "",
             description: "",
             severity: "MEDIUM",
-            moduleId: "",
+            moduleCode: "",
           },
   });
 
@@ -175,7 +176,7 @@ export function FindingForm({
             title: values.title,
             description: values.description,
             severity: values.severity,
-            moduleId: values.moduleId,
+            moduleCode: values.moduleCode,
           });
           if (!result.success) {
             toast.error(result.error);
@@ -423,19 +424,19 @@ export function FindingForm({
                 </Select>
               </div>
 
-              {/* Module ID */}
+              {/* Module Code */}
               {mode !== "edit-ap" && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="ap-module">Module ID</Label>
+                  <Label htmlFor="ap-module">Module Code</Label>
                   <Input
                     id="ap-module"
-                    placeholder="Module UUID"
+                    placeholder="e.g. OPS, CRD"
                     className="w-40"
-                    {...apForm.register("moduleId")}
+                    {...apForm.register("moduleCode")}
                   />
-                  {apForm.formState.errors.moduleId && (
+                  {apForm.formState.errors.moduleCode && (
                     <p className="text-xs text-red-600">
-                      {apForm.formState.errors.moduleId.message}
+                      {apForm.formState.errors.moduleCode.message}
                     </p>
                   )}
                 </div>

@@ -195,7 +195,7 @@ export const CreateActionPointSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(200),
   description: z.string().min(10, "Description must be at least 10 characters"),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
-  moduleId: z.string().uuid(),
+  moduleCode: z.string().min(1),
   sourceResponseId: z.string().uuid().optional(),
 });
 

@@ -190,7 +190,7 @@ export async function saveExaminationResponse(
                   : "LOW";
 
             const moduleCode =
-              node.path.split("/").filter(Boolean)[1] ?? node.code;
+              node.path.split("/").filter(Boolean)[0] ?? node.code;
             const moduleNode = await tx.examinationNode.findFirst({
               where: { tenantId, code: moduleCode, depth: 1, isActive: true },
               select: { id: true },
