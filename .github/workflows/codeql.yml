@@ -1,0 +1,95 @@
+name: "CodeQL Advanced"
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    - cron: "43 21 * * 1"
+
+jobs:
+  check-code-scanning:
+    name: Check code scanning availability
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: read
+    outputs:
+      enabled: ${{ steps.probe.outputs.enabled }}
+    steps:
+      - name: Probe code scanning API
+        id: probe
+        uses: actions/github-script@v8
+        with:
+          script: |
+            try {
+              await github.request("GET /repos/{owner}/{repo}/code-scanning/alerts", {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 1,
+              });
+              core.setOutput("enabled", "true");
+            } catch (error) {
+              if (error.status === 403 || error.status === 404) {
+                core.notice(
+                  "Skipping CodeQL because code scanning is disabled for this repository or unavailable to this workflow run.",
+                );
+                core.setOutput("enabled", "false");
+                return;
+              }
+
+              throw error;
+            }
+
+  analyze:
+    needs: check-code-scanning
+    if: needs.check-code-scanning.outputs.enabled == 'true'
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Run manual build steps
+        if: matrix.build-mode == 'manual'
+        shell: bash
+        run: |
+          echo 'If you are using a "manual" build mode for one or more of the' \
+            'languages you are analyzing, replace this with the commands to build' \
+            'your code, for example:'
+          echo '  make bootstrap'
+          echo '  make release'
+          exit 1
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  code-scanning-disabled:
+    needs: check-code-scanning
+    if: needs.check-code-scanning.outputs.enabled != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip unavailable CodeQL run
+        run: echo "Code scanning is disabled for this repository or unavailable to this workflow run, so CodeQL was skipped."
