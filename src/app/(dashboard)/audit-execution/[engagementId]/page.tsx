@@ -41,7 +41,11 @@ export default async function AuditExecutionPage({ params }: PageProps) {
     // redirect() throws NEXT_REDIRECT — code below is never reached
   }
 
-  const canManageTeam = hasPermission(userRoles, "audit_execution:manage_team");
+  const canManageStatus = hasPermission(
+    userRoles,
+    "audit_execution:manage_team",
+  );
+  const canManageTeam = canManageStatus;
   const transitionContext: EngagementContext = {
     teamMemberCount: engagement.teamMembers.length,
     hasOpeningMeeting: engagement.meetings.some(
@@ -52,11 +56,13 @@ export default async function AuditExecutionPage({ params }: PageProps) {
     ),
     hasFrozenScore: engagement.branchRbiaScore?.frozenAt != null,
   };
-  const availableStatusTransitions = getAvailableEngagementTransitions(
-    engagement.status,
-    userRoles as Role[],
-    transitionContext,
-  );
+  const availableStatusTransitions = canManageStatus
+    ? getAvailableEngagementTransitions(
+        engagement.status,
+        userRoles as Role[],
+        transitionContext,
+      )
+    : [];
 
   // Fetch available auditors for team assignment (R13)
   const tenantId = session.user.tenantId;
