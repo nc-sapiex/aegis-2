@@ -118,7 +118,7 @@
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "prisma": "^7.4.1",
-    "react-email": "^5.2.8",
+    "react-email": "^6.9.5",
     "tailwindcss": "^4.2.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
