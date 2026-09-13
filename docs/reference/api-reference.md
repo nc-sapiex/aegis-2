@@ -4,15 +4,15 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `c3807d3` (main)
+> Source commit: `01b77d1` (plan1/task-7)
 
 AEGIS has two callable surfaces.
 
 **HTTP endpoints** (10) are conventional routes under `/api`, used
 for file downloads, streamed exports and health checks.
 
-**Server actions** (92 exported
-functions across 52 modules) are the primary surface. They are
+**Server actions** (91 exported
+functions across 51 modules) are the primary surface. They are
 invoked directly from React components rather than over HTTP, so they have no
 URL — the function signature is the contract. Every one runs on the server and
 derives the caller's tenant from the session.
@@ -123,7 +123,6 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 | `audit-execution/create-engagement.ts` | — | `createEngagement` | AuditEngagement |
 | `audit-execution/import-loan-csv.ts` | — | `importLoanReviewCsv` | AuditEngagement, LoanReview |
 | `audit-execution/transition-engagement-status.ts` | — | `transitionEngagementStatus` | AuditEngagement |
-| `audit-execution/update-engagement-status.ts` | — | `updateEngagementStatus` | AuditEngagement |
 | `audit-execution/upload-examination-evidence.ts` | — | `requestExaminationEvidenceUpload`, `confirmExaminationEvidenceUpload`, `getExaminationEvidenceDownloadUrl` | AuditEngagement, AuditExaminationResponse, Evidence |
 
 ### audit-plans

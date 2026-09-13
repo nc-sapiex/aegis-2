@@ -13,7 +13,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "@/lib/icons";
-import { updateEngagementStatus } from "@/actions/audit-execution/update-engagement-status";
+import { transitionEngagementStatus } from "@/actions/audit-execution/transition-engagement-status";
 
 interface EngagementHeaderProps {
   engagement: {
@@ -76,7 +76,7 @@ export function EngagementHeader({
   ) {
     setError(null);
     startTransition(async () => {
-      const result = await updateEngagementStatus({
+      const result = await transitionEngagementStatus({
         engagementId: engagement.id,
         targetStatus,
       });
