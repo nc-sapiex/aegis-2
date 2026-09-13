@@ -649,16 +649,46 @@ export async function getEngagementModuleSections(
       }),
     ])) as [LeafNodeRow[], NodeResponseRow[], QuestionRow[], AccountResponseRow[]];
 
-  return modules.map((module) => {
-    const moduleLeafNodes = leafNodes.filter((node) =>
-      pathBelongsToModule(node.path, module.path),
+  const leafNodesByModule = new Map<string, LeafNodeRow[]>();
+  for (const leafNode of leafNodes) {
+    const owningModule = modules.find((module) =>
+      pathBelongsToModule(leafNode.path, module.path),
     );
-    const nodeIdToCode = new Map(moduleLeafNodes.map((node) => [node.id, node.code]));
+    if (!owningModule) {
+      continue;
+    }
+
+    const existing = leafNodesByModule.get(owningModule.id) ?? [];
+    existing.push(leafNode);
+    leafNodesByModule.set(owningModule.id, existing);
+  }
+
+  const questionsByModuleCode = new Map<string, QuestionRow[]>();
+  for (const question of questions) {
+    const existing = questionsByModuleCode.get(question.moduleCode) ?? [];
+    existing.push(question);
+    questionsByModuleCode.set(question.moduleCode, existing);
+  }
+
+  const responsesByQuestionId = new Map<
+    string,
+    Array<{ status: "COMPLIANT" | "VIOLATION" }>
+  >();
+  for (const response of accountResponses) {
+    const existing = responsesByQuestionId.get(response.questionId) ?? [];
+    existing.push({ status: response.status });
+    responsesByQuestionId.set(response.questionId, existing);
+  }
+
+  return modules.map((module) => {
+    const moduleLeafNodes = leafNodesByModule.get(module.id) ?? [];
+    const statementNodeIds = new Set(moduleLeafNodes.map((node) => node.id));
 
     const checklistStatements: EngagementStatementLike[] = moduleLeafNodes.map(
       (node) => ({
-        nodeId: node.code,
+        nodeId: node.id,
         questionId: null,
+        code: node.code,
         text: node.description ?? node.name,
         weight: Number(node.weight),
         isCritical: node.isCritical,
@@ -666,27 +696,21 @@ export async function getEngagementModuleSections(
     );
 
     const checklistResponses: ResponseLike[] = nodeResponses
-      .filter((response) => nodeIdToCode.has(response.nodeId))
+      .filter((response) => statementNodeIds.has(response.nodeId))
       .map((response) => ({
-        nodeId: nodeIdToCode.get(response.nodeId),
+        nodeId: response.nodeId,
         scoreLabel: response.isNotApplicable
           ? "NOT_APPLICABLE"
           : response.scoreLabel,
       }));
 
-    const moduleQuestions = questions.filter(
-      (question) => question.moduleCode === module.code,
-    );
+    const moduleQuestions = questionsByModuleCode.get(module.code) ?? [];
     const questionTallies = new Map(
-      moduleQuestions.map((question) => [question.id, [] as { status: "COMPLIANT" | "VIOLATION" }[]]),
+      moduleQuestions.map((question) => [
+        question.id,
+        responsesByQuestionId.get(question.id) ?? [],
+      ]),
     );
-
-    for (const response of accountResponses) {
-      const existing = questionTallies.get(response.questionId);
-      if (existing) {
-        existing.push({ status: response.status });
-      }
-    }
 
     const questionResults = computeModuleComplianceScores(questionTallies);
     const questionStatements: EngagementStatementLike[] = moduleQuestions.map(

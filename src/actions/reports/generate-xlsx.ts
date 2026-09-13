@@ -20,6 +20,32 @@ type AuditReportData = NonNullable<
   Awaited<ReturnType<typeof getAuditReportData>>
 >;
 
+function getUniqueWorksheetName(
+  desiredName: string,
+  usedNames: Set<string>,
+): string {
+  const normalized = desiredName.trim() || "Module";
+  const baseName = normalized.slice(0, 31);
+
+  if (!usedNames.has(baseName)) {
+    usedNames.add(baseName);
+    return baseName;
+  }
+
+  let suffix = 2;
+  while (suffix < 1000) {
+    const suffixText = ` (${suffix})`;
+    const candidate = `${normalized.slice(0, 31 - suffixText.length)}${suffixText}`;
+    if (!usedNames.has(candidate)) {
+      usedNames.add(candidate);
+      return candidate;
+    }
+    suffix++;
+  }
+
+  throw new Error("Unable to allocate a unique worksheet name.");
+}
+
 async function buildGenericRbiaWorkbook(
   auditData: AuditReportData,
   engagementId: string,
@@ -29,8 +55,10 @@ async function buildGenericRbiaWorkbook(
   workbook.creator = "AEGIS Audit System";
   workbook.created = new Date();
   workbook.modified = new Date();
+  const usedSheetNames = new Set<string>();
 
   const summarySheet = workbook.addWorksheet("RBIA Summary");
+  usedSheetNames.add("RBIA Summary");
   summarySheet.addRow(["Internal Audit Report"]);
   summarySheet.addRow(["Engagement ID", engagementId]);
   summarySheet.addRow(["Audit Number", auditData.auditNumber ?? "N/A"]);
@@ -55,7 +83,9 @@ async function buildGenericRbiaWorkbook(
   summarySheet.getColumn(2).width = 48;
 
   for (const section of modules) {
-    const sheet = workbook.addWorksheet(section.moduleName.substring(0, 31));
+    const sheet = workbook.addWorksheet(
+      getUniqueWorksheetName(section.moduleName, usedSheetNames),
+    );
     const rows = buildModuleSheetRows(section);
 
     rows.forEach((row) => {

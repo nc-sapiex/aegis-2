@@ -3,6 +3,7 @@ import { SCORE_VALUES } from "@/lib/rbia-scoring-engine";
 export type EngagementStatementLike = {
   nodeId: string | null;
   questionId: string | null;
+  code?: string;
   text: string;
   weight: number;
   isCritical: boolean;
@@ -24,6 +25,7 @@ export type ModuleSectionData = {
 
 /**
  * Render one module's report section without branching on module identity.
+ * Responses must already be aggregated to one row per statement key.
  */
 export function buildModuleSection(
   module: { code: string; name: string; kinds: string[] },
@@ -31,12 +33,23 @@ export function buildModuleSection(
   responses: ResponseLike[],
 ): ModuleSectionData {
   const responseByStatementId = new Map<string, ResponseLike>();
+  const duplicateKeys = new Set<string>();
 
   for (const response of responses) {
     const key = response.nodeId ?? response.questionId ?? "";
     if (key) {
-      responseByStatementId.set(key, response);
+      if (responseByStatementId.has(key)) {
+        duplicateKeys.add(key);
+      } else {
+        responseByStatementId.set(key, response);
+      }
     }
+  }
+
+  if (duplicateKeys.size > 0) {
+    throw new Error(
+      "buildModuleSection requires pre-aggregated responses per statement.",
+    );
   }
 
   const rows = statements.map((statement, index) => {
@@ -44,7 +57,7 @@ export function buildModuleSection(
     const response = responseByStatementId.get(key);
 
     return {
-      code: key,
+      code: statement.code ?? key,
       text: statement.text,
       result: response?.scoreLabel ?? "unscored",
     };

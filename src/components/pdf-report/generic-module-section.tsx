@@ -69,6 +69,8 @@ const styles = StyleSheet.create({
   },
 });
 
+const MODULE_ROWS_PER_PAGE = 24;
+
 function formatScore(score: number): string {
   return (score * 100).toFixed(1);
 }
@@ -83,13 +85,16 @@ function formatPeriod(auditData: AuditReportData): string {
 
 export function GenericModuleSection({
   section,
+  titleSuffix,
 }: {
   section: ModuleSectionData;
+  titleSuffix?: string;
 }) {
   return (
     <View style={styles.section} wrap>
       <Text style={styles.sectionTitle}>
         {section.moduleName} ({section.kind}) — {formatScore(section.score)}%
+        {titleSuffix}
       </Text>
       {section.rows.length === 0 ? (
         <Text style={styles.emptyState}>No statements available for this module.</Text>
@@ -104,6 +109,19 @@ export function GenericModuleSection({
       )}
     </View>
   );
+}
+
+function chunkRows(rows: ModuleSectionData["rows"]) {
+  if (rows.length === 0) {
+    return [[]];
+  }
+
+  const chunks: ModuleSectionData["rows"][] = [];
+  for (let index = 0; index < rows.length; index += MODULE_ROWS_PER_PAGE) {
+    chunks.push(rows.slice(index, index + MODULE_ROWS_PER_PAGE));
+  }
+
+  return chunks;
 }
 
 export function GenericRbiaReportDocument({
@@ -185,13 +203,22 @@ export function GenericRbiaReportDocument({
         <PageFooter bankName={bankName} generatedAt={generatedAt} />
       </Page>
 
-      {modules.map((module) => (
-        <Page key={`${module.moduleName}-${module.kind}`} size="A4" style={styles.page}>
-          <PageHeader bankName={bankName} />
-          <GenericModuleSection section={module} />
-          <PageFooter bankName={bankName} generatedAt={generatedAt} />
-        </Page>
-      ))}
+      {modules.flatMap((module) =>
+        chunkRows(module.rows).map((rows, index) => (
+          <Page
+            key={`${module.moduleName}-${module.kind}-${index + 1}`}
+            size="A4"
+            style={styles.page}
+          >
+            <PageHeader bankName={bankName} />
+            <GenericModuleSection
+              section={{ ...module, rows }}
+              titleSuffix={index === 0 ? "" : " (continued)"}
+            />
+            <PageFooter bankName={bankName} generatedAt={generatedAt} />
+          </Page>
+        )),
+      )}
     </Document>
   );
 }

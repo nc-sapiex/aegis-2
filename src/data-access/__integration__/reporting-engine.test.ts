@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { randomUUID } from "crypto";
+import ExcelJS from "exceljs";
 import {
   createTenant,
   createUser,
@@ -11,9 +12,17 @@ import {
 } from "../../../tests/integration/harness";
 import { getEngagementModuleSections } from "../reports";
 
+let uploadedBodies: Buffer[] = [];
+
 function mockReportUploads() {
+  uploadedBodies = [];
   vi.doMock("@/lib/s3", () => ({
-    uploadToS3: vi.fn(async ({ key }: { key: string }) => `s3://${key}`),
+    uploadToS3: vi.fn(
+      async ({ key, body }: { key: string; body: Buffer | Uint8Array }) => {
+        uploadedBodies.push(Buffer.from(body));
+        return `s3://${key}`;
+      },
+    ),
   }));
 }
 
@@ -219,6 +228,14 @@ describe("reporting engine", () => {
 
     expect(result.success).toBe(true);
     expect(await integrationPrisma.boardReport.count()).toBe(1);
+
+    const uploadedPdf = uploadedBodies.at(-1);
+    expect(uploadedPdf).toBeDefined();
+    expect(uploadedPdf?.subarray(0, 5).toString()).toBe("%PDF-");
+    const pdfText = uploadedPdf?.toString("latin1") ?? "";
+    expect(pdfText).toContain("RBIA Report - ");
+    expect(pdfText).toContain("Test Cooperative Bank");
+    expect(pdfText.match(/\/Type \/Page\b/g)).toHaveLength(4);
   });
 
   it("generates an RBIA XLSX workbook from generic module sections", async () => {
@@ -236,5 +253,29 @@ describe("reporting engine", () => {
 
     expect(result.success).toBe(true);
     expect(await integrationPrisma.boardReport.count()).toBe(1);
+
+    const workbook = new ExcelJS.Workbook();
+    const uploadedWorkbook = uploadedBodies.at(-1);
+    expect(uploadedWorkbook).toBeDefined();
+    const uploadedWorkbookData = uploadedWorkbook!.buffer.slice(
+      uploadedWorkbook!.byteOffset,
+      uploadedWorkbook!.byteOffset + uploadedWorkbook!.byteLength,
+    ) as ArrayBuffer;
+    await workbook.xlsx.load(uploadedWorkbookData);
+
+    expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual([
+      "RBIA Summary",
+      "Operations",
+      "Forex",
+    ]);
+    expect(workbook.getWorksheet("Operations")?.getCell("A3").value).toBe(
+      "OPS-001",
+    );
+    expect(workbook.getWorksheet("Operations")?.getCell("C3").value).toBe(
+      "FULLY_COMPLIANT",
+    );
+    expect(workbook.getWorksheet("Forex")?.getCell("B3").value).toBe(
+      "FEMA register complete",
+    );
   });
 });
