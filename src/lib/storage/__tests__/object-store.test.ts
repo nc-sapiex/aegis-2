@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@aws-sdk/client-s3", () => ({
   S3Client: vi.fn(function S3Client() {
@@ -16,6 +16,11 @@ vi.mock("@aws-sdk/s3-request-presigner", () => ({
 describe("getObjectStore", () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.unstubAllEnvs();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("builds the default s3 driver without a custom endpoint", async () => {
@@ -24,7 +29,6 @@ describe("getObjectStore", () => {
     const { getObjectStore } = await import("../object-store");
     getObjectStore();
     expect(S3Client).toHaveBeenCalledWith({ region: "ap-south-1" });
-    vi.unstubAllEnvs();
   });
 
   it("builds an s3 driver with a custom endpoint for minio", async () => {
@@ -40,7 +44,6 @@ describe("getObjectStore", () => {
         forcePathStyle: true,
       }),
     );
-    vi.unstubAllEnvs();
   });
 
   it("the disabled driver throws loudly on first use, not silently", async () => {
@@ -50,7 +53,6 @@ describe("getObjectStore", () => {
     await expect(store.presignPut("k", "application/pdf")).rejects.toThrow(
       /storage is disabled/i,
     );
-    vi.unstubAllEnvs();
   });
 
   it("requires S3_BUCKET_NAME for the s3 driver — no aegis-evidence-dev fallback", async () => {
@@ -58,6 +60,5 @@ describe("getObjectStore", () => {
     vi.stubEnv("S3_BUCKET_NAME", "");
     const { getObjectStore } = await import("../object-store");
     expect(() => getObjectStore()).toThrow(/S3_BUCKET_NAME is required/);
-    vi.unstubAllEnvs();
   });
 });

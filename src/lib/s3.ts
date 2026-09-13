@@ -82,6 +82,9 @@ export function generateBmEvidenceS3Key(
 
 // ---------------------------------------------------------------------------
 // generateUploadUrl — presigned PUT
+// ContentLength and encryption headers stay out of the signed request:
+// bucket defaults handle encryption, and signing extra headers would require
+// the browser PUT to mirror them exactly or fail with a signature mismatch.
 // ---------------------------------------------------------------------------
 export async function generateUploadUrl(
   s3Key: string,
