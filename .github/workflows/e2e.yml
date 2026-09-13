@@ -1,0 +1,99 @@
+name: E2E
+
+# Smoke subset: called by ci.yml on every PR and main push (blocking).
+# Full suite: nightly and manual. Quarantine flaky scenarios with test.skip and
+# a reason rather than weakening the smoke gate.
+on:
+  workflow_call:
+    inputs:
+      smoke:
+        type: boolean
+        default: false
+  workflow_dispatch:
+  schedule:
+    - cron: "17 2 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: aegis_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    env:
+      DATABASE_URL: postgresql://test:testpassword@localhost:5432/aegis_test
+      BETTER_AUTH_SECRET: e2e-test-secret-0123456789abcdef0123456789abcdef
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      SKIP_ENV_VALIDATION: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
+
+      # Playwright's webServer runs `pnpm build`; this is the CI Next.js build.
+      - name: Cache Next.js build output
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
+
+      - name: Push database schema
+        run: pnpm db:push
+
+      # Rehearses the hand-applied production migration in its real position:
+      # after the schema exists, before db:bootstrap, whose composite FKs
+      # depend on the unique indexes this file creates. db:push has already
+      # created everything here, so a green step also proves idempotency.
+      - name: Apply hand-run schema migration
+        run: pnpm db:apply prisma/migrations/20260904_f07_f15_schema_additions.sql
+
+      - name: Apply non-Prisma database objects
+        run: pnpm db:bootstrap
+
+      - name: Verify required database objects
+        run: pnpm db:verify
+
+      - name: Seed database
+        run: pnpm db:seed
+
+      # seed:lifecycle resolves CRD-HLN examination nodes and their questions by
+      # code; without these two it aborts with "examination node not found".
+      # Order is fixed: nodes, then the questions that hang off them.
+      - name: Seed RBIA housing examination tree
+        run: pnpm seed:rbia-housing
+
+      - name: Seed examination questions
+        run: pnpm seed:exam-questions
+
+      - name: Seed audit lifecycle fixtures
+        run: pnpm seed:lifecycle
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run ${{ inputs.smoke && 'smoke' || 'full' }} E2E suite
+        run: pnpm ${{ inputs.smoke && 'test:e2e:smoke' || 'test:e2e' }}
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: playwright-report-${{ inputs.smoke && 'smoke' || 'full' }}
+          path: playwright-report/
+          retention-days: 3
