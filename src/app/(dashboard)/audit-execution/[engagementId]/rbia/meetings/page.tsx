@@ -1,4 +1,4 @@
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import { getEngagementWithTeam } from "@/data-access/audit-execution";
 import { getEngagementMeetings } from "@/data-access/rbia-meetings";
 import { hasPermission } from "@/lib/permissions";
@@ -26,7 +26,7 @@ interface PageProps {
  */
 export default async function MeetingsPage({ params }: PageProps) {
   const { engagementId } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
   const userRoles = session.user.roles;
 
   const engagement = await getEngagementWithTeam(session, engagementId);

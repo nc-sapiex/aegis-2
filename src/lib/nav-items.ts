@@ -148,7 +148,7 @@ export const navItems: NavItem[] = [
  * Example:
  * - User with [CAE] → sees admin, audit trail, reports, etc.
  * - User with [AUDITOR, AUDIT_MANAGER] → sees both auditor and manager nav items
- * - User with [BOARD_OBSERVER] → sees nothing (empty permissions, graceful handling)
+ * - User with [BOARD_OBSERVER] → sees dashboard, findings, and reports
  *
  * @param roles - Array of roles held by the user
  * @returns Filtered array of nav items user can access
@@ -184,6 +184,10 @@ export function filterNavByRoles(roles: Role[]): NavItem[] {
         permissions.has("dashboard:ceo") ||
         permissions.has("dashboard:risk_head")
       );
+    }
+
+    if (item.title === "Auditee Portal") {
+      return roles.includes("AUDITEE");
     }
 
     return permissions.has(item.requiredPermission);
@@ -250,7 +254,7 @@ function getPermissionsForRole(role: Role): Permission[] {
       "compliance:read",
     ],
     AUDITEE: ["observation:read"],
-    BOARD_OBSERVER: [],
+    BOARD_OBSERVER: ["dashboard:ceo", "observation:read", "report:read"],
     LEAD_AUDITOR: [
       "observation:create",
       "observation:read",

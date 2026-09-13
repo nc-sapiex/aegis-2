@@ -121,7 +121,7 @@ export type Permission =
  * Role-to-permission mapping.
  * Each role has a specific set of permissions.
  *
- * BOARD_OBSERVER: Reserved for future use, no permissions yet (DE9).
+ * BOARD_OBSERVER: Read-only board observer for dashboard, findings, and reports.
  */
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   AUDITOR: [
@@ -241,7 +241,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "audit_trail:read",
   ],
   AUDITEE: ["observation:read"], // Limited to assigned observations only
-  BOARD_OBSERVER: [], // Reserved — no permissions yet (DE9)
+  BOARD_OBSERVER: ["dashboard:ceo", "observation:read", "report:read"],
   LEAD_AUDITOR: [
     "observation:create",
     "observation:read",
@@ -446,7 +446,6 @@ export function canApproveObservation(
 
 /**
  * Get all available roles (for admin dropdowns, etc.)
- * Excludes BOARD_OBSERVER which is reserved and not assignable yet.
  */
 export function getAssignableRoles(): Role[] {
   return [
@@ -456,6 +455,7 @@ export function getAssignableRoles(): Role[] {
     Role.CCO,
     Role.CEO,
     Role.AUDITEE,
+    Role.BOARD_OBSERVER,
     Role.LEAD_AUDITOR,
     Role.FIELD_AUDITOR,
     Role.BRANCH_HEAD,

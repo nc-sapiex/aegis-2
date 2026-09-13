@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import { getReportStatusForEngagement } from "@/data-access/reports";
 import { prismaForTenant } from "@/data-access/prisma";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ export default async function ReportPage({ params }: PageProps) {
   // Next.js 16: params is a Promise (await it)
   const { engagementId } = await params;
 
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
   const tenantId = session.user.tenantId;
   const userRoles = session.user.roles;
 

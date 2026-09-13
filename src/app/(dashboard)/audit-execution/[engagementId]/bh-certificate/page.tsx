@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getRequiredSession } from "@/data-access/session";
+import { requireAnyPermission } from "@/lib/guards";
 import {
   getEngagementForBhCertificate,
   deriveBhCertStatus,
@@ -16,7 +16,11 @@ export default async function BhCertificatePage({ params }: PageProps) {
   // Next.js 16: params is a Promise (await it)
   const { engagementId } = await params;
 
-  const session = await getRequiredSession();
+  const session = await requireAnyPermission([
+    "bh_certificate:sign",
+    "audit_execution:read",
+    "observation:review",
+  ]);
   const tenantId = session.user.tenantId;
   const userRoles = session.user.roles;
 

@@ -1,17 +1,11 @@
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import { getAuditCalendarEvents } from "@/data-access/analytics";
 import { CalendarView } from "@/components/calendar/calendar-view";
-import { hasPermission, type Role } from "@/lib/permissions";
-import { redirect } from "next/navigation";
 
 export default async function CalendarPage() {
-  const session = await getRequiredSession();
-  const userRoles = session.user.roles;
+  const session = await requirePermission("calendar:manage");
   const tenantId = session.user.tenantId;
 
-  if (!hasPermission(userRoles, "calendar:manage")) {
-    redirect("/dashboard");
-  }
 
   // Fetch calendar events for current fiscal year (April 1 – March 31)
   // Prevents unbounded query loading all historical events on every page visit
@@ -24,7 +18,7 @@ export default async function CalendarPage() {
 
   const events = await getAuditCalendarEvents(tenantId, fiscalStart, fiscalEnd);
 
-  const canManage = hasPermission(userRoles, "calendar:manage");
+  const canManage = true;
 
   return (
     <div className="space-y-6">

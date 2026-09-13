@@ -1,7 +1,5 @@
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import { prismaForTenant } from "@/data-access/prisma";
-import { hasPermission, type Role } from "@/lib/permissions";
-import { redirect } from "next/navigation";
 import { TemplateAdminPanel } from "@/components/admin/template-admin-panel";
 
 /**
@@ -9,12 +7,7 @@ import { TemplateAdminPanel } from "@/components/admin/template-admin-panel";
  * Requires template:manage permission.
  */
 export default async function AdminTemplatesPage() {
-  const session = await getRequiredSession();
-  const userRoles = session.user.roles;
-
-  if (!hasPermission(userRoles, "template:manage")) {
-    redirect("/dashboard");
-  }
+  const session = await requirePermission("template:manage");
 
   const tenantId = session.user.tenantId;
   const db = prismaForTenant(tenantId);

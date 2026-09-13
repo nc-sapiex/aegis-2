@@ -2,6 +2,7 @@
 
 import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/lib/prisma";
+import { hasPermission } from "@/lib/permissions";
 import { DetectRepeatSchema, type DetectRepeatInput } from "./schemas";
 
 /**
@@ -42,7 +43,15 @@ export async function detectRepeatFindings(
   }
 
   const session = await getRequiredSession();
+  const userRoles = session.user.roles ?? [];
   const tenantId = session.user.tenantId;
+
+  const canManageRepeatFindings =
+    hasPermission(userRoles, "observation:create") ||
+    hasPermission(userRoles, "observation:review");
+  if (!canManageRepeatFindings) {
+    return { success: false, error: "Only auditors can detect repeat findings" };
+  }
 
   if (!tenantId) {
     return { success: false, error: "No tenant context found" };

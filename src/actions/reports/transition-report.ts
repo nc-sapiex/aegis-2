@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/data-access/prisma";
 import { setAuditContext } from "@/data-access/audit-context";
-import { type Role } from "@/lib/permissions";
+import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import {
   TransitionReportSchema,
@@ -32,6 +32,18 @@ export async function transitionReportStatus(input: TransitionReportInput) {
   const session = await getRequiredSession();
   const userRoles = session.user.roles;
   const tenantId = session.user.tenantId;
+
+  const canManageReports =
+    hasPermission(userRoles, "report:read") ||
+    hasPermission(userRoles, "report:approve") ||
+    hasPermission(userRoles, "audit_execution:manage_team");
+
+  if (!canManageReports) {
+    return {
+      success: false as const,
+      error: "You do not have permission to transition reports.",
+    };
+  }
 
   // ─── Step 2: Input Validation ──────────────────────────────────
   const parsed = TransitionReportSchema.safeParse(input);

@@ -1,12 +1,12 @@
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import {
   getRamAssessmentWithScores,
   getRamParameterConfigs,
 } from "@/data-access/ram";
 import { RamScoreForm } from "@/components/ram/ram-score-form";
 import { RamResultCard } from "@/components/ram/ram-result-card";
-import { hasPermission, type Role } from "@/lib/permissions";
-import { redirect, notFound } from "next/navigation";
+import { hasPermission } from "@/lib/permissions";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,8 @@ interface PageProps {
 
 export default async function RamAssessmentDetailPage({ params }: PageProps) {
   const { assessmentId } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("ram:read");
   const userRoles = session.user.roles;
-
-  if (!hasPermission(userRoles, "ram:read")) {
-    redirect("/dashboard");
-  }
 
   const [assessment, allParams] = await Promise.all([
     getRamAssessmentWithScores(session, assessmentId),

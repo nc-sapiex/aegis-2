@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import { getEngagementWithTeam } from "@/data-access/audit-execution";
 import {
   getLoanAccountSummary,
@@ -34,7 +34,7 @@ const CREDIT_MODULE_CODES = [
  */
 export default async function LoanPortfolioPage({ params }: PageProps) {
   const { engagementId } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
   const userRoles = session.user.roles;
 
   // Load engagement to get branch name

@@ -69,9 +69,9 @@ describe("ROLE_PERMISSIONS structure", () => {
     expect(hasPermission([Role.SYSTEM_ADMIN], "admin:system")).toBe(true);
   });
 
-  it("BOARD_OBSERVER has no permissions (reserved)", () => {
+  it("BOARD_OBSERVER has read-only dashboard, findings, and report permissions", () => {
     const perms = getPermissions([Role.BOARD_OBSERVER]);
-    expect(perms).toEqual([]);
+    expect(perms).toEqual(["dashboard:ceo", "observation:read", "report:read"]);
   });
 
   it("AUDIT_MANAGER has observation:close_low_medium but NOT close_high_critical", () => {
@@ -198,14 +198,14 @@ describe("canApproveObservation", () => {
 // ─── getAssignableRoles ─────────────────────────────────────────────────────
 
 describe("getAssignableRoles", () => {
-  it("excludes BOARD_OBSERVER", () => {
+  it("includes BOARD_OBSERVER", () => {
     const roles = getAssignableRoles();
-    expect(roles).not.toContain(Role.BOARD_OBSERVER);
+    expect(roles).toContain(Role.BOARD_OBSERVER);
   });
 
-  it("includes all other 16 roles", () => {
+  it("includes all 17 roles", () => {
     const roles = getAssignableRoles();
-    expect(roles).toHaveLength(16);
+    expect(roles).toHaveLength(17);
     expect(roles).toContain(Role.AUDITOR);
     expect(roles).toContain(Role.CAE);
     expect(roles).toContain(Role.SYSTEM_ADMIN);

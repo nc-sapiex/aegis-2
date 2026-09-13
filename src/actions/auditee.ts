@@ -23,6 +23,7 @@ import {
 } from "@/data-access/upload-intents";
 import { createNotification } from "@/data-access/notifications";
 import { logger } from "@/lib/logger";
+import { hasPermission } from "@/lib/permissions";
 
 // ─── Validation schemas ─────────────────────────────────────────────────────
 
@@ -77,7 +78,10 @@ export async function submitAuditeeResponse(
   const userRoles = session.user.roles;
   const tenantId = session.user.tenantId;
 
-  if (!userRoles.includes("AUDITEE")) {
+  if (
+    !hasPermission(userRoles, "observation:read") ||
+    !userRoles.includes("AUDITEE")
+  ) {
     return { success: false as const, error: "AUDITEE role required." };
   }
 
@@ -243,7 +247,10 @@ export async function requestEvidenceUpload(
   const userRoles = session.user.roles;
   const tenantId = session.user.tenantId;
 
-  if (!userRoles.includes("AUDITEE")) {
+  if (
+    !hasPermission(userRoles, "observation:read") ||
+    !userRoles.includes("AUDITEE")
+  ) {
     return { success: false as const, error: "AUDITEE role required." };
   }
 
@@ -357,7 +364,10 @@ export async function confirmEvidenceUpload(
   const userRoles = session.user.roles;
   const tenantId = session.user.tenantId;
 
-  if (!userRoles.includes("AUDITEE")) {
+  if (
+    !hasPermission(userRoles, "observation:read") ||
+    !userRoles.includes("AUDITEE")
+  ) {
     return { success: false as const, error: "AUDITEE role required." };
   }
 
@@ -495,7 +505,7 @@ export async function confirmEvidenceUpload(
 /**
  * Get a presigned download URL for an evidence file.
  *
- * Any authenticated user can download evidence, but AUDITEE users
+ * Users with observation access can download evidence, but AUDITEE users
  * are additionally checked for branch authorization.
  *
  * @returns { success, data: { downloadUrl }?, error? }
@@ -504,6 +514,10 @@ export async function getEvidenceDownloadUrl(evidenceId: string) {
   const session = await getRequiredSession();
   const userRoles = session.user.roles;
   const tenantId = session.user.tenantId;
+
+  if (!hasPermission(userRoles, "observation:read")) {
+    return { success: false as const, error: "Observation access required." };
+  }
 
   if (!evidenceId || typeof evidenceId !== "string") {
     return { success: false as const, error: "Invalid evidence ID." };

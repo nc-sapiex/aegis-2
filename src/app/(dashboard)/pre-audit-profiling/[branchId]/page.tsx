@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import { getBranchProfileData } from "@/data-access/pre-audit-profiling";
 import { BranchProfile } from "@/components/pre-audit/branch-profile";
 import { ArrowLeft } from "@/lib/icons";
@@ -22,7 +22,7 @@ interface PageProps {
  */
 export default async function PreAuditProfilingPage({ params }: PageProps) {
   const resolvedParams = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_plan:read");
 
   const data = await getBranchProfileData(session, resolvedParams.branchId);
 

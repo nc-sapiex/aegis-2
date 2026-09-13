@@ -1,4 +1,4 @@
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import { getEngagementWithTeam } from "@/data-access/audit-execution";
 import { prismaForTenant } from "@/data-access/prisma";
 import { EngagementHeader } from "@/components/audit-execution/engagement-header";
@@ -13,12 +13,8 @@ interface PageProps {
 
 export default async function AuditExecutionPage({ params }: PageProps) {
   const { engagementId } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
   const userRoles = session.user.roles;
-
-  if (!hasPermission(userRoles, "audit_execution:read")) {
-    redirect("/dashboard");
-  }
 
   const engagement = await getEngagementWithTeam(session, engagementId);
   if (!engagement) {

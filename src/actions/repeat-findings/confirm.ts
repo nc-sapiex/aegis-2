@@ -5,6 +5,7 @@ import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/lib/prisma";
 import { escalateSeverity, type Severity } from "@/lib/state-machine";
 import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
+import { hasPermission } from "@/lib/permissions";
 import {
   ConfirmRepeatSchema,
   DismissRepeatSchema,
@@ -50,8 +51,10 @@ export async function confirmRepeatFinding(
     return { success: false, error: "No tenant context found" };
   }
 
-  // Validate AUDITOR role
-  if (!userRoles.includes("AUDITOR") && !userRoles.includes("AUDIT_MANAGER")) {
+  const canManageRepeatFindings =
+    hasPermission(userRoles, "observation:create") ||
+    hasPermission(userRoles, "observation:review");
+  if (!canManageRepeatFindings) {
     return {
       success: false,
       error: "Only auditors can confirm repeat findings",
@@ -194,8 +197,10 @@ export async function dismissRepeatFinding(
     return { success: false, error: "No tenant context found" };
   }
 
-  // Validate AUDITOR role
-  if (!userRoles.includes("AUDITOR") && !userRoles.includes("AUDIT_MANAGER")) {
+  const canManageRepeatFindings =
+    hasPermission(userRoles, "observation:create") ||
+    hasPermission(userRoles, "observation:review");
+  if (!canManageRepeatFindings) {
     return {
       success: false,
       error: "Only auditors can dismiss repeat findings",

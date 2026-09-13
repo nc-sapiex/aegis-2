@@ -1,4 +1,4 @@
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import {
   getAccountsWithProgress,
   getQuestionsForAccount,
@@ -89,7 +89,7 @@ export default async function ExaminationPage({
   const { engagementId, moduleCode } = await params;
   const { accountId } = await searchParams;
 
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
   const canRespond = hasPermission(session.user.roles, "examination:respond");
 
   // Fetch accounts and overall progress in parallel

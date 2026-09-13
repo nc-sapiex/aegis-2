@@ -1,4 +1,4 @@
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import { prismaForTenant } from "@/lib/prisma";
 import { EngagementForm } from "@/components/audit-execution/engagement-form";
 import {
@@ -17,7 +17,7 @@ import { ChevronLeft } from "@/lib/icons";
  * and renders the engagement creation form.
  */
 export default async function CreateEngagementPage() {
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:create");
   const tenantId = session.user.tenantId;
   const db = prismaForTenant(tenantId);
 

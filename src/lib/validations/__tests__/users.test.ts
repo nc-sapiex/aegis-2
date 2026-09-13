@@ -45,11 +45,11 @@ describe("inviteUserSchema", () => {
     );
   });
 
-  it("rejects a role outside the assignable set", () => {
+  it("accepts BOARD_OBSERVER as an assignable read-only role", () => {
     expect(
       inviteUserSchema.safeParse({ ...valid, roles: ["BOARD_OBSERVER"] })
         .success,
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("allows omitting branch assignments", () => {

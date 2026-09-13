@@ -9,6 +9,7 @@ import {
   requireTeamMembership,
 } from "@/data-access/access-guards";
 import { logger } from "@/lib/logger";
+import { hasPermission } from "@/lib/permissions";
 import type { Role } from "@/generated/prisma/enums";
 import {
   SignBhCertificateSchema,
@@ -38,7 +39,7 @@ export async function signBhCertificate(input: SignBhCertificateInput) {
   const tenantId = session.user.tenantId;
 
   // ─── Step 2: Role Check ──────────────────────────────────────
-  if (!userRoles.includes("BRANCH_HEAD")) {
+  if (!hasPermission(userRoles, "bh_certificate:sign")) {
     return {
       success: false as const,
       error: "Only Branch Heads can sign the BH Certificate.",
@@ -172,10 +173,10 @@ export async function countersignBhCertificate(
   const tenantId = session.user.tenantId;
 
   // ─── Step 2: Role Check ──────────────────────────────────────
-  if (
-    !userRoles.includes("LEAD_AUDITOR") &&
-    !userRoles.includes("AUDIT_MANAGER")
-  ) {
+  const canCountersign =
+    hasPermission(userRoles, "audit_execution:manage_team") ||
+    hasPermission(userRoles, "observation:review");
+  if (!canCountersign) {
     return {
       success: false as const,
       error:
@@ -310,7 +311,19 @@ export async function countersignBhCertificate(
  */
 export async function getBhCertificateStatus(engagementId: string) {
   const session = await getRequiredSession();
+  const userRoles = session.user.roles;
   const tenantId = session.user.tenantId;
+
+  const canAccessCertificate =
+    hasPermission(userRoles, "bh_certificate:sign") ||
+    hasPermission(userRoles, "audit_execution:read") ||
+    hasPermission(userRoles, "observation:review");
+  if (!canAccessCertificate) {
+    return {
+      success: false as const,
+      error: "You do not have permission to view this certificate status.",
+    };
+  }
   const db = prismaForTenant(tenantId);
 
   try {

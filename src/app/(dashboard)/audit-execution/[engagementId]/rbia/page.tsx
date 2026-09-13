@@ -1,4 +1,4 @@
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import {
   getEngagementModuleScores,
   getEngagementBranchScore,
@@ -30,7 +30,7 @@ interface PageProps {
  */
 export default async function RbiaExaminationPage({ params }: PageProps) {
   const { engagementId } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
 
   // Load engagement for branch name display
   const engagement = await getEngagementWithTeam(session, engagementId);

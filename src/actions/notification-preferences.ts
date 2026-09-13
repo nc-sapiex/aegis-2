@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/data-access/session";
 import { updateNotificationPreferences } from "@/data-access/notifications";
 import { logger } from "@/lib/logger";
+import { hasPermission } from "@/lib/permissions";
 
 const UpdatePreferencesSchema = z.object({
   emailEnabled: z.boolean(),
@@ -22,6 +23,17 @@ export async function updatePreferences(
   input: z.infer<typeof UpdatePreferencesSchema>,
 ) {
   const session = await getRequiredSession();
+  const userRoles = session.user.roles;
+  const canManageOwnPreferences =
+    hasPermission(userRoles, "observation:read") ||
+    hasPermission(userRoles, "admin:manage_settings");
+
+  if (!canManageOwnPreferences) {
+    return {
+      success: false as const,
+      error: "Notification preferences access required.",
+    };
+  }
 
   const parsed = UpdatePreferencesSchema.safeParse(input);
   if (!parsed.success) {

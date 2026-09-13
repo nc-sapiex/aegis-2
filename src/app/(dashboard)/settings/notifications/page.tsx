@@ -1,4 +1,4 @@
-import { getRequiredSession } from "@/data-access/session";
+import { requireAnyPermission } from "@/lib/guards";
 import { getNotificationPreferences } from "@/data-access/notifications";
 import { NotificationPreferencesForm } from "@/components/settings/notification-preferences-form";
 
@@ -10,7 +10,10 @@ const REGULATORY_ROLES = [
 ];
 
 export default async function NotificationPreferencesPage() {
-  const session = await getRequiredSession();
+  const session = await requireAnyPermission([
+    "observation:read",
+    "admin:manage_settings",
+  ]);
   const prefs = await getNotificationPreferences(session);
   const userRoles = session.user.roles;
   const isRegulatoryRole = userRoles.some((r) => REGULATORY_ROLES.includes(r));

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/data-access/prisma";
 import { setAuditContext } from "@/data-access/audit-context";
-import { type Role } from "@/lib/permissions";
+import { hasPermission, type Permission } from "@/lib/permissions";
 import {
   canTransition,
   type ObservationStatus,
@@ -32,6 +32,21 @@ export async function transitionObservation(input: TransitionObservationInput) {
   const session = await getRequiredSession();
   const userRoles = session.user.roles;
   const tenantId = session.user.tenantId;
+
+  const canManageObservation = [
+    "observation:create",
+    "observation:review",
+    "observation:approve",
+    "observation:close_low_medium",
+    "observation:close_high_critical",
+  ] satisfies Permission[];
+
+  if (!canManageObservation.some((permission) => hasPermission(userRoles, permission))) {
+    return {
+      success: false as const,
+      error: "You do not have permission to transition observations.",
+    };
+  }
 
   // Step 2: Validate input
   const parsed = TransitionObservationSchema.safeParse(input);

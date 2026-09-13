@@ -1,4 +1,4 @@
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import { getEngagementWithTeam } from "@/data-access/audit-execution";
 import {
   getSamplingConfigWithCreator,
@@ -42,7 +42,7 @@ const DEFAULT_MODULE_CODE = "CRD-HLN";
  */
 export default async function SamplingPage({ params }: PageProps) {
   const { engagementId } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
   const userRoles = session.user.roles;
 
   // Load engagement to verify access

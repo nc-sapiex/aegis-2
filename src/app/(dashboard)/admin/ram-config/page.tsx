@@ -1,7 +1,5 @@
-import { getRequiredSession } from "@/data-access/session";
+import { requireAnyPermission } from "@/lib/guards";
 import { prismaForTenant } from "@/data-access/prisma";
-import { hasPermission, type Role } from "@/lib/permissions";
-import { redirect } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -25,15 +23,10 @@ import { Badge } from "@/components/ui/badge";
  * Requires system admin or CAE access.
  */
 export default async function RamConfigPage() {
-  const session = await getRequiredSession();
-  const userRoles = session.user.roles;
-
-  if (
-    !hasPermission(userRoles, "admin:system") &&
-    !hasPermission(userRoles, "dashboard:cae")
-  ) {
-    redirect("/dashboard");
-  }
+  const session = await requireAnyPermission([
+    "admin:system",
+    "dashboard:cae",
+  ]);
 
   const tenantId = session.user.tenantId;
   const db = prismaForTenant(tenantId);

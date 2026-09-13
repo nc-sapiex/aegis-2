@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import {
   getExaminationTree,
   type ExaminationTreeNode,
@@ -92,7 +92,7 @@ export default async function ModuleExaminationPage({
 }: PageProps) {
   const { engagementId, moduleCode } = await params;
   const { expanded: initialExpanded = "" } = await searchParams;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
 
   // Fetch full tree, module scores, and examination progress in parallel
   const [tree, moduleScores, examProgress] = await Promise.all([
