@@ -191,6 +191,7 @@ enum NotificationType {
   WEEKLY_DIGEST
   BULK_DIGEST
   INVITATION
+  AUDIT_CHAIN_TAMPER_DETECTED
 }
 
 enum NotificationStatus {
@@ -321,6 +322,8 @@ model Tenant {
   notificationPreferences NotificationPreference[]
   boardReports            BoardReport[]
   dashboardSnapshots      DashboardSnapshot[]
+  auditChainHead          AuditChainHead?
+  auditChainVerifications AuditChainVerification[]
 }
 
 // ─── User ────────────────────────────────────────────────────────────────────
@@ -1912,6 +1915,8 @@ model AuditLog {
   // Actor info
   userId        String?
   justification String? // Required for sensitive ops (DE6)
+  prevHash      Bytes?
+  rowHash       Bytes?
 
   // RBI cyber security framework fields
   ipAddress String?
@@ -1926,6 +1931,25 @@ model AuditLog {
   @@index([tableName, recordId])
   @@index([actionType])
   @@index([createdAt])
+}
+
+model AuditChainHead {
+  tenantId     String   @id @db.Uuid
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lastSequence BigInt   @default(0)
+  lastHash     Bytes
+  updatedAt    DateTime @updatedAt
+}
+
+model AuditChainVerification {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String   @db.Uuid
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  verifiedAt       DateTime @default(now())
+  ok               Boolean
+  firstBadSequence BigInt?
+
+  @@index([tenantId, verifiedAt])
 }
 
 // ─── Notification Queue ──────────────────────────────────────────────────────

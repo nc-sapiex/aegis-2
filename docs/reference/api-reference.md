@@ -4,15 +4,15 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `6f0d837` (plan1/task-6)
+> Source commit: `e857f26` (copilot/plan-2-task-8-admin-page)
 
 AEGIS has two callable surfaces.
 
 **HTTP endpoints** (10) are conventional routes under `/api`, used
 for file downloads, streamed exports and health checks.
 
-**Server actions** (91 exported
-functions across 51 modules) are the primary surface. They are
+**Server actions** (93 exported
+functions across 53 modules) are the primary surface. They are
 invoked directly from React components rather than over HTTP, so they have no
 URL — the function signature is the contract. Every one runs on the server and
 derives the caller's tenant from the session.
@@ -108,10 +108,12 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 
 | Module | Audited | Exported functions | Tables touched |
 |---|---|---|---|
+| `admin/export-chain-attestation.ts` | — | `exportChainAttestation` | Tenant |
 | `admin/manage-branch.ts` | yes | `updateBranchProfile` | Branch |
 | `admin/manage-calendar.ts` | — | `createCalendarEvent`, `updateCalendarEvent`, `deleteCalendarEvent` | AuditCalendar |
 | `admin/manage-templates.ts` | — | `createReportTemplate`, `deactivateTemplate` | ReportTemplate |
 | `admin/manage-zone.ts` | — | `manageZone`, `deleteZone` | Zone |
+| `admin/run-audit-chain-verification.ts` | — | `runAuditChainVerification` | — |
 
 ### audit-execution
 

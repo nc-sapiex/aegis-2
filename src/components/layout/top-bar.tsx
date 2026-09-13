@@ -38,6 +38,7 @@ const SUB_ROUTE_LABELS: Record<string, string> = {
   zones: "Zones",
   templates: "Templates",
   "ram-config": "RAM Config",
+  "audit-chain": "Audit Chain",
   board: "Board",
   score: "Score",
   meetings: "Meetings",

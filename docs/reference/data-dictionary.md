@@ -4,10 +4,10 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `6f0d837` (plan1/task-6)
+> Source commit: `e857f26` (copilot/plan-2-task-8-admin-page)
 
 Every table AEGIS maintains, with its columns, types and relationships.
-**76 models** and **22 enumerations**.
+**78 models** and **22 enumerations**.
 
 Conventions used throughout the schema:
 
@@ -74,6 +74,8 @@ Conventions used throughout the schema:
 - [UserBranchAssignment](#userbranchassignment)
 - [AuditeeResponse](#auditeeresponse)
 - [AuditLog](#auditlog)
+- [AuditChainHead](#auditchainhead)
+- [AuditChainVerification](#auditchainverification)
 - [NotificationQueue](#notificationqueue)
 - [EmailLog](#emaillog)
 - [NotificationPreference](#notificationpreference)
@@ -192,6 +194,8 @@ Conventions used throughout the schema:
 | `notificationPreferences` | NotificationPreference[] | no | FK→NotificationPreference |  |  |
 | `boardReports` | BoardReport[] | no | FK→BoardReport |  |  |
 | `dashboardSnapshots` | DashboardSnapshot[] | no | FK→DashboardSnapshot |  |  |
+| `auditChainHead` | AuditChainHead | yes | FK→AuditChainHead |  |  |
+| `auditChainVerifications` | AuditChainVerification[] | no | FK→AuditChainVerification |  |  |
 
 ## User
 
@@ -1655,6 +1659,8 @@ Indexes and constraints:
 | `oldData` | Json | yes |  |  | Data snapshots |
 | `newData` | Json | yes |  |  |  |
 | `userId` | String | yes |  |  | Actor info |
+| `prevHash` | Bytes | yes |  |  |  |
+| `rowHash` | Bytes | yes |  |  |  |
 | `ipAddress` | String | yes |  |  | RBI cyber security framework fields |
 | `sessionId` | String | yes |  |  |  |
 | `retentionExpiresAt` | DateTime | yes |  |  | Retention: computed as createdAt + 10 years (D14, PMLA) |
@@ -1666,6 +1672,35 @@ Indexes and constraints:
 - `@@index([tableName, recordId])`
 - `@@index([actionType])`
 - `@@index([createdAt])`
+
+## AuditChainHead
+
+*Tenant-scoped:* **yes** — always filter by `tenantId`
+
+| Column | Type | Null | Key | Default | Notes |
+|---|---|---|---|---|---|
+| `tenantId` | String `@db.Uuid` | no | PK |  |  |
+| `tenant` | Tenant | no | FK→Tenant |  | relation |
+| `lastSequence` | BigInt | no |  | `0` |  |
+| `lastHash` | Bytes | no |  |  |  |
+| `updatedAt` | DateTime | no |  |  |  |
+
+## AuditChainVerification
+
+*Tenant-scoped:* **yes** — always filter by `tenantId`
+
+| Column | Type | Null | Key | Default | Notes |
+|---|---|---|---|---|---|
+| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
+| `tenantId` | String `@db.Uuid` | no |  |  |  |
+| `tenant` | Tenant | no | FK→Tenant |  | relation |
+| `verifiedAt` | DateTime | no |  | `now()` |  |
+| `ok` | Boolean | no |  |  |  |
+| `firstBadSequence` | BigInt | yes |  |  |  |
+
+Indexes and constraints:
+
+- `@@index([tenantId, verifiedAt])`
 
 ## NotificationQueue
 
@@ -2264,7 +2299,7 @@ Indian Financial Year quarters (D16) Q1 = Apr-Jun, Q2 = Jul-Sep, Q3 = Oct-Dec, Q
 
 ### NotificationType
 
-`OBSERVATION_ASSIGNED` · `RESPONSE_SUBMITTED` · `DEADLINE_REMINDER_7D` · `DEADLINE_REMINDER_3D` · `DEADLINE_REMINDER_1D` · `OVERDUE_ESCALATION` · `WEEKLY_DIGEST` · `BULK_DIGEST` · `INVITATION`
+`OBSERVATION_ASSIGNED` · `RESPONSE_SUBMITTED` · `DEADLINE_REMINDER_7D` · `DEADLINE_REMINDER_3D` · `DEADLINE_REMINDER_1D` · `OVERDUE_ESCALATION` · `WEEKLY_DIGEST` · `BULK_DIGEST` · `INVITATION` · `AUDIT_CHAIN_TAMPER_DETECTED`
 
 ### NotificationStatus
 

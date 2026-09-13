@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `6f0d837` (plan1/task-6)
+> Source commit: `e857f26` (copilot/plan-2-task-8-admin-page)
 
 Which processes read and write which tables.
 
@@ -20,7 +20,7 @@ reachability graph.
 |---|---|---|
 | `(root)` | 8 | `Account`, `AuditeeResponse`, `Evidence`, `Observation`, `ObservationTimeline`, `Tenant`, `User` |
 | `account-examination` | 1 | `AccountExamResponse`, `AuditEngagement`, `ExaminationQuestion`, `LoanAccount` |
-| `admin` | 4 | `AuditCalendar`, `Branch`, `ReportTemplate`, `Zone` |
+| `admin` | 6 | `AuditCalendar`, `Branch`, `ReportTemplate`, `Tenant`, `Zone` |
 | `audit-execution` | 7 | `AuditEngagement`, `AuditExaminationResponse`, `AuditTeamMember`, `CashCheck`, `Evidence`, `LoanReview` |
 | `audit-plans` | 3 | `AuditEngagement`, `AuditPlan`, `Branch` |
 | `compliance` | 5 | `BoardReport`, `ComplianceItem`, `NotificationQueue`, `User` |
@@ -43,6 +43,7 @@ reachability graph.
 | `overdue-escalation` | yes | `NotificationQueue`, `Observation`, `Tenant`, `User` |
 | `rbia-overdue-escalation` | yes | `BmResponseBatch`, `NotificationQueue`, `Tenant`, `User` |
 | `snapshot-metrics` | — | `DashboardSnapshot`, `Tenant` |
+| `verify-audit-chain` | yes | `AuditChainVerification`, `AuditLog`, `NotificationQueue`, `Tenant`, `User` |
 | `weekly-digest` | yes | `NotificationQueue`, `Observation`, `Tenant`, `User` |
 
 ## Most widely accessed tables
@@ -54,6 +55,7 @@ Tables reached from the greatest number of domains — the ones where a schema c
 | `AuditEngagement` | 6 | `account-examination`, `audit-execution`, `audit-plans`, `loan-portfolio`, `rbia`, `reports` |
 | `Observation` | 5 | `(root)`, `jobs`, `observations`, `rbia`, `repeat-findings` |
 | `LoanAccount` | 3 | `account-examination`, `loan-portfolio`, `sampling` |
+| `Tenant` | 3 | `(root)`, `admin`, `jobs` |
 | `Branch` | 3 | `admin`, `audit-plans`, `ram` |
 | `Evidence` | 3 | `(root)`, `audit-execution`, `rbia` |
 | `ObservationTimeline` | 3 | `(root)`, `observations`, `repeat-findings` |
@@ -64,7 +66,6 @@ Tables reached from the greatest number of domains — the ones where a schema c
 | `ComplianceItem` | 2 | `compliance`, `observations` |
 | `NotificationQueue` | 2 | `compliance`, `jobs` |
 | `BmResponseBatch` | 2 | `jobs`, `rbia` |
-| `Tenant` | 2 | `(root)`, `jobs` |
 | `AccountExamResponse` | 1 | `account-examination` |
 
 ### Domain access graph
@@ -77,9 +78,9 @@ flowchart LR
         T_AuditEngagement["AuditEngagement"]
         T_Observation["Observation"]
         T_LoanAccount["LoanAccount"]
+        T_Tenant["Tenant"]
         T_Branch["Branch"]
         T_Evidence["Evidence"]
-        T_ObservationTimeline["ObservationTimeline"]
     end
     D_account_examination["account-examination"]
     D_account_examination --> T_AuditEngagement
@@ -106,7 +107,10 @@ flowchart LR
     D_loan_portfolio --> T_LoanAccount
     D_sampling["sampling"]
     D_sampling --> T_LoanAccount
+    D__root_ --> T_Tenant
     D_admin["admin"]
+    D_admin --> T_Tenant
+    D_jobs --> T_Tenant
     D_admin --> T_Branch
     D_audit_plans --> T_Branch
     D_ram["ram"]
@@ -114,9 +118,6 @@ flowchart LR
     D__root_ --> T_Evidence
     D_audit_execution --> T_Evidence
     D_rbia --> T_Evidence
-    D__root_ --> T_ObservationTimeline
-    D_observations --> T_ObservationTimeline
-    D_repeat_findings --> T_ObservationTimeline
 ```
 
 ## The observation lifecycle

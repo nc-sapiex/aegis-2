@@ -6,6 +6,7 @@ import { processRbiaOverdueEscalation } from "./rbia-overdue-escalation";
 import { processWeeklyDigest } from "./weekly-digest";
 import { captureMetricsSnapshot } from "./snapshot-metrics";
 import { processComplianceEscalation } from "./compliance-escalation";
+import { verifyAuditChain } from "./verify-audit-chain";
 import { logger } from "@/lib/logger";
 
 // Job names (duplicated from job-queue.ts to avoid server-only import)
@@ -16,6 +17,7 @@ const JOBS = {
   GENERATE_BOARD_REPORT: "generate-board-report",
   SNAPSHOT_METRICS: "snapshot-metrics",
   COMPLIANCE_ESCALATION: "compliance-escalation",
+  VERIFY_AUDIT_CHAIN: "verify-audit-chain",
 } as const;
 
 /**
@@ -71,6 +73,10 @@ export async function registerJobs(boss: PgBoss): Promise<void> {
   // Daily ComplianceItem escalation (06:30 IST), after deadline-check
   await boss.work(JOBS.COMPLIANCE_ESCALATION, async () => {
     await processComplianceEscalation();
+  });
+
+  await boss.work(JOBS.VERIFY_AUDIT_CHAIN, async () => {
+    await verifyAuditChain();
   });
 
   logger.info(
