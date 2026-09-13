@@ -33,20 +33,31 @@ string table), Sentry, the hand-coded RBIA PDF document.
 
 ## Development status
 
-Seven implementation plans carry the rest of the design to first-customer
-readiness (`docs/superpowers/plans/`), tracked as GitHub issues numbered
-per plan. Only the first is underway; the rest are queued behind it in
-dependency order and haven't started.
+_Last verified 2026-09-14 against `main` plus the active `tenant-isolation-rls`
+and `module-framework/foundation` branches._
 
-| Plan                               | Scope                                                                         | Status      |
-| ---------------------------------- | ----------------------------------------------------------------------------- | ----------- |
-| 1. Tenant isolation (RLS)          | Per-tenant Prisma client, load spike, RLS policies, static/integration suites | In progress |
-| 2. Audit chain                     | Hash-chained `AuditLog`, nightly verification, attestation export             | Not started |
-| 3. Adapters, migrations, licensing | Storage/mail adapters, `prisma migrate`, signed license file                  | Not started |
-| 4. Module-native framework         | `AuditModule`, five-point scale, statement snapshots, register UI             | Not started |
-| 5. Content packs                   | Signed `.aegispack` format, CLI, the `core` pack                              | Not started |
-| 6. Module admin & reporting        | Weight editor, pack install UI, data-driven PDF/XLSX reports                  | Not started |
-| 7. E2E, deployment drills, runbook | Full-cycle E2E, on-prem installer, backup/restore drills                      | Not started |
+Seven implementation plans (78 tasks total) carry the rest of the design to
+first-customer readiness (`docs/superpowers/plans/`), tracked as GitHub issues
+numbered per plan. Plan 1 gates the rest: several Plan 2-7 tasks were attempted
+by an autonomous agent ahead of schedule, but every one of those PRs was closed
+unmerged — Plan 1's RLS work has to close out first so later plans aren't built
+on tenant-isolation assumptions it hasn't settled yet.
+
+| Plan                               | Scope                                                                         | Status                                                                                                                                                                               |
+| ---------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1. Tenant isolation (RLS)          | Per-tenant Prisma client, load spike, RLS policies, static/integration suites | In progress — 1/8 tasks on `main` (tenant-bound client), Task 2 (load spike + ADR) done on branch, Task 3 (DB roles) underway                                                        |
+| 2. Audit chain                     | Hash-chained `AuditLog`, nightly verification, attestation export             | Not started on `main`; draft attempts closed pending Plan 1                                                                                                                          |
+| 3. Adapters, migrations, licensing | Storage/mail adapters, `prisma migrate`, signed license file                  | Not started on `main`; draft attempts closed pending Plan 1                                                                                                                          |
+| 4. Module-native framework         | `AuditModule`, five-point scale, statement snapshots, register UI             | In progress — 3/21 tasks already on `main` (permissions, sample-account register, score revision), 3 more committed on `module-framework/foundation` (unmerged), 1 in progress there |
+| 5. Content packs                   | Signed `.aegispack` format, CLI, the `core` pack                              | Not started                                                                                                                                                                          |
+| 6. Module admin & reporting        | Weight editor, pack install UI, data-driven PDF/XLSX reports                  | Not started on `main`; draft attempts closed pending Plan 1                                                                                                                          |
+| 7. E2E, deployment drills, runbook | Full-cycle E2E, on-prem installer, backup/restore drills                      | Not started on `main`; draft attempts closed pending Plan 1                                                                                                                          |
+
+None of the in-progress work above is merged to `main` yet — `main` still
+reflects only the original kernel plus routine maintenance PRs. Branches for
+closed, pending-Plan-1 attempts still exist on the remote
+(`copilot/plan-<N>-task-<M>-*`) and can be reopened once the source issue is
+relabelled `ready-for-agent`; they're parked, not discarded.
 
 ## Tech stack
 
