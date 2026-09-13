@@ -69,11 +69,7 @@ const SCORE_LABELS_ORDERED: ScoreLabel[] = [
 type ActiveFilter = "unscored" | "flaggedAP" | "flaggedObs";
 
 type RatingBandLabel =
-  | "Very Good"
-  | "Good"
-  | "Satisfactory"
-  | "Moderate"
-  | "Poor";
+  "Very Good" | "Good" | "Satisfactory" | "Moderate" | "Poor";
 
 // ─── Utility Functions ──────────────────────────────────────────────────────
 
@@ -607,6 +603,9 @@ export function RbiaExaminationTree({
   );
 
   // ── Score handler with optimistic UI ────────────────────────────────────
+  const handleScoreChangeRef = React.useRef<
+    (nodeId: string, label: ScoreLabel, score: number) => void
+  >(() => {});
   const handleScoreChange = React.useCallback(
     (nodeId: string, label: ScoreLabel, score: number) => {
       // Get existing response data for this node
@@ -685,7 +684,11 @@ export function RbiaExaminationTree({
                 label: "Undo",
                 onClick: () => {
                   if (previousLabel && previousScore !== null) {
-                    handleScoreChange(nodeId, previousLabel, previousScore);
+                    handleScoreChangeRef.current(
+                      nodeId,
+                      previousLabel,
+                      previousScore,
+                    );
                   }
                 },
               },
@@ -711,6 +714,10 @@ export function RbiaExaminationTree({
     },
     [engagementId, tree, optimisticScores],
   );
+
+  React.useEffect(() => {
+    handleScoreChangeRef.current = handleScoreChange;
+  }, [handleScoreChange]);
 
   // ── Notes saved handler ─────────────────────────────────────────────────
   const handleNotesSaved = React.useCallback(
