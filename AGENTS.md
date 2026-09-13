@@ -66,6 +66,10 @@ pnpm seed:master-directions # Seed RBI master directions dataset
 pnpm seed:rbia-housing      # Seed the RBIA housing dataset (scripts/seed-rbia-housing.ts)
 pnpm seed:exam-questions    # Seed exam question bank
 pnpm seed:lifecycle         # Seed full audit lifecycle demo data
+
+`pnpm db:seed` wipes tenants. Re-run housing → questions → lifecycle after it.
+The lifecycle script no longer seeds GRC. Full counts:
+[`docs/SEED-PROCESS-MANUAL.md`](docs/SEED-PROCESS-MANUAL.md).
 ```
 
 ### Build Utilities
