@@ -46,7 +46,12 @@ const SCORING_ALLOWED_STATUSES = new Set([
  */
 export async function saveAccountExamResponse(
   input: SaveAccountExamResponseInput,
-): Promise<ActionResult<{ id: string; status: "COMPLIANT" | "VIOLATION" }>> {
+): Promise<
+  ActionResult<{
+    id: string;
+    status: "COMPLIANT" | "VIOLATION" | "NOT_APPLICABLE";
+  }>
+> {
   try {
     // 1. Auth
     const session = await getRequiredSession();
@@ -146,9 +151,10 @@ export async function saveAccountExamResponse(
       };
     }
 
-    // 6. Upsert AccountExamResponse on the unique constraint. AccountExamResponse
-    // carries an audit trigger, so the write runs through withAuditedMutation,
-    // which sets the session context the trigger reads.
+    // 6. Persist AccountExamResponse through audited mutation.
+    const isNotApplicable = status === "NOT_APPLICABLE";
+    const cleanedNote = note?.trim() || null;
+
     const response = await withAuditedMutation(
       userActor(session),
       "account_exam_response.saved",
@@ -162,8 +168,9 @@ export async function saveAccountExamResponse(
             },
           },
           update: {
-            status,
-            note: note ?? null,
+            status: isNotApplicable ? null : status,
+            isNotApplicable,
+            note: cleanedNote,
             respondedById: userId,
             respondedAt: new Date(),
           },
@@ -172,17 +179,23 @@ export async function saveAccountExamResponse(
             engagementId,
             loanAccountId,
             questionId,
-            status,
-            note: note ?? null,
+            status: isNotApplicable ? null : status,
+            isNotApplicable,
+            note: cleanedNote,
             respondedById: userId,
             respondedAt: new Date(),
           },
-          select: { id: true, status: true },
+          select: { id: true },
         }),
     );
+    const responseId = response.id;
+    const responseStatus = status;
 
     // 7. Revalidate the examination page
     revalidatePath(`/audit-execution/${engagementId}/rbia`);
+    revalidatePath(
+      `/audit-execution/${engagementId}/rbia/examination/${loanAccount.moduleCode}`,
+    );
 
     logger.info(
       {
@@ -191,7 +204,7 @@ export async function saveAccountExamResponse(
         loanAccountId,
         questionId,
         status,
-        responseId: response.id,
+        responseId,
         userId,
         tenantId,
       },
@@ -200,7 +213,7 @@ export async function saveAccountExamResponse(
 
     return {
       success: true,
-      data: { id: response.id, status: response.status },
+      data: { id: responseId, status: responseStatus },
     };
   } catch (error) {
     const message =

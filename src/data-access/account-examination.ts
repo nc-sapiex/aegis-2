@@ -46,7 +46,7 @@ export type QuestionWithResponse = {
   displayOrder: number;
   response: {
     id: string;
-    status: "COMPLIANT" | "VIOLATION";
+    status: "COMPLIANT" | "VIOLATION" | "NOT_APPLICABLE";
     note: string | null;
     respondedAt: Date;
   } | null;
@@ -179,7 +179,13 @@ export async function getQuestionsForAccount(
     include: {
       accountExamResponses: {
         where: { loanAccountId, engagementId },
-        select: { id: true, status: true, note: true, respondedAt: true },
+        select: {
+          id: true,
+          status: true,
+          isNotApplicable: true,
+          note: true,
+          respondedAt: true,
+        },
         take: 1, // Unique constraint ensures 0 or 1 per account-question pair
       },
     },
@@ -198,7 +204,9 @@ export async function getQuestionsForAccount(
     response: q.accountExamResponses[0]
       ? {
           id: q.accountExamResponses[0].id,
-          status: q.accountExamResponses[0].status,
+          status: q.accountExamResponses[0].isNotApplicable
+            ? ("NOT_APPLICABLE" as const)
+            : q.accountExamResponses[0].status!,
           note: q.accountExamResponses[0].note,
           respondedAt: q.accountExamResponses[0].respondedAt,
         }
@@ -242,37 +250,43 @@ export async function getViolationSummary(
 
   if (questions.length === 0) return [];
 
-  // Group responses by questionId and status
-  const responses = await db.accountExamResponse.groupBy({
-    by: ["questionId", "status"],
-    where: {
-      engagementId,
-      tenantId,
-      questionId: { in: questions.map((q) => q.id) },
-    },
-    _count: true,
-  });
+  const [violations, compliant] = await Promise.all([
+    db.accountExamResponse.groupBy({
+      by: ["questionId"],
+      where: {
+        engagementId,
+        tenantId,
+        questionId: { in: questions.map((q) => q.id) },
+        status: "VIOLATION",
+      },
+      _count: true,
+    }),
+    db.accountExamResponse.groupBy({
+      by: ["questionId"],
+      where: {
+        engagementId,
+        tenantId,
+        questionId: { in: questions.map((q) => q.id) },
+        status: "COMPLIANT",
+      },
+      _count: true,
+    }),
+  ]);
 
-  // Build lookup: questionId → { VIOLATION: N, COMPLIANT: N }
-  const countMap = new Map<string, { violation: number; compliant: number }>();
-  for (const r of responses) {
-    const entry = countMap.get(r.questionId) ?? { violation: 0, compliant: 0 };
-    if (r.status === "VIOLATION") {
-      entry.violation += r._count;
-    } else if (r.status === "COMPLIANT") {
-      entry.compliant += r._count;
-    }
-    countMap.set(r.questionId, entry);
-  }
+  const violationMap = new Map<string, number>(
+    violations.map((row) => [row.questionId, row._count]),
+  );
+  const compliantMap = new Map<string, number>(
+    compliant.map((row) => [row.questionId, row._count]),
+  );
 
   return questions.map((q) => {
-    const counts = countMap.get(q.id) ?? { violation: 0, compliant: 0 };
     return {
       questionId: q.id,
       questionText: q.text,
       totalAccounts,
-      violationCount: counts.violation,
-      complianceCount: counts.compliant,
+      violationCount: violationMap.get(q.id) ?? 0,
+      complianceCount: compliantMap.get(q.id) ?? 0,
     };
   });
 }

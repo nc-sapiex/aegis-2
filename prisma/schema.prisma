@@ -2532,8 +2532,11 @@ model AccountExamResponse {
   questionId String              @db.Uuid
   question   ExaminationQuestion @relation(fields: [questionId], references: [id])
 
-  status AccountExamResponseStatus // COMPLIANT or VIOLATION
-  note   String?                   @db.Text // Auditor's finding notes
+  status AccountExamResponseStatus? // COMPLIANT or VIOLATION; null when isNotApplicable
+  note   String?                    @db.Text // Auditor's finding notes
+
+  // Explicit N/A, same shape as ExaminationResponse.isNotApplicable
+  isNotApplicable Boolean @default(false)
 
   // Audit trail
   respondedById String   @db.Uuid
