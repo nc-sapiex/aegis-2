@@ -49,6 +49,7 @@ export const ACTIONS_REQUIRING_JUSTIFICATION = [
   "user.role_changed",
   "compliance.marked_na",
   "observation.status_changed",
+  "rbia.score_revised",
 ] as const;
 
 export type SensitiveAction = (typeof ACTIONS_REQUIRING_JUSTIFICATION)[number];

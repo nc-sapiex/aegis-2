@@ -27,7 +27,7 @@ DECLARE
     'ActionPoint', 'RamAssessment', 'RamAssessmentScore', 'BranchRbiaScore',
     'AuditExaminationResponse',
     -- Remaining scoring tables; their write paths now set session context.
-    'ExaminationResponse', 'AccountExamResponse', 'LoanAccount'
+    'ExaminationResponse', 'EngagementSectionNa', 'AccountExamResponse', 'LoanAccount'
   ];
 BEGIN
   FOREACH t IN ARRAY audited LOOP

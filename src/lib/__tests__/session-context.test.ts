@@ -85,6 +85,7 @@ describe("setSessionContext", () => {
       "compliance.marked_na",
       "finding.closed",
       "observation.status_changed",
+      "rbia.score_revised",
       "user.role_changed",
     ]);
   });

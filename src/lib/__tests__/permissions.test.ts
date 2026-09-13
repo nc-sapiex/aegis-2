@@ -111,6 +111,24 @@ describe("ROLE_PERMISSIONS structure", () => {
   it("RISK_HEAD has dashboard:risk_head", () => {
     expect(hasPermission([Role.RISK_HEAD], "dashboard:risk_head")).toBe(true);
   });
+
+  it("module:manage is held by CAE, AUDIT_MANAGER and SYSTEM_ADMIN only", () => {
+    expect(hasPermission([Role.CAE], "module:manage")).toBe(true);
+    expect(hasPermission([Role.AUDIT_MANAGER], "module:manage")).toBe(true);
+    expect(hasPermission([Role.SYSTEM_ADMIN], "module:manage")).toBe(true);
+    expect(hasPermission([Role.LEAD_AUDITOR], "module:manage")).toBe(false);
+    expect(hasPermission([Role.AUDITOR], "module:manage")).toBe(false);
+  });
+
+  it("rbia:revise_score is held by LEAD_AUDITOR, AUDIT_MANAGER and CAE only", () => {
+    expect(hasPermission([Role.LEAD_AUDITOR], "rbia:revise_score")).toBe(true);
+    expect(hasPermission([Role.AUDIT_MANAGER], "rbia:revise_score")).toBe(true);
+    expect(hasPermission([Role.CAE], "rbia:revise_score")).toBe(true);
+    expect(hasPermission([Role.SYSTEM_ADMIN], "rbia:revise_score")).toBe(false);
+    expect(hasPermission([Role.FIELD_AUDITOR], "rbia:revise_score")).toBe(
+      false,
+    );
+  });
 });
 
 // ─── getPermissions (multi-role union) ──────────────────────────────────────
