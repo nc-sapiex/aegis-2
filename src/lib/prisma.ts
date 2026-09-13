@@ -52,14 +52,19 @@ const tenantClients = new Map<string, TenantClient>();
  * with app.current_tenant_id set, so RLS applies. WHERE tenantId stays on every
  * query as the second wall (spec §4.3).
  *
- * TENANT_CLIENT=singleton is read only by scripts/load/rls-spike.mjs to
- * measure the unwrapped baseline. It is removed in Task 8.
+ * TENANT_CLIENT=singleton is read only by scripts/load/rls-spike.mjs to measure
+ * the unwrapped baseline, and is ignored in production: it strips tenant
+ * scoping from every query, so a stray value in a deployed environment must not
+ * be able to turn that off. It is removed in Task 8.
  */
 export function prismaForTenant(tenantId: string): TenantClient {
   if (!UUID_REGEX.test(tenantId)) {
     throw new Error(`Invalid tenantId format: ${tenantId}`);
   }
-  if (process.env.TENANT_CLIENT === "singleton") {
+  if (
+    process.env.TENANT_CLIENT === "singleton" &&
+    process.env.NODE_ENV !== "production"
+  ) {
     return prisma as unknown as TenantClient;
   }
   let client = tenantClients.get(tenantId);
