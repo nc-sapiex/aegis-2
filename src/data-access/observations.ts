@@ -112,7 +112,7 @@ export async function getObservationById(
   }
 
   const observation = await db.observation.findFirst({
-    where: scopedWhere,
+    where: { tenantId, ...scopedWhere },
     include: {
       timeline: {
         orderBy: { createdAt: "asc" },
@@ -177,15 +177,15 @@ export async function getObservationSummary(session: Session): Promise<{
   const [severityGroups, statusGroups, total] = await Promise.all([
     db.observation.groupBy({
       by: ["severity"],
-      where,
+      where: { tenantId, ...where },
       _count: { _all: true },
     }),
     db.observation.groupBy({
       by: ["status"],
-      where,
+      where: { tenantId, ...where },
       _count: { _all: true },
     }),
-    db.observation.count({ where }),
+    db.observation.count({ where: { tenantId, ...where } }),
   ]);
 
   const bySeverity: Record<string, number> = {};
