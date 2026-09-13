@@ -249,7 +249,9 @@ function getGridClasses(size: "full" | "half" | "third"): string {
 }
 
 function getPollingWidgetIds(widgetConfig: WidgetConfig[]): string[] {
-  return widgetConfig.filter((config) => !!config.dataKey).map((config) => config.id);
+  return widgetConfig
+    .filter((config) => !!config.dataKey)
+    .map((config) => config.id);
 }
 
 function getDashboardRefetchInterval(
