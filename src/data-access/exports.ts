@@ -54,7 +54,7 @@ export async function getExportFindings(session: AuthSession) {
   }
 
   const observations = await db.observation.findMany({
-    where: baseWhere,
+    where: { tenantId, ...baseWhere },
     include: {
       branch: { select: { name: true } },
       auditArea: { select: { name: true } },
@@ -142,7 +142,7 @@ export async function getExportAuditPlans(session: AuthSession) {
   }
 
   const plans = await db.auditPlan.findMany({
-    where: planWhere,
+    where: { tenantId, ...planWhere },
     include: {
       engagements: {
         where: engagementWhere,

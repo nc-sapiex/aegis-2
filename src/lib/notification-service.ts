@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "@/lib/prisma";
+import { prismaForTenant } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import type { AuthSession } from "@/lib/auth";
 
@@ -35,7 +35,9 @@ export async function queueNotification(
 
   if (!MANDATORY_TYPES.includes(type)) {
     // Check recipient's notification preferences
-    const prefs = await prisma.notificationPreference.findUnique({
+    const prefs = await prismaForTenant(
+      session.user.tenantId,
+    ).notificationPreference.findUnique({
       where: { userId: recipientId },
     });
 

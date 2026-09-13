@@ -55,7 +55,7 @@ export async function getObservations(
 
   const [observations, total] = await Promise.all([
     db.observation.findMany({
-      where,
+      where: { tenantId, ...where },
       include: {
         branch: { select: { id: true, name: true } },
         auditArea: { select: { id: true, name: true } },
@@ -66,7 +66,7 @@ export async function getObservations(
       skip,
       take: pageSize,
     }),
-    db.observation.count({ where }),
+    db.observation.count({ where: { tenantId, ...where } }),
   ]);
 
   return { observations, total };

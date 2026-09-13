@@ -191,7 +191,7 @@ export async function getEngagementModuleScores(
 
   // Q3: All responses for this engagement
   const responses = await db.examinationResponse.findMany({
-    where: { engagementId },
+    where: { tenantId, engagementId },
     select: { nodeId: true, score: true },
   });
 

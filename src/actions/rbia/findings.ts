@@ -89,7 +89,7 @@ export async function createActionPoint(
 
         // Atomic serial number assignment (FIND-06)
         const maxSerial = await tx.actionPoint.aggregate({
-          where: { engagementId: validated.engagementId },
+          where: { tenantId, engagementId: validated.engagementId },
           _max: { serialNo: true },
         });
         const nextSerialNo = (maxSerial._max.serialNo ?? 0) + 1;

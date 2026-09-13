@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma, prismaForTenant } from "@/lib/prisma";
+import { prismaForTenant } from "@/lib/prisma";
 import { getRequiredSession } from "./session";
 import type { Role } from "@/lib/permissions";
 import type { AuthSession } from "@/lib/auth";

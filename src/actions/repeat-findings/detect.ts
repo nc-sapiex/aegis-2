@@ -1,7 +1,7 @@
 "use server";
 
 import { getRequiredSession } from "@/data-access/session";
-import { prisma } from "@/lib/prisma";
+import { prismaForTenant } from "@/lib/prisma";
 import { DetectRepeatSchema, type DetectRepeatInput } from "./schemas";
 
 /**
@@ -49,6 +49,7 @@ export async function detectRepeatFindings(
   }
 
   const { branchId, auditAreaId, riskCategory, title } = parsed.data;
+  const db = prismaForTenant(tenantId);
 
   try {
     // Use raw SQL with pg_trgm similarity function.
@@ -64,7 +65,7 @@ export async function detectRepeatFindings(
     }>;
 
     if (riskCategory) {
-      candidates = await prisma.$queryRaw`
+      candidates = await db.$queryRaw`
         SELECT
           id,
           title,
@@ -84,7 +85,7 @@ export async function detectRepeatFindings(
         LIMIT 5
       `;
     } else {
-      candidates = await prisma.$queryRaw`
+      candidates = await db.$queryRaw`
         SELECT
           id,
           title,
@@ -108,7 +109,7 @@ export async function detectRepeatFindings(
     // to get occurrence count
     const enriched: RepeatCandidate[] = await Promise.all(
       candidates.map(async (candidate) => {
-        const countResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
+        const countResult = await db.$queryRaw<Array<{ count: bigint }>>`
           SELECT COUNT(*)::bigint as count
           FROM "Observation"
           WHERE
