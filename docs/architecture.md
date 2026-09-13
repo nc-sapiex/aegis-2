@@ -213,18 +213,25 @@ convention exists.
 ## Invariant 1 — tenant isolation
 
 **Tenant isolation is enforced in application code. PostgreSQL row-level
-security is not enabled.** This repo carries no RLS SQL of any kind — no
-`ENABLE ROW LEVEL SECURITY`, no policy file — despite `prismaForTenant(tenantId)`
-reading like an RLS helper: it validates that the tenant id is a well-formed
-UUID and returns the shared singleton client. It adds no filtering of its own.
-RLS is planned (spec §4, gated by a spike; see the five implementation plans
-under [`superpowers/plans/`](superpowers/plans/)), not yet built.
+security is not enabled yet.** This repo carries no RLS policies — no
+`ENABLE ROW LEVEL SECURITY`, no policy file; those arrive in Task 4 (spec §4,
+gated by a spike; see the implementation plans under
+[`superpowers/plans/`](superpowers/plans/)). `prismaForTenant(tenantId)`
+validates that the tenant id is a well-formed UUID and returns a per-tenant
+client that sets the `app.current_tenant_id` session GUC, so the policies will
+see the tenant once they land. It adds no filtering of its own.
 
-An earlier version wrapped every query in a transaction with `SET LOCAL`,
-which was a no-op without policies _and_ caused P2028 transaction timeouts
-under parallel SSR load — a dashboard fires 10–15 queries at once and they
-competed for pool connections. That wrapping was removed (see the
-architecture note in `src/lib/prisma.ts`).
+An earlier version wrapped every _query_ in its own transaction with
+`SET LOCAL`, which was a no-op without policies _and_ caused P2028 transaction
+timeouts under parallel SSR load — a dashboard fires 10–15 queries at once and
+they competed for pool connections. The GUC is now set once per _transaction_
+instead: an operation already inside one is left alone, and `$transaction` sets
+it as its own first statement, so an action's writes stay in a single
+transaction on a single connection. That matters beyond performance — an
+operation re-wrapped onto a second connection would not roll back with its
+caller, and the GUCs `setAuditContext` sets on `tx` would never reach the
+write, leaving an `AuditLog` row with a null `actionType` and `userId`. The
+P2028 risk is reduced, not eliminated; the Task 2 load spike gates it.
 
 What actually keeps tenants apart:
 

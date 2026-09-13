@@ -58,8 +58,10 @@ SKIP_ENV_VALIDATION=1 pnpm build
 
 - **Tenant id comes from the session only** — `getRequiredSession()`. Never
   from params, body, headers or query. Every query carries `where: { tenantId }`.
-  `prismaForTenant(tenantId)` currently returns the shared client and adds no
-  filtering; RLS is planned (spec §4). `src/data-access/__tests__/tenant-isolation.test.ts`.
+  `prismaForTenant(tenantId)` returns a per-tenant client that sets
+  `app.current_tenant_id` once per transaction, so the RLS policies arriving in
+  Task 4 will see the tenant; it adds no filtering of its own.
+  `src/data-access/__tests__/tenant-isolation.test.ts`.
 - **Every write to an audited table goes through
   `withAuditedMutation(actor, "domain.event_past", fn)`** from
   `src/data-access/audited-mutation.ts`. A bare transaction on an audited table
