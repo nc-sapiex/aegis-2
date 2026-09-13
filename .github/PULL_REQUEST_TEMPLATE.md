@@ -1,6 +1,10 @@
 ## Summary
 <!-- Concise summary of the changes introduced by this PR -->
 
+## Review & Merge Guidance
+- [ ] Reviewers should use [PR_REVIEW_TEMPLATE.md](PR_REVIEW_TEMPLATE.md) for correctness, security, performance, readability, tests, and edge-case checks.
+- [ ] Before merging, confirm [PR_APPROVAL_AND_MERGE_TEMPLATE.md](PR_APPROVAL_AND_MERGE_TEMPLATE.md) is satisfied.
+
 ## Motivation & Context
 <!-- Why is this change required? What problem does it solve? Link any related issue(s) -->
 
