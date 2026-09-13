@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `828fe3a` (copilot/delete-v5-tables-and-dead-code)
+> Source commit: `99c636c` (copilot/delete-v5-tables-and-dead-code)
 
 Which processes read and write which tables.
 
@@ -21,7 +21,7 @@ reachability graph.
 | `(root)` | 8 | `Account`, `AuditeeResponse`, `Evidence`, `Observation`, `ObservationTimeline`, `Tenant`, `User` |
 | `account-examination` | 1 | `AccountExamResponse`, `AuditEngagement`, `ExaminationQuestion`, `LoanAccount` |
 | `admin` | 4 | `AuditCalendar`, `Branch`, `ReportTemplate`, `Zone` |
-| `audit-execution` | 6 | `AuditEngagement`, `AuditTeamMember`, `CashCheck` |
+| `audit-execution` | 5 | `AuditEngagement`, `AuditTeamMember`, `CashCheck` |
 | `audit-plans` | 3 | `AuditEngagement`, `AuditPlan`, `Branch` |
 | `compliance` | 5 | `BoardReport`, `ComplianceItem`, `NotificationQueue`, `User` |
 | `examination-questions` | 1 | `ExaminationQuestion` |

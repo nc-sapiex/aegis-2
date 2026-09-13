@@ -25,8 +25,26 @@ export default async function AuditExecutionPage({ params }: PageProps) {
     notFound();
   }
 
-  // ENGG-07: Gateway fork — RBIA engagements redirect to v6.0 UI
-  const isRbiaEngagement = (engagement as any).auditType === "RBIA";
+  const tenantId = session.user.tenantId;
+  const db = prismaForTenant(tenantId);
+
+  // ENGG-07: Gateway fork — RBIA engagements redirect to v6.0 UI.
+  // Keep the legacy gate until old section-instance records are gone.
+  let legacySectionInstanceCount: number | null = null;
+  try {
+    const rows = await db.$queryRaw<{ count: bigint }[]>`
+      SELECT COUNT(*)::bigint AS count
+      FROM "AuditSectionInstance"
+      WHERE "tenantId" = ${tenantId}::uuid
+        AND "engagementId" = ${engagementId}::uuid
+    `;
+    legacySectionInstanceCount = Number(rows[0]?.count ?? BigInt(0));
+  } catch {
+    legacySectionInstanceCount = null;
+  }
+
+  const isRbiaEngagement =
+    (engagement as any).auditType === "RBIA" && legacySectionInstanceCount === 0;
 
   if (isRbiaEngagement) {
     redirect(`/audit-execution/${engagementId}/rbia`);
@@ -36,8 +54,6 @@ export default async function AuditExecutionPage({ params }: PageProps) {
   const canManageTeam = hasPermission(userRoles, "audit_execution:manage_team");
 
   // Fetch available auditors for team assignment (R13)
-  const tenantId = session.user.tenantId;
-  const db = prismaForTenant(tenantId);
   const availableUsers = canManageTeam
     ? await db.user.findMany({
         where: { tenantId },

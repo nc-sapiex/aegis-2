@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `828fe3a` (copilot/delete-v5-tables-and-dead-code)
+> Source commit: `99c636c` (copilot/delete-v5-tables-and-dead-code)
 
 Every table AEGIS maintains, with its columns, types and relationships.
 **70 models** and **22 enumerations**.

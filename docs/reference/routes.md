@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `828fe3a` (copilot/delete-v5-tables-and-dead-code)
+> Source commit: `99c636c` (copilot/delete-v5-tables-and-dead-code)
 
 Every addressable path in the application: **46 pages** and
 **10 HTTP endpoints**.

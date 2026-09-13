@@ -974,7 +974,7 @@ model RamAssessmentScore {
   @@index([assessmentId])
 }
 
-// ─── Cash Check (Phase 1 — R19: cash verification per engagement) ──────────
+// ─── Cash Check (Phase 1 — R19: one cash verification per engagement) ──────
 
 model CashCheck {
   id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
