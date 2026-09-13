@@ -31,7 +31,8 @@ function walk(dir: string, out: string[] = []): string[] {
     if (statSync(full).isDirectory()) {
       if (entry === "__tests__" || entry === "__integration__") continue;
       walk(full, out);
-    } else if (entry.endsWith(".ts") && !EXCLUDED_FILES.has(entry)) out.push(full);
+    } else if (entry.endsWith(".ts") && !EXCLUDED_FILES.has(entry))
+      out.push(full);
   }
   return out;
 }
@@ -124,8 +125,11 @@ describe("Tenant Data Isolation (DSEC-05)", () => {
    * shape of all: a query with no `where` key whatsoever, which returns
    * every tenant's rows. getUsers() shipped exactly that bug.
    */
-  function queryArgs(content: string, marker: string): string[] {
-    const out: string[] = [];
+  function queryArgs(
+    content: string,
+    marker: string,
+  ): { index: number; args: string }[] {
+    const out: { index: number; args: string }[] = [];
     let idx = 0;
     while ((idx = content.indexOf(marker, idx)) !== -1) {
       let depth = 0;
@@ -138,10 +142,31 @@ describe("Tenant Data Isolation (DSEC-05)", () => {
           if (depth === 0) break;
         }
       }
-      out.push(content.slice(idx + marker.length, j));
+      out.push({ index: idx, args: content.slice(idx + marker.length, j) });
       idx = j;
     }
     return out;
+  }
+
+  /**
+   * Name of the nearest `function` declaration starting before `index`. Lets
+   * an allowlist exempt one function's query instead of every query in its
+   * file — a file-wide exemption also blinds the check to every other
+   * function in that file, including ones this same test is supposed to
+   * cover (a sibling function's tenantId fix can regress silently).
+   */
+  function enclosingFunctionName(
+    content: string,
+    index: number,
+  ): string | undefined {
+    const FUNCTION_START = /(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\(/g;
+    let name: string | undefined;
+    let m: RegExpExecArray | null;
+    while ((m = FUNCTION_START.exec(content))) {
+      if (m.index > index) break;
+      name = m[1];
+    }
+    return name;
   }
 
   const QUERY_MARKERS = [
@@ -166,26 +191,31 @@ describe("Tenant Data Isolation (DSEC-05)", () => {
 
     /**
      * Shrink-only, separate from NO_TENANT_ALLOWLIST: these tables do carry a
-     * tenantId column, but the specific query is deliberately not scoped by
-     * it — a pre-tenant lookup or a cross-tenant worker poll that splits by
-     * tenantId immediately after. Each entry names its reason.
+     * tenantId column, but one specific function's query is deliberately not
+     * scoped by it — a pre-tenant lookup or a cross-tenant worker poll that
+     * splits by tenantId immediately after. Keyed by `basename:functionName`
+     * so the exemption covers only that function, not every query in the
+     * file — a sibling function in the same file (e.g. claimNotifications
+     * next to getPendingNotifications) stays fully checked.
      */
     const DELIBERATE_ALLOWLIST = new Set<string>([
-      "user-invitations.ts", // acceptInvitation resolves an invited User by globally-unique email before any tenantId is known — same shape as sign-in
-      "notifications.ts", // getPendingNotifications polls the global pg-boss queue across all tenants; claimNotifications splits the claim by tenantId immediately after, in the same worker tick
+      "user-invitations.ts:acceptInvitation", // resolves an invited User by globally-unique email before any tenantId is known — same shape as sign-in
+      "notifications.ts:getPendingNotifications", // polls the global pg-boss queue across all tenants; claimNotifications (same file) splits the claim by tenantId immediately after, in the same worker tick, and stays checked
     ]);
 
     const offenders: string[] = [];
     for (const file of queryFiles) {
       const base = file.split("/").pop()!;
-      if (NO_TENANT_ALLOWLIST.has(base) || DELIBERATE_ALLOWLIST.has(base))
-        continue;
+      if (NO_TENANT_ALLOWLIST.has(base)) continue;
       const content = getFileContent(file);
       for (const marker of QUERY_MARKERS) {
-        for (const args of queryArgs(content, marker)) {
-          if (!/\btenantId\b/.test(args)) {
-            offenders.push(`${relative(process.cwd(), file)}: ${marker}`);
-          }
+        for (const { index, args } of queryArgs(content, marker)) {
+          if (/\btenantId\b/.test(args)) continue;
+          const fn = enclosingFunctionName(content, index);
+          if (fn && DELIBERATE_ALLOWLIST.has(`${base}:${fn}`)) continue;
+          offenders.push(
+            `${relative(process.cwd(), file)}: ${marker}${fn ? ` (in ${fn})` : ""}`,
+          );
         }
       }
     }
@@ -204,8 +234,7 @@ the table).`,
   });
 
   it("every $queryRaw/$queryRawUnsafe filters by tenantId", () => {
-    const RAW_CALL =
-      /\$queryRaw(?:Unsafe)?\s*(?:<[^>]*>)?\s*`([\s\S]*?)`/g;
+    const RAW_CALL = /\$queryRaw(?:Unsafe)?\s*(?:<[^>]*>)?\s*`([\s\S]*?)`/g;
     const rawOffenders: string[] = [];
 
     for (const file of queryFiles) {
