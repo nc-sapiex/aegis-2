@@ -132,7 +132,11 @@ export async function revertNotApplicable(requirementId: string) {
 // ─── Master Directions (Read-Only) ──────────────────────────────────────────
 
 export async function fetchMasterDirections() {
-  await getRequiredSession(); // Auth gate
+  const session = await getRequiredSession();
+
+  if (!hasPermission(session.user.roles, "compliance:read")) {
+    return { success: false, error: "Insufficient permissions." };
+  }
 
   try {
     const directions = await getMasterDirectionsWithCounts();
@@ -147,7 +151,11 @@ export async function fetchMasterDirections() {
 }
 
 export async function fetchMasterDirectionItems(masterDirectionId: string) {
-  await getRequiredSession(); // Auth gate
+  const session = await getRequiredSession();
+
+  if (!hasPermission(session.user.roles, "compliance:read")) {
+    return { success: false, error: "Insufficient permissions." };
+  }
 
   try {
     const items = await getMasterDirectionItems(masterDirectionId);
@@ -164,7 +172,11 @@ export async function fetchMasterDirectionItems(masterDirectionId: string) {
 // ─── RBI Circular Search ────────────────────────────────────────────────────
 
 export async function searchCirculars(query: string) {
-  await getRequiredSession(); // Auth gate
+  const session = await getRequiredSession();
+
+  if (!hasPermission(session.user.roles, "compliance:read")) {
+    return { success: false, error: "Insufficient permissions." };
+  }
 
   try {
     const results = await searchRbiCirculars(query);
@@ -182,6 +194,9 @@ export async function searchCirculars(query: string) {
 
 export async function fetchCustomRequirements() {
   const session = await getRequiredSession();
+  if (!hasPermission(session.user.roles, "compliance:read")) {
+    return { success: false, error: "Insufficient permissions." };
+  }
   const tenantId = session.user.tenantId;
 
   try {

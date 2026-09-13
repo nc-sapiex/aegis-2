@@ -34,9 +34,8 @@ export async function transitionReportStatus(input: TransitionReportInput) {
   const tenantId = session.user.tenantId;
 
   const canManageReports =
-    hasPermission(userRoles, "report:read") ||
-    hasPermission(userRoles, "report:approve") ||
-    hasPermission(userRoles, "audit_execution:manage_team");
+    hasPermission(userRoles, "report:add_commentary") ||
+    hasPermission(userRoles, "report:approve");
 
   if (!canManageReports) {
     return {

@@ -219,6 +219,7 @@ function getPermissionsForRole(role: Role): Permission[] {
       "compliance:read",
       "compliance:update",
       "report:read",
+      "report:add_commentary",
       "dashboard:manager",
     ],
     CAE: [
@@ -267,6 +268,7 @@ function getPermissionsForRole(role: Role): Permission[] {
       "examination:read",
       "ram:read",
       "dashboard:auditor",
+      "report:add_commentary",
     ],
     FIELD_AUDITOR: [
       "observation:create",

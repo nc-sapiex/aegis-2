@@ -83,6 +83,15 @@ describe("ROLE_PERMISSIONS structure", () => {
     ).toBe(false);
   });
 
+  it("AUDIT_MANAGER and LEAD_AUDITOR can add report commentary", () => {
+    expect(hasPermission([Role.AUDIT_MANAGER], "report:add_commentary")).toBe(
+      true,
+    );
+    expect(hasPermission([Role.LEAD_AUDITOR], "report:add_commentary")).toBe(
+      true,
+    );
+  });
+
   it("CCO has compliance:read and compliance:update", () => {
     expect(hasPermission([Role.CCO], "compliance:read")).toBe(true);
     expect(hasPermission([Role.CCO], "compliance:update")).toBe(true);

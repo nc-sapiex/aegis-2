@@ -9,7 +9,12 @@ const PAGE_GUARD_CALLS = [
   "requireAnyPermission(",
   "requireOnboardingPermission(",
 ];
+const ACTION_GUARD_CALLS = ["hasPermission(", "requireOnboardingPermission("];
 const ACTION_EXCLUDED_FILES = new Set(["schemas.ts"]);
+const ACTION_ALLOWLIST = new Set([
+  "src/actions/compliance/run-escalation-job.ts:runEscalationJobInternal",
+  "src/actions/user-invitations.ts:acceptInvitation",
+]);
 
 function walk(dir: string): string[] {
   return readdirSync(join(process.cwd(), dir)).flatMap((entry) => {
@@ -23,6 +28,22 @@ function walk(dir: string): string[] {
 
     return [rel];
   });
+}
+
+function exportedServerActions(source: string): { name: string; body: string }[] {
+  const actions: { name: string; body: string }[] = [];
+  const pattern = /export\s+async\s+function\s+(\w+)\s*\(/g;
+  const matches = [...source.matchAll(pattern)];
+
+  for (const [index, match] of matches.entries()) {
+    const nextMatch = matches[index + 1];
+    actions.push({
+      name: match[1],
+      body: source.slice(match.index, nextMatch?.index ?? source.length),
+    });
+  }
+
+  return actions;
 }
 
 describe("authorization gaps", () => {
@@ -51,15 +72,22 @@ describe("authorization gaps", () => {
   });
 
   it("every server action file checks hasPermission", () => {
-    const unguarded = actionFiles.filter((file) => {
+    const unguarded = actionFiles.flatMap((file) => {
       const source = readFileSync(join(process.cwd(), file), "utf-8");
-      if (!source.includes('"use server"')) return false;
-      return !source.includes("hasPermission(");
+      if (!source.includes('"use server"')) return [];
+
+      return exportedServerActions(source)
+        .filter((action) => {
+          const key = `${file}:${action.name}`;
+          if (ACTION_ALLOWLIST.has(key)) return false;
+          return !ACTION_GUARD_CALLS.some((call) => action.body.includes(call));
+        })
+        .map((action) => `${file}:${action.name}`);
     });
 
     expect(
       unguarded,
-      `Action files missing hasPermission gate:\n${unguarded.join("\n")}`,
+      `Server actions missing hasPermission gate:\n${unguarded.join("\n")}`,
     ).toEqual([]);
   });
 });

@@ -73,6 +73,10 @@ export async function getWizardProgress() {
     return { success: false, data: null, error: "No tenant found." };
   }
 
+  if (!hasPermission(session.user.roles, ONBOARDING_PERMISSION)) {
+    return { success: false, data: null, error: ONBOARDING_FORBIDDEN };
+  }
+
   try {
     const progress = await getOnboardingProgressFromDb(tenantId);
     return { success: true, data: progress, error: null };
