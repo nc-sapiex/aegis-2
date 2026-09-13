@@ -62,6 +62,25 @@ async function main() {
     for (const c of REQUIRED_OBJECTS.constraints) {
       if (!haveConstraints.has(c)) missing.push(`constraint ${c}`);
     }
+
+    const rules = await client.query<{ rulename: string }>(
+      `SELECT rulename FROM pg_rewrite WHERE rulename IN ('audit_log_no_update', 'audit_log_no_delete')`,
+    );
+    const haveRules = new Set(rules.rows.map((r) => r.rulename));
+    for (const rule of REQUIRED_OBJECTS.rules) {
+      if (!haveRules.has(rule)) missing.push(`rule ${rule}`);
+    }
+
+    const revoked = await client.query<{ has_update: boolean; has_delete: boolean }>(
+      `SELECT has_table_privilege('aegis_app', '"AuditLog"', 'UPDATE') AS has_update,
+              has_table_privilege('aegis_app', '"AuditLog"', 'DELETE') AS has_delete`,
+    );
+    if (revoked.rows[0]?.has_update) {
+      missing.push("aegis_app must not have UPDATE on AuditLog");
+    }
+    if (revoked.rows[0]?.has_delete) {
+      missing.push("aegis_app must not have DELETE on AuditLog");
+    }
   } finally {
     await client.end();
   }

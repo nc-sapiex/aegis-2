@@ -16,6 +16,7 @@ export const SQL_MANIFEST = [
   "prisma/migrations/20260222_rbia_db_guards.sql",
   "prisma/sql/050_observation_indexes.sql",
   "prisma/sql/060_tenant_composite_fks.sql",
+  "prisma/sql/070_audit_log_immutability.sql",
 ] as const;
 
 /**
@@ -60,6 +61,7 @@ export interface RequiredObjects {
   views: readonly string[];
   triggers: readonly string[];
   constraints: readonly string[];
+  rules: readonly string[];
 }
 
 export const REQUIRED_OBJECTS: RequiredObjects = {
@@ -84,4 +86,5 @@ export const REQUIRED_OBJECTS: RequiredObjects = {
     "engagement_area_same_tenant",
     "team_member_engagement_same_tenant",
   ],
+  rules: ["audit_log_no_update", "audit_log_no_delete"],
 };
