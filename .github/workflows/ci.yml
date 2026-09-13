@@ -92,11 +92,11 @@ jobs:
         env:
           SKIP_ENV_VALIDATION: "1"
 
-  # Self-hosted on vps-control: rootless Docker as a dedicated, capped user with
-  # no access to production containers or local services. Service ports bind to
-  # 127.0.0.1 only.
+  # GitHub-hosted, not vps-control. That runner is rootless Docker and the
+  # dedicated user is blocked from localhost, so Actions service containers
+  # never become reachable at localhost:5432 (Prisma P1001).
   integration-test:
-    runs-on: [self-hosted, vps-control]
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
       postgres:
@@ -111,7 +111,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 127.0.0.1:5432:5432
+          - 5432:5432
     env:
       DATABASE_URL: postgresql://test:testpassword@localhost:5432/aegis_integration
       SKIP_ENV_VALIDATION: "1"
