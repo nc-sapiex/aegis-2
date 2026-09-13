@@ -271,13 +271,7 @@ model Tenant {
   auditTeamMembers       AuditTeamMember[]
   ramParameterConfigs    RamParameterConfig[]
   ramAssessments         RamAssessment[]
-  examinationAreas           ExaminationArea[]
-  examinationItems           ExaminationItem[]
-  auditExaminationResponses  AuditExaminationResponse[]
-  auditSectionInstances      AuditSectionInstance[]
   cashChecks                 CashCheck[]
-  loanReviews                LoanReview[]
-  smaNpaEntries              SmaNpaEntry[]
   complianceItems            ComplianceItem[]
   reportTemplates            ReportTemplate[]
   auditCalendarEvents        AuditCalendar[]
@@ -499,7 +493,6 @@ model Observation {
   evidence          Evidence[]
   auditeeResponses  AuditeeResponse[]
   rbiCirculars           ObservationRbiCircular[]
-  examinationResponses   AuditExaminationResponse[]
   complianceItem         ComplianceItem?
   issues                 Issue[]
 
@@ -558,9 +551,6 @@ model Evidence {
   observationId           String?                    @db.Uuid
   observation             Observation?               @relation(fields: [observationId], references: [id], onDelete: Cascade)
 
-  examinationResponseId   String?                    @db.Uuid
-  examinationResponse     AuditExaminationResponse?  @relation(fields: [examinationResponseId], references: [id], onDelete: Cascade)
-
   tenantId String @db.Uuid
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -590,7 +580,6 @@ model Evidence {
 
   @@index([tenantId])
   @@index([observationId])
-  @@index([examinationResponseId])
   @@index([newExaminationResponseId])
   @@index([actionPointId])
   @@index([accountExamResponseId])
@@ -851,11 +840,7 @@ model AuditEngagement {
   // Relations
   observations Observation[]
   teamMembers          AuditTeamMember[]
-  examinationResponses AuditExaminationResponse[]
-  sectionInstances     AuditSectionInstance[]
   cashChecks           CashCheck[]
-  loanReviews          LoanReview[]
-  smaNpaEntries        SmaNpaEntry[]
   complianceItems      ComplianceItem[]
   calendarEvents       AuditCalendar[]
   workProgramItems     WorkProgramItem[]
@@ -989,122 +974,6 @@ model RamAssessmentScore {
   @@index([assessmentId])
 }
 
-// ─── Examination Area (Phase 1 — R14: functional audit areas) ────────────
-
-model ExaminationArea {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId String @db.Uuid
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  code         String   // e.g., "CASH", "ATM", "CLEARING"
-  name         String   // e.g., "Cash", "ATM"
-  description  String?  @db.Text
-  riskWeight   Decimal  @db.Decimal(5, 2) @default(1.0)
-  displayOrder Int
-  isActive     Boolean  @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  items ExaminationItem[]
-
-  @@unique([tenantId, code])
-  @@index([tenantId])
-}
-
-// ─── Examination Item (Phase 1 — R15: value statement items) ─────────────
-
-model ExaminationItem {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId String @db.Uuid
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  areaId        String @db.Uuid
-  area          ExaminationArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
-
-  itemNumber    String   // e.g., "1.1.1", "5.3.2"
-  particulars   String   @db.Text // The examination statement/question
-  riskCategory  String?  // e.g., "Operational Risk", "Credit Risk"
-  regulatoryRef String?  // RBI circular reference if applicable
-  displayOrder  Int
-  isActive      Boolean  @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  responses AuditExaminationResponse[]
-
-  @@unique([tenantId, areaId, itemNumber])
-  @@index([tenantId])
-  @@index([areaId])
-}
-
-// ─── Audit Examination Response (Phase 1 — R16: per-item audit response) ───
-
-model AuditExaminationResponse {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId String @db.Uuid
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  engagementId  String @db.Uuid
-  engagement    AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-
-  itemId        String @db.Uuid
-  item          ExaminationItem @relation(fields: [itemId], references: [id])
-
-  status        ExaminationStatus @default(PENDING)
-  observation   String?  @db.Text  // Auditor's observation text
-  riskRating    String?            // Severity: "LOW", "MEDIUM", "HIGH", "CRITICAL"
-
-  respondedById String?  @db.Uuid
-  respondedAt   DateTime?
-
-  // Auto-created observation reference (R17)
-  observationId       String?      @db.Uuid
-  linkedObservation   Observation? @relation(fields: [observationId], references: [id])
-
-  // Evidence attachments
-  evidence          Evidence[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([engagementId, itemId])
-  @@index([tenantId])
-  @@index([engagementId])
-  @@index([observationId])
-}
-
-// ─── Audit Section Instance (Phase 1 — R18: per-engagement section tracking) ─
-
-model AuditSectionInstance {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId String @db.Uuid
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  engagementId String @db.Uuid
-  engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-
-  sectionCode  String  // Matches ExaminationArea.code
-  sectionName  String  // Denormalized for display
-  status       AuditSectionStatus @default(NOT_STARTED)
-
-  sectionData  Json?   // Flexible JSONB for section-specific structured data
-
-  assignedToId String?  @db.Uuid
-  completedAt  DateTime?
-  reviewedAt   DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([engagementId, sectionCode])
-  @@index([tenantId])
-  @@index([engagementId])
-}
-
 // ─── Cash Check (Phase 1 — R19: cash verification per engagement) ──────────
 
 model CashCheck {
@@ -1131,55 +1000,6 @@ model CashCheck {
   updatedAt DateTime @updatedAt
 
   @@unique([engagementId])
-  @@index([tenantId])
-}
-
-// ─── Loan Review (Phase 1 — R20: individual loan account review) ───────────
-
-model LoanReview {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId String @db.Uuid
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  engagementId String @db.Uuid
-  engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-
-  accountNo         String
-  borrowerName      String
-  productType       String   // "Term Loan", "CC", "OD", "Gold Loan"
-  sanctionAmount    Decimal  @db.Decimal(15, 2)
-  outstandingAmount Decimal  @db.Decimal(15, 2)
-  assetClass        String   // "STANDARD", "SMA0", "SMA1", "SMA2", "NPA_SUB", "NPA_DOUBTFUL", "NPA_LOSS"
-  dpd               Int      @default(0)
-  auditObservation  String?  @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([tenantId])
-  @@index([engagementId])
-  @@index([engagementId, assetClass])
-}
-
-// ─── SMA/NPA Entry (Phase 1 — R21: category-wise summary per audit) ────────
-
-model SmaNpaEntry {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId String @db.Uuid
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  engagementId String @db.Uuid
-  engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-
-  category     String   // "SMA0", "SMA1", "SMA2", "NPA_SUB_STANDARD", "NPA_DOUBTFUL", "NPA_LOSS"
-  accountCount Int
-  totalAmount  Decimal  @db.Decimal(15, 2)
-  remarks      String?  @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([engagementId, category])
   @@index([tenantId])
 }
 

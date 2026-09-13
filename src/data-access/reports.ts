@@ -440,30 +440,6 @@ export async function getAuditReportData(
         where: { tenantId },
         orderBy: { verifiedAt: "desc" },
       },
-      loanReviews: {
-        where: { tenantId },
-        orderBy: { createdAt: "desc" },
-      },
-      smaNpaEntries: {
-        where: { tenantId },
-        orderBy: { category: "asc" },
-      },
-      examinationResponses: {
-        where: { tenantId },
-        include: {
-          item: {
-            include: {
-              area: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      },
     },
   });
 
