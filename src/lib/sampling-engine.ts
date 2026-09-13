@@ -192,9 +192,17 @@ function buildPool(
   }
 }
 
+function bucketsByPriority(buckets: BucketAllocation[]): BucketAllocation[] {
+  return [...buckets].sort((a, b) => {
+    if (b.pct !== a.pct) return b.pct - a.pct;
+    return a.bucket.localeCompare(b.bucket);
+  });
+}
+
 /**
  * Calculate per-bucket counts from the overall sample count and bucket percentages.
- * Uses Math.round per bucket, then trims to totalSampleCount to avoid rounding inflation.
+ * Uses Math.round per bucket, then trims or tops up to totalSampleCount so
+ * rounding cannot produce an empty sample when accounts were requested.
  */
 function calculateBucketCounts(
   totalSampleCount: number,
@@ -209,10 +217,10 @@ function calculateBucketCounts(
     allocated += count;
   }
 
+  const sortedByPct = bucketsByPriority(buckets);
+
   // If rounding caused sum > totalSampleCount, reduce the largest bucket by 1
   if (allocated > totalSampleCount) {
-    // Find the bucket with highest pct to absorb the reduction
-    const sortedByPct = [...buckets].sort((a, b) => b.pct - a.pct);
     let excess = allocated - totalSampleCount;
     for (const b of sortedByPct) {
       if (excess <= 0) break;
@@ -221,6 +229,19 @@ function calculateBucketCounts(
         counts.set(b.bucket, current - 1);
         excess--;
       }
+    }
+  }
+
+  // 10% of 24 accounts = 2 requested; five 20% buckets each round to 0.
+  // Without this, generateSample selects nothing and the action still locks.
+  if (allocated < totalSampleCount && sortedByPct.length > 0) {
+    let deficit = totalSampleCount - allocated;
+    let i = 0;
+    while (deficit > 0) {
+      const b = sortedByPct[i % sortedByPct.length];
+      counts.set(b.bucket, (counts.get(b.bucket) ?? 0) + 1);
+      deficit--;
+      i++;
     }
   }
 

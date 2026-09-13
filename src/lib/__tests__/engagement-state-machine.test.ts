@@ -3,6 +3,7 @@ import {
   canTransitionEngagement,
   ENGAGEMENT_TRANSITIONS,
   type EngagementContext,
+  getAvailableEngagementTransitions,
 } from "@/lib/engagement-state-machine";
 import type { EngagementStatus } from "@/generated/prisma/enums";
 
@@ -363,5 +364,39 @@ describe("ENGAGEMENT_TRANSITIONS", () => {
         expect(defs.length).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+describe("getAvailableEngagementTransitions", () => {
+  it("returns the legal next transition and cancel option for IN_PROGRESS", () => {
+    expect(
+      getAvailableEngagementTransitions(
+        "IN_PROGRESS",
+        ["AUDIT_MANAGER"],
+        defaultCtx,
+      ),
+    ).toEqual([
+      { to: "EXIT_MEETING", label: "Record Exit Meeting" },
+      { to: "CANCELLED", label: "Cancel Engagement" },
+    ]);
+  });
+
+  it("omits blocked transitions while keeping other legal options", () => {
+    expect(
+      getAvailableEngagementTransitions("PLANNED", ["CAE"], {
+        ...defaultCtx,
+        teamMemberCount: 0,
+      }),
+    ).toEqual([{ to: "CANCELLED", label: "Cancel Engagement" }]);
+  });
+
+  it("returns only role-allowed transitions", () => {
+    expect(
+      getAvailableEngagementTransitions(
+        "REPORT_DRAFT",
+        ["AUDIT_MANAGER"],
+        defaultCtx,
+      ),
+    ).toEqual([{ to: "CANCELLED", label: "Cancel Engagement" }]);
   });
 });

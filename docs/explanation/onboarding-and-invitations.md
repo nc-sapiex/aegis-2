@@ -44,8 +44,11 @@ compliance checklist rows, and invited users together. If any part fails,
 none of it commits; there is no partially-provisioned tenant.
 
 **Both entry points gate on `admin:manage_settings`** (held by `CAE` and
-`SYSTEM_ADMIN` — see
-[`docs/reference/rbac-matrix.md`](../reference/rbac-matrix.md)), and the
+`SYSTEM_ADMIN` — the `ROLE_PERMISSIONS` map in
+[`src/lib/permissions.ts`](../../src/lib/permissions.ts); how checks compose
+is in
+[`docs/architecture.md` § Invariant 3](../architecture.md#invariant-3--authorization)),
+and the
 source comment in `onboarding.ts` states why plainly: onboarding overwrites
 the bank profile and mints users with caller-supplied roles, so without the
 gate any authenticated tenant user could replay it to grant themselves an

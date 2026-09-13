@@ -10,10 +10,11 @@ export function formatDate(
   format: "short" | "long" = "short",
 ) {
   const d = typeof date === "string" ? new Date(date) : date;
+
+  // en-IN matches the bank/regulatory audience, not the user's own locale.
   return d.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: format === "long" ? "long" : "short",
     year: "numeric",
   });
 }
-// test

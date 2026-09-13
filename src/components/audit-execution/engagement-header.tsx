@@ -5,15 +5,9 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Building2,
-  Calendar,
-  Clock,
-  Play,
-  CheckCircle2,
-  XCircle,
-} from "@/lib/icons";
+import { Building2, Calendar, Clock, CheckCircle2, XCircle } from "@/lib/icons";
 import { transitionEngagementStatus } from "@/actions/audit-execution/transition-engagement-status";
+import type { AvailableEngagementTransition } from "@/lib/engagement-state-machine";
 
 interface EngagementHeaderProps {
   engagement: {
@@ -41,13 +35,17 @@ interface EngagementHeaderProps {
       quarter: string | null;
     } | null;
   };
-  canManageStatus?: boolean;
+  availableTransitions?: AvailableEngagementTransition[];
 }
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "bg-gray-100 text-gray-800 border-gray-300",
   PLANNED: "bg-blue-100 text-blue-800 border-blue-300",
+  TEAM_ASSIGNED: "bg-indigo-100 text-indigo-800 border-indigo-300",
+  OPENING_MEETING: "bg-purple-100 text-purple-800 border-purple-300",
   IN_PROGRESS: "bg-amber-100 text-amber-800 border-amber-300",
+  EXIT_MEETING: "bg-orange-100 text-orange-800 border-orange-300",
+  REPORT_DRAFT: "bg-cyan-100 text-cyan-800 border-cyan-300",
   COMPLETED: "bg-green-100 text-green-800 border-green-300",
   CANCELLED: "bg-red-100 text-red-800 border-red-300",
   REVIEWED: "bg-purple-100 text-purple-800 border-purple-300",
@@ -65,15 +63,19 @@ function formatDate(date: Date | string | null | undefined): string {
 
 export function EngagementHeader({
   engagement,
-  canManageStatus,
+  availableTransitions = [],
 }: EngagementHeaderProps) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
+  const primaryTransition = availableTransitions.find(
+    (transition) => transition.to !== "CANCELLED",
+  );
+  const cancelTransition = availableTransitions.find(
+    (transition) => transition.to === "CANCELLED",
+  );
 
-  function handleTransition(
-    targetStatus: "IN_PROGRESS" | "COMPLETED" | "CANCELLED",
-  ) {
+  function handleTransition(targetStatus: AvailableEngagementTransition["to"]) {
     setError(null);
     startTransition(async () => {
       const result = await transitionEngagementStatus({
@@ -113,47 +115,34 @@ export function EngagementHeader({
               </Badge>
 
               {/* Status transition buttons */}
-              {canManageStatus && engagement.status === "PLANNED" && (
+              {primaryTransition && (
                 <Button
                   size="sm"
-                  onClick={() => handleTransition("IN_PROGRESS")}
+                  onClick={() => handleTransition(primaryTransition.to)}
                   disabled={isPending}
                 >
-                  <Play className="mr-1 h-3.5 w-3.5" />
-                  {isPending ? "Starting..." : "Start Audit"}
+                  {primaryTransition.to === "COMPLETED" && (
+                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                  )}
+                  {isPending ? "Updating..." : primaryTransition.label}
                 </Button>
               )}
-              {canManageStatus && engagement.status === "IN_PROGRESS" && (
-                <>
-                  <Button
-                    size="sm"
-                    onClick={() => handleTransition("COMPLETED")}
-                    disabled={isPending}
-                  >
-                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                    {isPending ? "Completing..." : "Complete"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleTransition("CANCELLED")}
-                    disabled={isPending}
-                  >
-                    <XCircle className="mr-1 h-3.5 w-3.5" />
-                    Cancel
-                  </Button>
-                </>
-              )}
-              {canManageStatus && engagement.status === "PLANNED" && (
+              {cancelTransition && (
                 <Button
                   size="sm"
-                  variant="ghost"
-                  onClick={() => handleTransition("CANCELLED")}
+                  variant={
+                    engagement.status === "PLANNED" ? "ghost" : "outline"
+                  }
+                  onClick={() => handleTransition(cancelTransition.to)}
                   disabled={isPending}
-                  className="text-muted-foreground"
+                  className={
+                    engagement.status === "PLANNED"
+                      ? "text-muted-foreground"
+                      : undefined
+                  }
                 >
                   <XCircle className="mr-1 h-3.5 w-3.5" />
-                  Cancel
+                  {cancelTransition.label}
                 </Button>
               )}
             </div>

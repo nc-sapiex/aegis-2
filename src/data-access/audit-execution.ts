@@ -78,6 +78,8 @@ export async function getEngagementWithTeam(
     include: {
       branch: { select: { id: true, code: true, name: true, city: true } },
       auditPlan: { select: { id: true, year: true, quarter: true } },
+      meetings: { select: { meetingType: true, signedOff: true } },
+      branchRbiaScore: { select: { frozenAt: true } },
       teamMembers: {
         include: {
           user: { select: { id: true, name: true, email: true, roles: true } },

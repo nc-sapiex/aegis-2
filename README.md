@@ -10,6 +10,11 @@ in [`docs/superpowers/specs/2026-09-12-first-customer-readiness-design.md`](docs
 
 **Status:** not deployed. Local development only.
 
+This repository is the rebuilt AEGIS 2.0 platform for RBI-aligned audit work,
+not a production deployment. The current codebase focuses on the core RBIA
+lifecycle, tenant-aware data access, and local-only development workflows; no
+release pipeline or cloud environment is configured in-repo.
+
 ## What is here
 
 The core cycle: onboarding and invitations, RAM risk assessment, annual audit
@@ -78,6 +83,8 @@ pnpm docs:reference      # regenerate docs/reference/ after schema or action cha
 
 - [`CLAUDE.md`](CLAUDE.md) — conventions, invariants, gotchas
 - [`docs/architecture.md`](docs/architecture.md) — how the system is put together, kept current as each plan lands
+- [`docs/SEED-PROCESS-MANUAL.md`](docs/SEED-PROCESS-MANUAL.md) — local demo data pipeline
+- [`src/data-access/README.md`](src/data-access/README.md) — tenant-scoped query pattern
 - [`docs/superpowers/specs/`](docs/superpowers/specs/) — the 2.0 design
 - [`docs/reference/`](docs/reference/) — generated inventories
 - [`CONTEXT.md`](CONTEXT.md) — domain glossary
