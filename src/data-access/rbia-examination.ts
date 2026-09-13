@@ -26,7 +26,7 @@ export type ExaminationResponseData = {
   id: string;
   score: number | null;
   scoreLabel: ScoreLabel | null;
-  workingNotes: string | null;
+  remarks: string | null;
   flagForObservation: boolean;
   flagForActionPoint: boolean;
   respondedAt: Date | null;
@@ -155,7 +155,7 @@ export async function getExaminationTree(
           id: true,
           score: true,
           scoreLabel: true,
-          workingNotes: true,
+          remarks: true,
           flagForObservation: true,
           flagForActionPoint: true,
           respondedAt: true,
@@ -184,7 +184,7 @@ export async function getExaminationTree(
       id: r.id,
       score: r.score !== null ? Number(r.score) : null,
       scoreLabel: r.scoreLabel,
-      workingNotes: r.workingNotes,
+      remarks: r.remarks,
       flagForObservation: r.flagForObservation,
       flagForActionPoint: r.flagForActionPoint,
       respondedAt: r.respondedAt,

@@ -137,6 +137,7 @@ enum ScoreLabel {
   FULLY_COMPLIANT
   LARGELY_COMPLIANT
   PARTIALLY_COMPLIANT
+  MARGINALLY_COMPLIANT
   NON_COMPLIANT
 }
 
@@ -2202,7 +2203,8 @@ model ExaminationResponse {
   isNotApplicable      Boolean @default(false)
   notApplicableReason  String? @db.Text
 
-  workingNotes       String?  @db.Text  // Auditor's detailed notes
+  remarks            String?  @db.Text  // Auditor's detailed notes (spec §6.5: required below LARGELY_COMPLIANT)
+  version            Int      @default(1) // Optimistic concurrency for the register's compare-and-set save (D8)
   flagForObservation Boolean  @default(false) // Flag for promotion to formal 5C Observation
   flagForActionPoint Boolean  @default(false) // Flag for promotion to Action Point
 

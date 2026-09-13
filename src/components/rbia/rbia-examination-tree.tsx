@@ -47,6 +47,7 @@ const SCORE_LABEL_VALUES: Record<ScoreLabel, number> = {
   FULLY_COMPLIANT: 1.0,
   LARGELY_COMPLIANT: 0.75,
   PARTIALLY_COMPLIANT: 0.5,
+  MARGINALLY_COMPLIANT: 0.25,
   NON_COMPLIANT: 0.0,
 };
 
@@ -54,6 +55,7 @@ const SCORE_LABEL_SHORT: Record<ScoreLabel, string> = {
   FULLY_COMPLIANT: "FC",
   LARGELY_COMPLIANT: "LC",
   PARTIALLY_COMPLIANT: "PC",
+  MARGINALLY_COMPLIANT: "MC",
   NON_COMPLIANT: "NC",
 };
 
@@ -63,6 +65,7 @@ const SCORE_LABELS_ORDERED: ScoreLabel[] = [
   "FULLY_COMPLIANT",
   "LARGELY_COMPLIANT",
   "PARTIALLY_COMPLIANT",
+  "MARGINALLY_COMPLIANT",
   "NON_COMPLIANT",
 ];
 
@@ -385,7 +388,9 @@ function WorkingNotesPanel({
   };
 
   const requiresNotes =
-    scoreLabel === "PARTIALLY_COMPLIANT" || scoreLabel === "NON_COMPLIANT";
+    scoreLabel === "PARTIALLY_COMPLIANT" ||
+    scoreLabel === "MARGINALLY_COMPLIANT" ||
+    scoreLabel === "NON_COMPLIANT";
   const notesValid = !requiresNotes || (notes && notes.length >= 500);
 
   return (
@@ -510,8 +515,7 @@ export function RbiaExaminationTree({
               id: node.response?.id ?? "",
               score: override.score,
               scoreLabel: override.scoreLabel,
-              workingNotes:
-                override.workingNotes ?? node.response?.workingNotes ?? null,
+              remarks: override.workingNotes ?? node.response?.remarks ?? null,
               flagForObservation:
                 override.flagForObservation ??
                 node.response?.flagForObservation ??
@@ -620,7 +624,7 @@ export function RbiaExaminationTree({
           score,
           workingNotes:
             existingOverride?.workingNotes ??
-            existingResponse?.workingNotes ??
+            existingResponse?.remarks ??
             undefined,
           flagForActionPoint:
             existingOverride?.flagForActionPoint ??
@@ -635,7 +639,11 @@ export function RbiaExaminationTree({
       });
 
       // Open notes panel for PC/NC scores
-      if (label === "PARTIALLY_COMPLIANT" || label === "NON_COMPLIANT") {
+      if (
+        label === "PARTIALLY_COMPLIANT" ||
+        label === "MARGINALLY_COMPLIANT" ||
+        label === "NON_COMPLIANT"
+      ) {
         setExpandedNotes((prev) => new Set(prev).add(nodeId));
       }
 
@@ -658,7 +666,7 @@ export function RbiaExaminationTree({
             isNotApplicable: false,
             workingNotes:
               existingOverride?.workingNotes ??
-              existingResponse?.workingNotes ??
+              existingResponse?.remarks ??
               undefined,
             flagForActionPoint:
               existingOverride?.flagForActionPoint ??
@@ -1104,7 +1112,7 @@ export function RbiaExaminationTree({
                               engagementId={engagementId}
                               initialNotes={
                                 override?.workingNotes ??
-                                node.response?.workingNotes ??
+                                node.response?.remarks ??
                                 ""
                               }
                               initialFlagAP={

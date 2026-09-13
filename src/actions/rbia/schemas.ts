@@ -61,6 +61,7 @@ export const SaveExaminationResponseSchema = z
         "FULLY_COMPLIANT",
         "LARGELY_COMPLIANT",
         "PARTIALLY_COMPLIANT",
+        "MARGINALLY_COMPLIANT",
         "NON_COMPLIANT",
       ])
       .optional(),
@@ -112,9 +113,11 @@ export const SaveExaminationResponseSchema = z
       return;
     }
 
-    const requiresNotes = ["PARTIALLY_COMPLIANT", "NON_COMPLIANT"].includes(
-      data.scoreLabel,
-    );
+    const requiresNotes = [
+      "PARTIALLY_COMPLIANT",
+      "MARGINALLY_COMPLIANT",
+      "NON_COMPLIANT",
+    ].includes(data.scoreLabel);
     if (
       requiresNotes &&
       (!data.workingNotes || data.workingNotes.length < 500)

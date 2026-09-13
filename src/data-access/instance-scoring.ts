@@ -228,7 +228,7 @@ export async function computeAndApplyInstanceScores(
             // the leaf would carry a score and the N/A flag at once.
             isNotApplicable: false,
             notApplicableReason: null,
-            workingNotes: `Auto-scored from instance-based examination: ${modulePercentage}% compliance across ${complianceResults.length} question(s)`,
+            remarks: `Auto-scored from instance-based examination: ${modulePercentage}% compliance across ${complianceResults.length} question(s)`,
             flagForObservation: false,
             flagForActionPoint: false,
             respondedAt: new Date(),
@@ -240,7 +240,7 @@ export async function computeAndApplyInstanceScores(
             // the leaf would carry a score and the N/A flag at once.
             isNotApplicable: false,
             notApplicableReason: null,
-            workingNotes: `Auto-scored from instance-based examination: ${modulePercentage}% compliance across ${complianceResults.length} question(s)`,
+            remarks: `Auto-scored from instance-based examination: ${modulePercentage}% compliance across ${complianceResults.length} question(s)`,
             respondedAt: new Date(),
           },
         });
