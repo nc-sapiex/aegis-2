@@ -8,6 +8,8 @@ on:
   schedule:
     - cron: "43 21 * * 1"
 
+permissions: {}
+
 jobs:
   check-code-scanning:
     name: Check code scanning availability
@@ -90,6 +92,7 @@ jobs:
     needs: check-code-scanning
     if: needs.check-code-scanning.outputs.enabled != 'true'
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       - name: Skip unavailable CodeQL run
         run: echo "Code scanning is disabled for this repository or unavailable to this workflow run, so CodeQL was skipped."
