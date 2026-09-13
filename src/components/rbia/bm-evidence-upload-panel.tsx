@@ -238,6 +238,11 @@ export function BmEvidenceUploadPanel({
       let file = acceptedFiles[0];
       if (!file) return;
 
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`File must be under ${formatFileSize(MAX_FILE_SIZE)}`);
+        return;
+      }
+
       if (isHeicFile(file)) {
         try {
           file = await convertHeicToJpeg(file);
