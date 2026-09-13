@@ -1,10 +1,6 @@
 import "server-only";
 import { prismaForTenant } from "./prisma";
 import type { AuthSession as Session } from "@/lib/auth";
-import {
-  ACCOUNT_EXAM_NOT_APPLICABLE_PREFIX,
-  decodeAccountExamResponse,
-} from "@/lib/account-exam-status";
 
 /**
  * Data Access Layer for sample-based account examination.
@@ -183,7 +179,13 @@ export async function getQuestionsForAccount(
     include: {
       accountExamResponses: {
         where: { loanAccountId, engagementId },
-        select: { id: true, status: true, note: true, respondedAt: true },
+        select: {
+          id: true,
+          status: true,
+          isNotApplicable: true,
+          note: true,
+          respondedAt: true,
+        },
         take: 1, // Unique constraint ensures 0 or 1 per account-question pair
       },
     },
@@ -202,10 +204,10 @@ export async function getQuestionsForAccount(
     response: q.accountExamResponses[0]
       ? {
           id: q.accountExamResponses[0].id,
-          ...decodeAccountExamResponse(
-            q.accountExamResponses[0].status,
-            q.accountExamResponses[0].note,
-          ),
+          status: q.accountExamResponses[0].isNotApplicable
+            ? ("NOT_APPLICABLE" as const)
+            : q.accountExamResponses[0].status!,
+          note: q.accountExamResponses[0].note,
           respondedAt: q.accountExamResponses[0].respondedAt,
         }
       : null,
@@ -266,9 +268,6 @@ export async function getViolationSummary(
         tenantId,
         questionId: { in: questions.map((q) => q.id) },
         status: "COMPLIANT",
-        NOT: {
-          note: { startsWith: ACCOUNT_EXAM_NOT_APPLICABLE_PREFIX },
-        },
       },
       _count: true,
     }),

@@ -24,7 +24,6 @@ import { prismaForTenant } from "@/data-access/prisma";
 import { withAuditedMutation } from "@/data-access/audited-mutation";
 import { requireTeamMembership } from "@/data-access/access-guards";
 import { revalidatePath } from "next/cache";
-import { ACCOUNT_EXAM_NOT_APPLICABLE_PREFIX } from "@/lib/account-exam-status";
 import {
   ENGAGEMENT_A,
   LOAN_ACCOUNT_A,
@@ -157,7 +156,7 @@ describe("saveAccountExamResponse", () => {
     );
   });
 
-  it("encodes NOT_APPLICABLE as persisted compliant status with prefixed note", async () => {
+  it("persists NOT_APPLICABLE as isNotApplicable with a null status", async () => {
     vi.mocked(getRequiredSession).mockResolvedValue(
       fakeSession({ roles: ["FIELD_AUDITOR"] }) as never,
     );
@@ -177,12 +176,14 @@ describe("saveAccountExamResponse", () => {
     expect(db.accountExamResponse.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         update: expect.objectContaining({
-          status: "COMPLIANT",
-          note: `${ACCOUNT_EXAM_NOT_APPLICABLE_PREFIX}Document not relevant for this account.`,
+          status: null,
+          isNotApplicable: true,
+          note: "Document not relevant for this account.",
         }),
         create: expect.objectContaining({
-          status: "COMPLIANT",
-          note: `${ACCOUNT_EXAM_NOT_APPLICABLE_PREFIX}Document not relevant for this account.`,
+          status: null,
+          isNotApplicable: true,
+          note: "Document not relevant for this account.",
         }),
       }),
     );

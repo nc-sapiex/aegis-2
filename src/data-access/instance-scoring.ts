@@ -78,9 +78,16 @@ export async function getQuestionResponseTallies(
 
   if (questionIds.length === 0) return tallyMap;
 
-  // Fetch all AccountExamResponse records for this engagement + these questions
+  // Fetch all AccountExamResponse records for this engagement + these questions.
+  // isNotApplicable rows are excluded — same as an unanswered question, per
+  // computeModuleComplianceScores' "Not Examined" handling.
   const responses = await db.accountExamResponse.findMany({
-    where: { engagementId, questionId: { in: questionIds }, tenantId },
+    where: {
+      engagementId,
+      questionId: { in: questionIds },
+      tenantId,
+      isNotApplicable: false,
+    },
     select: { questionId: true, status: true },
   });
 

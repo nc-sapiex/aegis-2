@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `6f0d837` (plan1/task-6)
+> Source commit: `d3b6e78` (HEAD)
 
 Every table AEGIS maintains, with its columns, types and relationships.
 **76 models** and **22 enumerations**.
@@ -2151,6 +2151,7 @@ Indexes and constraints:
 | `questionId` | String `@db.Uuid` | no |  |  |  |
 | `question` | ExaminationQuestion | no | FK→ExaminationQuestion |  | relation |
 | `note` | String `@db.Text` | yes |  |  |  |
+| `isNotApplicable` | Boolean | no |  | `false` | Explicit N/A, same shape as ExaminationResponse.isNotApplicable |
 | `respondedById` | String `@db.Uuid` | no |  |  | Audit trail |
 | `respondedAt` | DateTime | no |  | `now()` |  |
 | `evidence` | Evidence[] | no | FK→Evidence |  | Evidence relation |

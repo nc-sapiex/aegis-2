@@ -7,7 +7,6 @@ import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
 import { requireTeamMembership } from "@/data-access/access-guards";
 import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
-import { encodeAccountExamNote } from "@/lib/account-exam-status";
 import {
   SaveAccountExamResponseSchema,
   type SaveAccountExamResponseInput,
@@ -49,7 +48,7 @@ export async function saveAccountExamResponse(
   input: SaveAccountExamResponseInput,
 ): Promise<
   ActionResult<{
-    id: string | null;
+    id: string;
     status: "COMPLIANT" | "VIOLATION" | "NOT_APPLICABLE";
   }>
 > {
@@ -153,10 +152,8 @@ export async function saveAccountExamResponse(
     }
 
     // 6. Persist AccountExamResponse through audited mutation.
-    let responseId: string | null = null;
-    let responseStatus: "COMPLIANT" | "VIOLATION" | "NOT_APPLICABLE" = status;
-
-    const persisted = encodeAccountExamNote(status, note);
+    const isNotApplicable = status === "NOT_APPLICABLE";
+    const cleanedNote = note?.trim() || null;
 
     const response = await withAuditedMutation(
       userActor(session),
@@ -171,8 +168,9 @@ export async function saveAccountExamResponse(
             },
           },
           update: {
-            status: persisted.status,
-            note: persisted.note,
+            status: isNotApplicable ? null : status,
+            isNotApplicable,
+            note: cleanedNote,
             respondedById: userId,
             respondedAt: new Date(),
           },
@@ -181,16 +179,17 @@ export async function saveAccountExamResponse(
             engagementId,
             loanAccountId,
             questionId,
-            status: persisted.status,
-            note: persisted.note,
+            status: isNotApplicable ? null : status,
+            isNotApplicable,
+            note: cleanedNote,
             respondedById: userId,
             respondedAt: new Date(),
           },
           select: { id: true },
         }),
     );
-    responseId = response.id;
-    responseStatus = status;
+    const responseId = response.id;
+    const responseStatus = status;
 
     // 7. Revalidate the examination page
     revalidatePath(`/audit-execution/${engagementId}/rbia`);
