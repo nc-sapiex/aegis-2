@@ -23,29 +23,61 @@ test("the add-statement side panel traps focus and closes on Escape", async ({
   const dialog = page.getByRole("dialog");
 
   await expect(dialog).toBeVisible();
-  await expect
-    .poll(() =>
-      dialog.evaluate((node) => node.contains(node.ownerDocument.activeElement)),
-    )
-    .toBe(true);
+  const focusables = dialog.locator(
+    "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])",
+  );
+  const focusableCount = await focusables.count();
 
-  for (let index = 0; index < 6; index += 1) {
+  expect(focusableCount).toBeGreaterThan(0);
+
+  async function getActiveDialogIndex() {
+    return dialog.evaluate((node) => {
+      const focusableElements = Array.from(
+        node.querySelectorAll<HTMLElement>(
+          "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])",
+        ),
+      ).filter((element) => !element.hasAttribute("disabled"));
+
+      return focusableElements.indexOf(
+        node.ownerDocument.activeElement as HTMLElement,
+      );
+    });
+  }
+
+  const initialIndex = await getActiveDialogIndex();
+  expect(initialIndex).toBeGreaterThanOrEqual(0);
+
+  let tabWrapped = false;
+
+  for (let index = 0; index < focusableCount + 1; index += 1) {
     await page.keyboard.press("Tab");
-    await expect
-      .poll(() =>
-        dialog.evaluate((node) => node.contains(node.ownerDocument.activeElement)),
-      )
-      .toBe(true);
+    const activeIndex = await getActiveDialogIndex();
+
+    expect(activeIndex).toBeGreaterThanOrEqual(0);
+
+    if (activeIndex === initialIndex) {
+      tabWrapped = true;
+      break;
+    }
   }
 
-  for (let index = 0; index < 6; index += 1) {
+  expect(tabWrapped).toBe(true);
+
+  let shiftTabWrapped = false;
+
+  for (let index = 0; index < focusableCount + 1; index += 1) {
     await page.keyboard.press("Shift+Tab");
-    await expect
-      .poll(() =>
-        dialog.evaluate((node) => node.contains(node.ownerDocument.activeElement)),
-      )
-      .toBe(true);
+    const activeIndex = await getActiveDialogIndex();
+
+    expect(activeIndex).toBeGreaterThanOrEqual(0);
+
+    if (activeIndex === initialIndex) {
+      shiftTabWrapped = true;
+      break;
+    }
   }
+
+  expect(shiftTabWrapped).toBe(true);
 
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
