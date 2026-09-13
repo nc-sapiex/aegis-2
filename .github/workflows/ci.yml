@@ -92,11 +92,8 @@ jobs:
         env:
           SKIP_ENV_VALIDATION: "1"
 
-  # Self-hosted on vps-control: rootless Docker as a dedicated, capped user with
-  # no access to production containers or local services. Service ports bind to
-  # 127.0.0.1 only.
   integration-test:
-    runs-on: [self-hosted, vps-control]
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
       postgres:
