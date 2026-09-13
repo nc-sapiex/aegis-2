@@ -54,6 +54,19 @@ describe("hashRow", () => {
 
     expect(withSystemActor.equals(withEmptyString)).toBe(true);
   });
+
+  it("canonicalizes JSON key order before hashing", () => {
+    const left = hashRow(
+      row({ newData: { code: "A001", meta: { branch: "A", city: "Pune" } } }),
+      GENESIS_HASH,
+    );
+    const right = hashRow(
+      row({ newData: { meta: { city: "Pune", branch: "A" }, code: "A001" } }),
+      GENESIS_HASH,
+    );
+
+    expect(left.equals(right)).toBe(true);
+  });
 });
 
 describe("verifyChain", () => {

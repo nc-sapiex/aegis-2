@@ -3,8 +3,11 @@ import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { verifyChain, type LinkedRow } from "@/lib/audit-chain";
 
-export async function verifyAuditChain(): Promise<void> {
-  const tenants = await prisma.tenant.findMany({ select: { id: true } });
+export async function verifyAuditChain(tenantId?: string): Promise<void> {
+  const tenants = await prisma.tenant.findMany({
+    where: tenantId ? { id: tenantId } : undefined,
+    select: { id: true },
+  });
 
   for (const tenant of tenants) {
     const rows = await prisma.auditLog.findMany({
@@ -51,7 +54,7 @@ export async function verifyAuditChain(): Promise<void> {
       });
 
       if (!verdict.ok) {
-        const recipients = await prisma.user.findMany({
+        const recipients = await tx.user.findMany({
           where: {
             tenantId: tenant.id,
             roles: { hasSome: ["CAE", "SYSTEM_ADMIN"] as never },

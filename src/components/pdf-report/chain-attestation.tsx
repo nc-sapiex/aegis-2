@@ -25,6 +25,7 @@ export interface ChainAttestationProps {
   generatedAt: Date;
   head: { lastSequence: bigint; lastHash: Buffer; updatedAt: Date } | null;
   history: {
+    id: string;
     verifiedAt: Date;
     ok: boolean;
     firstBadSequence: bigint | null;
@@ -67,7 +68,7 @@ export function ChainAttestation({
             <Text>No verifications recorded yet.</Text>
           ) : (
             history.map((item) => (
-              <View key={item.verifiedAt.toISOString()} style={styles.historyRow}>
+                <View key={item.id} style={styles.historyRow}>
                 <Text style={styles.historyDate}>{item.verifiedAt.toISOString()}</Text>
                 <Text style={styles.historyResult}>
                   {item.ok ? "OK" : `FAILED at #${item.firstBadSequence}`}

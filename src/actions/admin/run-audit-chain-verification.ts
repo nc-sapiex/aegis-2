@@ -16,7 +16,7 @@ export async function runAuditChainVerification(): Promise<
   const session = await getRequiredSession();
 
   try {
-    await verifyAuditChain();
+    await verifyAuditChain(session.user.tenantId);
     const [latest] = await getChainVerifications(session.user.tenantId);
 
     if (!latest) {

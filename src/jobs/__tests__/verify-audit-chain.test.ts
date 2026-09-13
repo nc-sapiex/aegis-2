@@ -20,6 +20,7 @@ vi.mock("@/data-access/audited-mutation", () => ({
       fn({
         auditChainVerification: { create: (...args: unknown[]) => mockCreate(...args) },
         notificationQueue: { create: (...args: unknown[]) => mockNotificationCreate(...args) },
+        user: { findMany: (...args: unknown[]) => mockUserFindMany(...args) },
       }),
   ),
   systemActor: (tenantId: string) => ({ kind: "system", tenantId }),
@@ -93,5 +94,18 @@ describe("verifyAuditChain", () => {
         }),
       }),
     );
+  });
+
+  it("limits verification to a requested tenant when one is supplied", async () => {
+    mockTenantFindMany.mockResolvedValue([{ id: "tenant-123" }]);
+    mockFindMany.mockResolvedValue([]);
+
+    const { verifyAuditChain } = await import("@/jobs/verify-audit-chain");
+    await verifyAuditChain("tenant-123");
+
+    expect(mockTenantFindMany).toHaveBeenCalledWith({
+      where: { id: "tenant-123" },
+      select: { id: true },
+    });
   });
 });

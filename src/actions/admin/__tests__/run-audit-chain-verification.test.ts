@@ -31,7 +31,7 @@ describe("runAuditChainVerification", () => {
 
     const result = await runAuditChainVerification();
 
-    expect(verifyAuditChain).toHaveBeenCalledTimes(1);
+    expect(verifyAuditChain).toHaveBeenCalledWith(fakeSession().user.tenantId);
     expect(getChainVerifications).toHaveBeenCalledWith(
       fakeSession().user.tenantId,
     );
@@ -43,6 +43,7 @@ describe("runAuditChainVerification", () => {
 
     const result = await runAuditChainVerification();
 
+    expect(verifyAuditChain).toHaveBeenCalledWith(fakeSession().user.tenantId);
     expect(result).toEqual({
       success: false,
       error: "Verification ran but produced no record",
@@ -54,6 +55,7 @@ describe("runAuditChainVerification", () => {
 
     const result = await runAuditChainVerification();
 
+    expect(verifyAuditChain).toHaveBeenCalledWith(fakeSession().user.tenantId);
     expect(result).toEqual({ success: false, error: "boom" });
   });
 });

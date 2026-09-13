@@ -66,7 +66,7 @@ export function AuditChainPanel({ head, history }: AuditChainPanelProps) {
       link.href = url;
       link.download = result.data.filename;
       link.click();
-      URL.revokeObjectURL(url);
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
       toast.success("Attestation exported.");
     });
   }

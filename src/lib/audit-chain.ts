@@ -16,6 +16,22 @@ export type ChainableRow = {
 
 export type LinkedRow = ChainableRow & { prevHash: Buffer; rowHash: Buffer };
 
+function canonicalizeJson(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalizeJson);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, nested]) => [key, canonicalizeJson(nested)]),
+    );
+  }
+
+  return value;
+}
+
 function canonicalString(row: ChainableRow, prevHash: Buffer): string {
   return [
     prevHash.toString("hex"),
@@ -28,10 +44,10 @@ function canonicalString(row: ChainableRow, prevHash: Buffer): string {
     row.changedAt.toISOString(),
     row.oldData === null || row.oldData === undefined
       ? "null"
-      : JSON.stringify(row.oldData),
+      : JSON.stringify(canonicalizeJson(row.oldData)),
     row.newData === null || row.newData === undefined
       ? "null"
-      : JSON.stringify(row.newData),
+      : JSON.stringify(canonicalizeJson(row.newData)),
   ].join("|");
 }
 
