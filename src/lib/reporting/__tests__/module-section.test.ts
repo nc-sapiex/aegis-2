@@ -79,6 +79,37 @@ describe("buildModuleSection", () => {
     expect(section.rows[0].result).toBe("NON_COMPLIANT");
   });
 
+  it("scores multiple account responses for the same question from the full response set", () => {
+    const section = buildModuleSection(
+      { code: "FX", name: "Forex", kinds: ["POPULATION_SAMPLE"] },
+      [
+        {
+          nodeId: null,
+          questionId: "q1",
+          text: "FEMA on file",
+          weight: 2,
+          isCritical: true,
+        },
+      ],
+      [
+        {
+          nodeId: null,
+          accountRecordId: "acc-1",
+          questionId: "q1",
+          scoreLabel: "FULLY_COMPLIANT",
+        },
+        {
+          nodeId: null,
+          accountRecordId: "acc-2",
+          questionId: "q1",
+          scoreLabel: "NON_COMPLIANT",
+        },
+      ],
+    );
+
+    expect(section.score).toBe(0.5);
+  });
+
   it("a statement with no response yet renders as unscored, not a crash", () => {
     const section = buildModuleSection(
       { code: "CRD", name: "Credit", kinds: ["CHECKLIST"] },

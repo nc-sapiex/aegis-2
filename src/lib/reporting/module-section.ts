@@ -61,6 +61,14 @@ export function buildModuleSection(
   responses: ResponseLike[],
 ): ModuleSectionData {
   const responseByStatementId = new Map<string, ResponseLike>();
+  const statementById = new Map(
+    statements
+      .map((statement) => [
+        statement.nodeId ?? statement.questionId ?? "",
+        statement,
+      ] as const)
+      .filter(([key]) => key !== ""),
+  );
 
   for (const response of responses) {
     const key = response.nodeId ?? response.questionId ?? "";
@@ -86,13 +94,15 @@ export function buildModuleSection(
   let weightedSum = 0;
   let totalWeight = 0;
 
-  for (const [index, row] of rows.entries()) {
-    if (!(row.result in SCORE_VALUES)) {
+  for (const response of responses) {
+    if (response.scoreLabel == null || !(response.scoreLabel in SCORE_VALUES)) {
       continue;
     }
 
-    const weight = statements[index]?.weight ?? 0;
-    weightedSum += SCORE_VALUES[row.result as keyof typeof SCORE_VALUES] * weight;
+    const key = response.nodeId ?? response.questionId ?? "";
+    const weight = statementById.get(key)?.weight ?? 0;
+    weightedSum +=
+      SCORE_VALUES[response.scoreLabel as keyof typeof SCORE_VALUES] * weight;
     totalWeight += weight;
   }
 
