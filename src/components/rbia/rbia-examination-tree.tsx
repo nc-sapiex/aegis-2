@@ -4,13 +4,15 @@ import * as React from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import {
   flexRender,
-  getCoreRowModel,
-  getExpandedRowModel,
-  useReactTable,
-  type ColumnDef,
   type ExpandedState,
   type OnChangeFn,
 } from "@tanstack/react-table";
+import {
+  getCoreRowModel,
+  getExpandedRowModel,
+  useLegacyTable,
+  type LegacyColumnDef,
+} from "@tanstack/react-table/legacy";
 import {
   Table,
   TableBody,
@@ -67,11 +69,7 @@ const SCORE_LABELS_ORDERED: ScoreLabel[] = [
 type ActiveFilter = "unscored" | "flaggedAP" | "flaggedObs";
 
 type RatingBandLabel =
-  | "Very Good"
-  | "Good"
-  | "Satisfactory"
-  | "Moderate"
-  | "Poor";
+  "Very Good" | "Good" | "Satisfactory" | "Moderate" | "Poor";
 
 // ─── Utility Functions ──────────────────────────────────────────────────────
 
@@ -605,6 +603,9 @@ export function RbiaExaminationTree({
   );
 
   // ── Score handler with optimistic UI ────────────────────────────────────
+  const handleScoreChangeRef = React.useRef<
+    (nodeId: string, label: ScoreLabel, score: number) => void
+  >(() => {});
   const handleScoreChange = React.useCallback(
     (nodeId: string, label: ScoreLabel, score: number) => {
       // Get existing response data for this node
@@ -683,7 +684,11 @@ export function RbiaExaminationTree({
                 label: "Undo",
                 onClick: () => {
                   if (previousLabel && previousScore !== null) {
-                    handleScoreChange(nodeId, previousLabel, previousScore);
+                    handleScoreChangeRef.current(
+                      nodeId,
+                      previousLabel,
+                      previousScore,
+                    );
                   }
                 },
               },
@@ -709,6 +714,10 @@ export function RbiaExaminationTree({
     },
     [engagementId, tree, optimisticScores],
   );
+
+  React.useEffect(() => {
+    handleScoreChangeRef.current = handleScoreChange;
+  }, [handleScoreChange]);
 
   // ── Notes saved handler ─────────────────────────────────────────────────
   const handleNotesSaved = React.useCallback(
@@ -786,7 +795,7 @@ export function RbiaExaminationTree({
     scoreDisplay != null ? getRatingBandLabel(scoreDisplay) : null;
 
   // ── Column Definitions ──────────────────────────────────────────────────
-  const columns = React.useMemo<ColumnDef<ExaminationTreeNode>[]>(
+  const columns = React.useMemo<LegacyColumnDef<ExaminationTreeNode>[]>(
     () => [
       {
         accessorKey: "name",
@@ -913,7 +922,7 @@ export function RbiaExaminationTree({
   );
 
   // ── TanStack Table ──────────────────────────────────────────────────────
-  const table = useReactTable({
+  const table = useLegacyTable({
     data: filteredTree,
     columns,
     state: { expanded },
