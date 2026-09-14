@@ -57,6 +57,64 @@ beforeAll(async () => {
         origin: "BANK",
       },
     });
+
+    // installPack sets packId on every module it installs, including the
+    // "core" pack itself — these two fixtures exercise the group/isCore
+    // branches a bare-packId check gets wrong (see module-admin.ts).
+    const corePack = await integrationOwner.contentPackInstall.create({
+      data: {
+        tenantId,
+        packCode: "core",
+        version: "1.0.0",
+        contentHash: "core-hash",
+        installedById: (
+          await integrationOwner.user.findFirstOrThrow({
+            where: { tenantId },
+            select: { id: true },
+          })
+        ).id,
+      },
+    });
+    await integrationOwner.auditModule.create({
+      data: {
+        tenantId,
+        code: "CORE-MOD",
+        name: "Core Pack Module",
+        domain: "ADMIN",
+        kinds: ["CHECKLIST"],
+        applicability: {},
+        weight: 1,
+        isActive: true,
+        packId: corePack.id,
+      },
+    });
+    const otherPack = await integrationOwner.contentPackInstall.create({
+      data: {
+        tenantId,
+        packCode: "example-forex",
+        version: "1.0.0",
+        contentHash: "forex-hash",
+        installedById: (
+          await integrationOwner.user.findFirstOrThrow({
+            where: { tenantId },
+            select: { id: true },
+          })
+        ).id,
+      },
+    });
+    await integrationOwner.auditModule.create({
+      data: {
+        tenantId,
+        code: "FOREX",
+        name: "Forex",
+        domain: "OTHER",
+        kinds: ["CHECKLIST"],
+        applicability: {},
+        weight: 1,
+        isActive: true,
+        packId: otherPack.id,
+      },
+    });
   });
 });
 
@@ -65,9 +123,26 @@ afterAll(async () => integrationOwner.$disconnect());
 describe("getModuleAdminView", () => {
   it("lists every module with its share and statement counts", async () => {
     const rows = await getModuleAdminView(tenantId);
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(4);
     const ops = rows.find((r) => r.code === "OPS");
     expect(ops?.bankStatementCount).toBe(1);
-    expect(ops?.share).toBeCloseTo(0.4); // 2 / (3+2)
+    expect(ops?.group).toBe("core");
+    expect(ops?.isCore).toBe(false);
+  });
+
+  it("classifies a module installed via the core pack as core, not pack", async () => {
+    const rows = await getModuleAdminView(tenantId);
+    const coreMod = rows.find((r) => r.code === "CORE-MOD");
+    expect(coreMod?.isCore).toBe(true);
+    expect(coreMod?.group).toBe("core");
+    expect(coreMod?.packLabel).toBe("Pack · core 1.0.0");
+  });
+
+  it("classifies a module installed via a non-core pack as pack", async () => {
+    const rows = await getModuleAdminView(tenantId);
+    const forex = rows.find((r) => r.code === "FOREX");
+    expect(forex?.isCore).toBe(false);
+    expect(forex?.group).toBe("pack");
+    expect(forex?.packLabel).toBe("Pack · example-forex 1.0.0");
   });
 });
