@@ -162,6 +162,13 @@ CREATE POLICY tenant_isolation ON "ConcurrentAuditTemplate"
   USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
   WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
+ALTER TABLE "ContentPackInstall" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ContentPackInstall" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON "ContentPackInstall";
+CREATE POLICY tenant_isolation ON "ContentPackInstall"
+  USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+  WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+
 ALTER TABLE "ControlLibrary" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ControlLibrary" FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON "ControlLibrary";

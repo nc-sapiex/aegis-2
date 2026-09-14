@@ -23,6 +23,7 @@ export const RLS_TABLES = [
   "ComplianceItem",
   "ComplianceRequirement",
   "ConcurrentAuditTemplate",
+  "ContentPackInstall",
   "ControlLibrary",
   "DashboardSnapshot",
   "EmailLog",

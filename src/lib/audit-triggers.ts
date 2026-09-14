@@ -45,6 +45,7 @@ export const AUDITED_TABLES = [
   "ExaminationResponse",
   "EngagementSectionNa",
   "AccountExamResponse",
+  "ContentPackInstall",
   "PopulationRecord",
 ] as const;
 
