@@ -1,0 +1,8 @@
+# packs/example-forex/manifest.yaml
+id: example-forex
+version: 1.0.0
+name: Example Forex Checklist
+publisher: Nexly
+requiresFramework: "^2.0.0"
+dependsOn: []
+provides: [FX]
