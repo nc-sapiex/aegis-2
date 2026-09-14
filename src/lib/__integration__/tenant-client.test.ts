@@ -7,6 +7,7 @@ import {
   createTenant,
   createUser,
   integrationPrisma,
+  integrationOwner,
 } from "../../../tests/integration/harness";
 
 /**
@@ -63,11 +64,11 @@ describe("prismaForTenant against PostgreSQL", () => {
         }),
       ).rejects.toThrow("deliberate abort");
 
-      expect(await integrationPrisma.branch.count({ where: { code } })).toBe(0);
+      expect(await integrationOwner.branch.count({ where: { code } })).toBe(0);
       // The trigger's own row must go with it, or the log records a write that
       // never happened.
       expect(
-        await integrationPrisma.auditLog.count({
+        await integrationOwner.auditLog.count({
           where: { tableName: "Branch" },
         }),
       ).toBe(0);
@@ -84,7 +85,7 @@ describe("prismaForTenant against PostgreSQL", () => {
       });
 
       expect(
-        await integrationPrisma.branch.count({
+        await integrationOwner.branch.count({
           where: { code: { in: [a, b] } },
         }),
       ).toBe(2);
@@ -105,7 +106,7 @@ describe("prismaForTenant against PostgreSQL", () => {
         await tx.branch.create({ data: branch(code) });
       });
 
-      const entries = await integrationPrisma.auditLog.findMany({
+      const entries = await integrationOwner.auditLog.findMany({
         where: { tableName: "Branch" },
         select: {
           actionType: true,

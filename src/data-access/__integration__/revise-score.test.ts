@@ -5,7 +5,7 @@ import {
   createUser,
   fakeSession,
   mockSessionModule,
-  integrationPrisma,
+  integrationOwner,
   withFixtures,
 } from "../../../tests/integration/harness";
 
@@ -20,7 +20,7 @@ describe("reviseScore", () => {
     const lead = await createUser(tenant.id, ["LEAD_AUDITOR"]);
 
     const seeded = await withFixtures(async () => {
-      const plan = await integrationPrisma.auditPlan.create({
+      const plan = await integrationOwner.auditPlan.create({
         data: {
           tenantId: tenant.id,
           year: 2026,
@@ -29,7 +29,7 @@ describe("reviseScore", () => {
         },
         select: { id: true },
       });
-      const branch = await integrationPrisma.branch.create({
+      const branch = await integrationOwner.branch.create({
         data: {
           tenantId: tenant.id,
           code: "BR-001",
@@ -39,7 +39,7 @@ describe("reviseScore", () => {
         },
         select: { id: true },
       });
-      const engagement = await integrationPrisma.auditEngagement.create({
+      const engagement = await integrationOwner.auditEngagement.create({
         data: {
           tenantId: tenant.id,
           auditPlanId: plan.id,
@@ -48,7 +48,7 @@ describe("reviseScore", () => {
         },
         select: { id: true },
       });
-      const root = await integrationPrisma.examinationNode.create({
+      const root = await integrationOwner.examinationNode.create({
         data: {
           tenantId: tenant.id,
           code: "ROOT",
@@ -60,7 +60,7 @@ describe("reviseScore", () => {
         },
         select: { id: true },
       });
-      const moduleNode = await integrationPrisma.examinationNode.create({
+      const moduleNode = await integrationOwner.examinationNode.create({
         data: {
           tenantId: tenant.id,
           code: "CRD",
@@ -73,7 +73,7 @@ describe("reviseScore", () => {
         },
         select: { id: true },
       });
-      const node = await integrationPrisma.examinationNode.create({
+      const node = await integrationOwner.examinationNode.create({
         data: {
           tenantId: tenant.id,
           code: "CRD-01",
@@ -86,7 +86,7 @@ describe("reviseScore", () => {
         },
         select: { id: true },
       });
-      await integrationPrisma.examinationResponse.create({
+      await integrationOwner.examinationResponse.create({
         data: {
           tenantId: tenant.id,
           engagementId: engagement.id,
@@ -117,7 +117,7 @@ describe("reviseScore", () => {
 
     expect(result.success).toBe(true);
 
-    const updated = await integrationPrisma.examinationResponse.findUnique({
+    const updated = await integrationOwner.examinationResponse.findUnique({
       where: {
         engagementId_nodeId: {
           engagementId: seeded.engagementId,
@@ -128,7 +128,7 @@ describe("reviseScore", () => {
     });
     expect(updated?.scoreLabel).toBe("PARTIALLY_COMPLIANT");
 
-    const auditRows = await integrationPrisma.auditLog.findMany({
+    const auditRows = await integrationOwner.auditLog.findMany({
       where: { tenantId: tenant.id, actionType: "rbia.score_revised" },
       select: { id: true },
     });
