@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { multiSession } from "better-auth/plugins";
-import { prisma } from "./prisma";
+import { prismaSystem } from "./prisma";
 import { randomUUID } from "crypto";
 import { accountLockout } from "./auth-lockout-plugin";
 import { env } from "@/env";
@@ -25,8 +25,10 @@ export const auth = betterAuth({
     Boolean,
   ),
 
-  // Prisma adapter
-  database: prismaAdapter(prisma, {
+  // Prisma adapter. Runs as aegis_system (BYPASSRLS): pre-tenant, and the
+  // User model is RLS-protected while Session/Account/Verification are not
+  // — see prisma/sql/rls-tables.ts.
+  database: prismaAdapter(prismaSystem, {
     provider: "postgresql",
   }),
 

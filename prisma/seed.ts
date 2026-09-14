@@ -26,14 +26,15 @@ import { withTriggersDetached } from "../src/lib/audit-triggers";
 import { assertSafeSeedTarget } from "../src/lib/seed-guard";
 import { hashedCredentialAccount } from "../src/lib/credential-account";
 
+const databaseUrl = process.env.DATABASE_OWNER_URL ?? process.env.DATABASE_URL;
+
 assertSafeSeedTarget({
   nodeEnv: process.env.NODE_ENV,
-  databaseUrl: process.env.DATABASE_URL,
+  databaseUrl,
   allowDestructiveSeed: process.env.ALLOW_DESTRUCTIVE_SEED,
 });
 
-const databaseUrl = process.env.DATABASE_URL as string;
-const adapter = new PrismaPg({ connectionString: databaseUrl });
+const adapter = new PrismaPg({ connectionString: databaseUrl as string });
 const prisma = new PrismaClient({ adapter });
 
 // ─── Severity / status mappers ───────────────────────────────────────────────
