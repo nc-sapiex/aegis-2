@@ -48,7 +48,10 @@ export async function getModuleAdminView(
       code: m.code,
       name: m.name,
       kind: m.kinds.join(", "),
-      group: m.packId ? "pack" : "core",
+      // packId is set for the "core" content pack too (installPack sets it
+      // on every module it installs, not just non-core packs), so `group`
+      // must key off isCore, not bare packId presence.
+      group: isCore || !m.packId ? "core" : "pack",
       packLabel: m.packInstall
         ? `Pack · ${m.packInstall.packCode} ${m.packInstall.version}`
         : null,
