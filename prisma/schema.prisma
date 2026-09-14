@@ -191,6 +191,7 @@ enum NotificationType {
   WEEKLY_DIGEST
   BULK_DIGEST
   INVITATION
+  AUDIT_CHAIN_TAMPER_DETECTED
 }
 
 enum NotificationStatus {
@@ -321,6 +322,8 @@ model Tenant {
   notificationPreferences NotificationPreference[]
   boardReports            BoardReport[]
   dashboardSnapshots      DashboardSnapshot[]
+  auditChainHead          AuditChainHead?
+  auditChainVerifications AuditChainVerification[]
 }
 
 // ─── User ────────────────────────────────────────────────────────────────────
@@ -1896,7 +1899,7 @@ model AuditeeResponse {
 
 model AuditLog {
   id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  sequenceNumber BigInt   @default(autoincrement())
+  sequenceNumber BigInt
 
   tenantId  String @db.Uuid
   tableName String
@@ -1921,12 +1924,45 @@ model AuditLog {
   // Retention: computed as createdAt + 10 years (D14, PMLA)
   retentionExpiresAt DateTime?
 
+  // Per-tenant hash chain (spec §5). NULL only transiently: nullable so
+  // `prisma db push` can add the column before the backfill (Task 5) and
+  // the trigger rewrite (Task 3) populate every row.
+  prevHash Bytes?
+  rowHash  Bytes?
+
   createdAt DateTime @default(now())
 
   @@index([tenantId])
   @@index([tableName, recordId])
   @@index([actionType])
   @@index([createdAt])
+  @@unique([tenantId, sequenceNumber])
+}
+
+// ─── Audit Chain Head (per-tenant hash chain checkpoint) ────────────────────
+
+model AuditChainHead {
+  tenantId    String   @id @db.Uuid
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lastSequence BigInt  @default(0)
+  lastHash    Bytes
+  // Checkpoint the nightly job advances on a clean verification (Task 7).
+  // Distinct from lastSequence/lastHash above, which the trigger advances on
+  // every write and which may be ahead of what's actually been verified.
+  lastVerifiedSequence BigInt  @default(0)
+  lastVerifiedHash     Bytes?
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditChainVerification {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId         String   @db.Uuid
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  verifiedAt       DateTime @default(now())
+  ok               Boolean
+  firstBadSequence BigInt?
+
+  @@index([tenantId, verifiedAt])
 }
 
 // ─── Notification Queue ──────────────────────────────────────────────────────
