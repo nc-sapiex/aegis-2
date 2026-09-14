@@ -20,6 +20,14 @@ export const env = createEnv({
   server: {
     // Database (PostgreSQL 16)
     DATABASE_URL: z.string().url(),
+    // Owner connection for migrations, bootstrap, verify, seed. Scripts only.
+    DATABASE_OWNER_URL: z.string().url().optional(),
+    DATABASE_APP_PASSWORD: z.string().min(16).optional(),
+    // aegis_system: BYPASSRLS, same table grants as aegis_app. Only for the
+    // narrow cross-tenant/pre-auth reads that cannot carry a tenant GUC
+    // (job tenant enumeration, invite-token lookup). See src/lib/prisma.ts.
+    DATABASE_SYSTEM_URL: z.string().url().optional(),
+    DATABASE_SYSTEM_PASSWORD: z.string().min(16).optional(),
     // Individual Postgres vars are used by docker-compose for the DB container.
     // The app only needs DATABASE_URL, so these are optional here.
     POSTGRES_USER: z.string().min(1).optional(),
@@ -71,6 +79,10 @@ export const env = createEnv({
   runtimeEnv: {
     // Server vars
     DATABASE_URL: process.env.DATABASE_URL,
+    DATABASE_OWNER_URL: process.env.DATABASE_OWNER_URL,
+    DATABASE_APP_PASSWORD: process.env.DATABASE_APP_PASSWORD,
+    DATABASE_SYSTEM_URL: process.env.DATABASE_SYSTEM_URL,
+    DATABASE_SYSTEM_PASSWORD: process.env.DATABASE_SYSTEM_PASSWORD,
     POSTGRES_USER: process.env.POSTGRES_USER,
     POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD,
     POSTGRES_DB: process.env.POSTGRES_DB,

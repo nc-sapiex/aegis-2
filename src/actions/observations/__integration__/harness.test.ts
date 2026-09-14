@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   createTenant,
   createUser,
+  integrationOwner,
   integrationPrisma,
   resetDatabase,
 } from "../../../../tests/integration/harness";
@@ -15,7 +16,7 @@ describe("integration harness", () => {
     const tenant = await createTenant("Alpha Cooperative Bank");
     const user = await createUser(tenant.id, ["AUDITOR"]);
 
-    const found = await integrationPrisma.user.findUniqueOrThrow({
+    const found = await integrationOwner.user.findUniqueOrThrow({
       where: { id: user.id },
       select: { tenantId: true, roles: true },
     });
@@ -25,7 +26,7 @@ describe("integration harness", () => {
   });
 
   it("truncates between tests", async () => {
-    const count = await integrationPrisma.tenant.count();
+    const count = await integrationOwner.tenant.count();
     expect(count).toBe(0);
   });
 

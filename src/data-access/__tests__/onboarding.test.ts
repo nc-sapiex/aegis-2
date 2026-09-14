@@ -45,7 +45,6 @@ const {
 
 vi.mock("bcryptjs", () => ({ default: { hash: bcryptHash } }));
 vi.mock("@/lib/prisma", () => ({
-  prisma: { tenant: { findUnique: tenantFindUnique } },
   prismaForTenant: vi.fn(() => ({
     tenant: { findUnique: tenantFindUnique },
   })),

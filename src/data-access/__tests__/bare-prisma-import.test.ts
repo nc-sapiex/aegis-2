@@ -1,31 +1,31 @@
 /**
- * Only these files may import the bare `prisma` singleton. Everything else
- * reads through prismaForTenant(tenantId) or writes through withAuditedMutation.
- * Shrink-only: adding a path here needs a reviewer to say why RLS should not
- * apply to that file.
+ * Only these files may import the bare `prisma` or `prismaSystem` clients.
+ * Everything else reads through prismaForTenant(tenantId) or writes through
+ * withAuditedMutation. Shrink-only: adding a path here needs a reviewer to
+ * say why RLS should not apply to that file.
  */
 import { readdirSync, readFileSync, statSync } from "fs";
 import { join, relative } from "path";
 import { describe, expect, it } from "vitest";
 
 const BARE_IMPORT_ALLOWLIST = new Set<string>([
-  "src/lib/prisma.ts", // defines the singleton and prismaForTenant
-  "src/lib/tenant-client.ts", // builds the tenant-scoped extended client
-  "src/data-access/prisma.ts", // re-exports prisma/prismaForTenant for the DAL
-  "src/data-access/audited-mutation.ts", // sets audit context on the shared client before writes
-  "src/data-access/session.ts", // resolves the session before a tenantId exists
-  "src/lib/auth.ts", // Better Auth adapter runs pre-tenant
-  "src/lib/auth-lockout-plugin.ts", // Better Auth plugin runs on sign-in before a tenantId exists; FailedLoginAttempt has no tenantId column
-  "src/data-access/compliance-management.ts", // reads global RBI reference tables (RbiMasterDirection/RbiChecklistItem/RbiCircular) with no tenantId column; tenant-scoped calls already use prismaForTenant
-  "src/actions/user-invitations.ts", // acceptInvitation looks up User by the globally-unique email before a tenantId is known, same shape as sign-in
-  "src/jobs/deadline-reminder.ts", // lists tenants, then calls prismaForTenant per tenant
-  "src/jobs/weekly-digest.ts", // lists tenants, then calls prismaForTenant per tenant
-  "src/jobs/snapshot-metrics.ts", // lists tenants, then calls prismaForTenant per tenant
-  "src/jobs/overdue-escalation.ts", // lists tenants, then calls prismaForTenant per tenant
-  "src/jobs/rbia-overdue-escalation.ts", // lists tenants, then calls prismaForTenant per tenant
-  "src/jobs/compliance-escalation.ts", // lists tenants, then calls prismaForTenant per tenant
-  "src/data-access/notifications.ts", // getPendingNotifications polls the global pg-boss queue across all tenants; claimNotifications (same file) uses prismaForTenant
-  "tests/integration/harness.ts", // test harness needs the raw client to set up fixtures
+  "src/lib/prisma.ts", // defines prisma, prismaSystem, prismaForTenant
+  "src/lib/tenant-client.ts",
+  "src/data-access/prisma.ts", // re-exports from lib/prisma
+  "src/data-access/audited-mutation.ts", // owns transaction + GUC lifecycle
+  "src/data-access/session.ts", // reads the user row that tenantId comes from
+  "src/lib/auth.ts", // Better Auth adapter — pre-tenant
+  "src/lib/auth-lockout-plugin.ts", // pre-tenant; FailedLoginAttempt has no tenantId column
+  "src/data-access/compliance-management.ts", // reads only global RBI reference tables (no tenantId column)
+  "src/data-access/notifications.ts", // cross-tenant job DAL — dynamic-imports prismaSystem/prismaForTenant per call site
+  "src/actions/user-invitations.ts", // acceptInvitation's pre-auth token lookup
+  "src/jobs/compliance-escalation.ts", // lists tenants before looping prismaForTenant
+  "src/jobs/deadline-reminder.ts",
+  "src/jobs/overdue-escalation.ts",
+  "src/jobs/rbia-overdue-escalation.ts",
+  "src/jobs/snapshot-metrics.ts",
+  "src/jobs/weekly-digest.ts",
+  "tests/integration/harness.ts",
 ]);
 
 const ROOTS = [
@@ -53,11 +53,22 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-// Matches both `import { prisma } from "..."` and the dynamic
-// `const { prisma } = await import("...")` form — a lazy import bypasses the
-// static-import check just as easily as it bypasses tree-shaking.
-const BARE_IMPORT =
-  /(?:import\s*\{[^}]*\bprisma\b[^}]*\}\s*from\s*|\{[^}]*\bprisma\b[^}]*\}\s*=\s*await\s+import\(\s*)["'](@\/lib\/prisma|@\/data-access\/prisma|\.\/prisma)["']/;
+// Matches both static `import { prisma } from "..."` and dynamic
+// `const { prisma } = await import("...")`, for either bare client.
+const NAMED_BLOCK =
+  /\{([^}]*)\}\s*(?:from|=\s*await\s+import\()\s*["'](?:@\/lib\/prisma|@\/data-access\/prisma|\.\/prisma)["']/g;
+
+function importsBareClient(src: string): boolean {
+  NAMED_BLOCK.lastIndex = 0;
+  let block: RegExpExecArray | null;
+  while ((block = NAMED_BLOCK.exec(src))) {
+    const names = block[1];
+    if (/\bprisma\b/.test(names) || /\bprismaSystem\b/.test(names)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 describe("bare prisma singleton imports", () => {
   it("appear only in the allowlist", () => {
@@ -67,10 +78,17 @@ describe("bare prisma singleton imports", () => {
         const rel = relative(process.cwd(), file);
         if (BARE_IMPORT_ALLOWLIST.has(rel)) continue;
         const src = readFileSync(file, "utf8");
-        if (BARE_IMPORT.test(src)) offenders.push(rel);
+        if (importsBareClient(src)) offenders.push(rel);
       }
     }
-    expect(offenders).toEqual([]);
+    expect(
+      offenders,
+      `Files importing the bare prisma/prismaSystem client outside the allowlist:
+${offenders.join("\n")}
+
+Use prismaForTenant(tenantId) instead, or add the file to
+BARE_IMPORT_ALLOWLIST with a comment saying why RLS should not apply.`,
+    ).toEqual([]);
   });
 
   it("allowlist entries all exist (shrink when a file is deleted)", () => {

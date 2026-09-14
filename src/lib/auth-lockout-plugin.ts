@@ -1,5 +1,5 @@
 import { type BetterAuthPlugin, APIError } from "better-auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, prismaSystem } from "@/lib/prisma";
 
 /**
  * Account Lockout Plugin Configuration
@@ -190,8 +190,10 @@ export const accountLockout = (
                 },
               });
 
-              // Log lockout event to AuditLog for security monitoring
-              await prisma.auditLog.create({
+              // Log lockout event to AuditLog for security monitoring. No
+              // real tenant applies (pre-auth, keyed by email), and AuditLog
+              // is RLS-protected, so this write must bypass via prismaSystem.
+              await prismaSystem.auditLog.create({
                 data: {
                   tenantId: "00000000-0000-0000-0000-000000000000", // System event
                   tableName: "User",

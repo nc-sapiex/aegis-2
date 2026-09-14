@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prismaSystem } from "@/lib/prisma";
 import { prismaForTenant } from "@/data-access/prisma";
 import {
   withAuditedMutation,
@@ -35,7 +35,7 @@ function startOfIsoWeek(now: Date): Date {
 export async function processWeeklyDigest(): Promise<void> {
   console.log("[weekly-digest] Starting weekly digest generation");
 
-  const tenants = await prisma.tenant.findMany({
+  const tenants = await prismaSystem.tenant.findMany({
     select: { id: true, name: true },
   });
 

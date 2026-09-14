@@ -8,7 +8,7 @@ import {
   addTeamMember,
   fakeSession,
   mockSessionModule,
-  integrationPrisma,
+  integrationOwner,
   withFixtures,
 } from "../../../../tests/integration/harness";
 
@@ -27,11 +27,11 @@ async function seedEngagement(
   status: EngagementStatus = "IN_PROGRESS",
 ) {
   return withFixtures(async () => {
-    const plan = await integrationPrisma.auditPlan.create({
+    const plan = await integrationOwner.auditPlan.create({
       data: { tenantId, year: 2026, quarter: "Q1_APR_JUN", status: "PLANNED" },
       select: { id: true },
     });
-    const engagement = await integrationPrisma.auditEngagement.create({
+    const engagement = await integrationOwner.auditEngagement.create({
       data: {
         tenantId,
         auditPlanId: plan.id,
@@ -53,7 +53,7 @@ async function seedLoanAccount(
 ) {
   return withFixtures(async () => {
     // LoanAccount requires branchId + core portfolio columns (not just accountNo).
-    const branch = await integrationPrisma.branch.create({
+    const branch = await integrationOwner.branch.create({
       data: {
         tenantId,
         code: `BR-${randomUUID().slice(0, 8)}`,
@@ -63,7 +63,7 @@ async function seedLoanAccount(
       },
       select: { id: true },
     });
-    return integrationPrisma.loanAccount.create({
+    return integrationOwner.loanAccount.create({
       data: {
         tenantId,
         engagementId,
@@ -84,14 +84,16 @@ async function seedLoanAccount(
 }
 
 async function seedQuestion(tenantId: string, moduleCode = "CRD-HLN") {
-  return integrationPrisma.examinationQuestion.create({
-    data: {
-      tenantId,
-      moduleCode,
-      text: `Is the documentation complete? ${randomUUID()}`,
-    },
-    select: { id: true },
-  });
+  return withFixtures(() =>
+    integrationOwner.examinationQuestion.create({
+      data: {
+        tenantId,
+        moduleCode,
+        text: `Is the documentation complete? ${randomUUID()}`,
+      },
+      select: { id: true },
+    }),
+  );
 }
 
 describe("saveAccountExamResponse", () => {
@@ -126,7 +128,7 @@ describe("saveAccountExamResponse", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(await integrationPrisma.accountExamResponse.count()).toBe(1);
+    expect(await integrationOwner.accountExamResponse.count()).toBe(1);
   });
 
   it("upserts rather than duplicating on re-save", async () => {
@@ -155,7 +157,7 @@ describe("saveAccountExamResponse", () => {
     await saveAccountExamResponse(input);
     await saveAccountExamResponse({ ...input, status: "VIOLATION" });
 
-    const rows = await integrationPrisma.accountExamResponse.findMany({
+    const rows = await integrationOwner.accountExamResponse.findMany({
       select: { status: true },
     });
     expect(rows).toHaveLength(1);
@@ -192,7 +194,7 @@ describe("saveAccountExamResponse", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toMatch(/not found/i);
-    expect(await integrationPrisma.accountExamResponse.count()).toBe(0);
+    expect(await integrationOwner.accountExamResponse.count()).toBe(0);
   });
 
   it("refuses an account that is not in the sample", async () => {

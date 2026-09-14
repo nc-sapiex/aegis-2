@@ -53,8 +53,7 @@ export async function detectRepeatFindings(
 
   try {
     // Use raw SQL with pg_trgm similarity function.
-    // Belt-and-suspenders: tenantId in WHERE clause even though
-    // we could use prismaForTenant for RLS.
+    // tenantId in WHERE clause as belt-and-suspenders alongside prismaForTenant's RLS.
     let candidates: Array<{
       id: string;
       title: string;

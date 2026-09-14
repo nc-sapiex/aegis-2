@@ -57,3 +57,62 @@ describe("SQL manifest", () => {
     expect(superseded).toEqual([]);
   });
 });
+
+import { RLS_TABLES } from "../../../prisma/sql/manifest";
+
+const REFERENCE_TABLES = new Set([
+  "RbiCircular",
+  "RbiMasterDirection",
+  "RbiChecklistItem",
+]);
+
+describe("RLS policies", () => {
+  const schema = readFileSync(
+    join(process.cwd(), "prisma/schema.prisma"),
+    "utf8",
+  );
+  const policySql = readFileSync(
+    join(process.cwd(), "prisma/sql/070_rls_policies.sql"),
+    "utf8",
+  );
+
+  function tenantModels(): string[] {
+    const out: string[] = [];
+    const re = /^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(schema))) {
+      const body = m[2];
+      if (/^\s*tenantId\s+String/m.test(body) && !REFERENCE_TABLES.has(m[1]))
+        out.push(m[1]);
+    }
+    return out.sort();
+  }
+
+  it("every tenant-scoped model has a policy and appears in RLS_TABLES", () => {
+    const expected = tenantModels();
+    expect(expected.length).toBeGreaterThan(50);
+    expect([...RLS_TABLES].sort()).toEqual(expected);
+    for (const table of expected) {
+      expect(policySql).toContain(
+        `ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY;`,
+      );
+      expect(policySql).toContain(
+        `ALTER TABLE "${table}" FORCE ROW LEVEL SECURITY;`,
+      );
+      expect(policySql).toContain(
+        `CREATE POLICY tenant_isolation ON "${table}"`,
+      );
+    }
+  });
+
+  it("reference tables carry no policy", () => {
+    for (const t of REFERENCE_TABLES)
+      expect(policySql).not.toContain(`ON "${t}"`);
+  });
+
+  it("the policy file is in the manifest after the composite FK file", () => {
+    const i = SQL_MANIFEST.indexOf("prisma/sql/070_rls_policies.sql");
+    const j = SQL_MANIFEST.indexOf("prisma/sql/060_tenant_composite_fks.sql");
+    expect(i).toBeGreaterThan(j);
+  });
+});

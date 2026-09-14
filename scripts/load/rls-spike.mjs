@@ -1,3 +1,4 @@
+// scripts/load/rls-spike.mjs
 // Usage: SESSION_COOKIE='better-auth.session_token=...' ENGAGEMENT_ID=<uuid> node scripts/load/rls-spike.mjs
 // Runs before every release too (spec §10 "Load").
 import autocannon from "autocannon";
@@ -35,12 +36,14 @@ async function run(target) {
   };
 }
 
-const mode = process.env.TENANT_CLIENT === "singleton" ? "baseline" : "rls";
+const mode = "rls";
 const rows = [];
 for (const t of targets) rows.push(await run(t));
 console.log(`\nmode=${mode} pool=${process.env.PG_POOL_MAX ?? 25}`);
 console.table(rows);
 if (rows.some((r) => r.non2xx > 0 || r.errors > 0)) {
-  console.error("Non-2xx or transport errors present; check server logs for P2028.");
+  console.error(
+    "Non-2xx or transport errors present; check server logs for P2028.",
+  );
   process.exit(1);
 }

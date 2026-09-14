@@ -4,7 +4,7 @@ import { verifyPassword } from "better-auth/crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createTenant,
-  integrationPrisma,
+  integrationOwner,
   resetDatabase,
   withFixtures,
 } from "../../../../tests/integration/harness";
@@ -24,7 +24,7 @@ async function seedInvitedUser(options?: {
   const inviteExpiry = options?.inviteExpiry ?? new Date(Date.now() + 60_000);
 
   const user = await withFixtures(() =>
-    integrationPrisma.user.create({
+    integrationOwner.user.create({
       data: {
         email,
         name: "Invited User",
@@ -58,7 +58,7 @@ describe("acceptInvitation integration", () => {
 
     expect(result).toEqual({ success: true, error: null });
 
-    const afterUser = await integrationPrisma.user.findUniqueOrThrow({
+    const afterUser = await integrationOwner.user.findUniqueOrThrow({
       where: { id: user.id },
       select: {
         status: true,
@@ -74,7 +74,7 @@ describe("acceptInvitation integration", () => {
       emailVerified: true,
     });
 
-    const accounts = await integrationPrisma.account.findMany({
+    const accounts = await integrationOwner.account.findMany({
       where: { userId: user.id, providerId: "credential" },
       select: { password: true },
     });
@@ -105,7 +105,7 @@ describe("acceptInvitation integration", () => {
       error: "This invitation has already been used.",
     });
     expect(
-      await integrationPrisma.account.count({
+      await integrationOwner.account.count({
         where: { userId: user.id, providerId: "credential" },
       }),
     ).toBe(1);

@@ -55,6 +55,33 @@ wipes tenants and the later steps.
 
 ---
 
+## Database roles
+
+`db:bootstrap` creates two application roles, both `NOSUPERUSER`:
+
+- `aegis_app` — `NOBYPASSRLS`. The app connects as this role (`DATABASE_URL`);
+  every query is subject to the `tenant_isolation` RLS policy.
+- `aegis_system` — `BYPASSRLS`, otherwise identical grants to `aegis_app`.
+  Used only by `prismaSystem` (`src/lib/prisma.ts`) at the small set of reads
+  that must cross tenants or run before any tenant context exists (job
+  tenant enumeration, the pre-auth invite-token lookup). Any new call site
+  needs a reviewer's sign-off on the bare-import allowlist
+  (`src/data-access/__tests__/bare-prisma-import.test.ts`).
+
+`DATABASE_OWNER_URL` (the owner/superuser connection) is for `db:push`,
+`db:bootstrap`, `db:verify`, `db:seed`, and the integration harness only —
+never the running app.
+
+Rotating a password: set the new value and re-run bootstrap, then update the
+matching `DATABASE_*_URL`.
+
+```bash
+DATABASE_APP_PASSWORD=<new> pnpm db:bootstrap       # then update DATABASE_URL
+DATABASE_SYSTEM_PASSWORD=<new> pnpm db:bootstrap    # then update DATABASE_SYSTEM_URL
+```
+
+---
+
 ## Applying SQL
 
 SQL is never applied automatically — not by a build, not by starting the app. The

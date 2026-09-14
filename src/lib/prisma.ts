@@ -68,25 +68,46 @@ const UUID_REGEX =
 
 const tenantClients = new Map<string, TenantClient>();
 
+const prismaSystemSingleton = () => {
+  const connectionString = process.env.DATABASE_SYSTEM_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_SYSTEM_URL environment variable is not set");
+  }
+  const adapter = new PrismaPg({ connectionString, max: 5 });
+  return new PrismaClient({ adapter, log: ["error"] });
+};
+
+declare global {
+  var prismaSystemGlobal: undefined | ReturnType<typeof prismaSystemSingleton>;
+}
+
+/**
+ * Connects as aegis_system: BYPASSRLS, otherwise the same grants as
+ * aegis_app. Reserved for the handful of reads that must see across tenants
+ * or run before any tenant context exists — job tenant enumeration, the
+ * pre-auth invite-token lookup — and cannot carry app.current_tenant_id.
+ * Every other read goes through prismaForTenant. Do not add new call sites
+ * without updating the bare-import allowlist test (Task 6).
+ */
+export const prismaSystem = new Proxy(
+  {} as ReturnType<typeof prismaSystemSingleton>,
+  {
+    get(_target, prop) {
+      const instance = globalThis.prismaSystemGlobal ?? prismaSystemSingleton();
+      globalThis.prismaSystemGlobal = instance;
+      return Reflect.get(instance, prop);
+    },
+  },
+);
+
 /**
  * The only client actions and the DAL may use for reads. Every operation runs
  * with app.current_tenant_id set, so RLS applies. WHERE tenantId stays on every
  * query as the second wall (spec §4.3).
- *
- * TENANT_CLIENT=singleton is read only by scripts/load/rls-spike.mjs to measure
- * the unwrapped baseline, and is ignored in production: it strips tenant
- * scoping from every query, so a stray value in a deployed environment must not
- * be able to turn that off. It is removed in Task 8.
  */
 export function prismaForTenant(tenantId: string): TenantClient {
   if (!UUID_REGEX.test(tenantId)) {
     throw new Error(`Invalid tenantId format: ${tenantId}`);
-  }
-  if (
-    process.env.TENANT_CLIENT === "singleton" &&
-    process.env.NODE_ENV !== "production"
-  ) {
-    return prisma as unknown as TenantClient;
   }
   let client = tenantClients.get(tenantId);
   if (!client) {

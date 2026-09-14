@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prismaSystem } from "@/lib/prisma";
 import { prismaForTenant } from "@/data-access/prisma";
 import {
   withAuditedMutation,
@@ -33,7 +33,7 @@ export async function processDeadlineReminders(): Promise<void> {
   console.log("[deadline-reminder] Starting deadline check");
 
   // Get all active tenants
-  const tenants = await prisma.tenant.findMany({
+  const tenants = await prismaSystem.tenant.findMany({
     select: { id: true, name: true },
   });
 
@@ -156,7 +156,7 @@ async function checkDuplicateReminder(
   );
 
   // Check if a notification of this type for this observation was created today
-  const existing = await prisma.notificationQueue.findFirst({
+  const existing = await prismaForTenant(tenantId).notificationQueue.findFirst({
     where: {
       tenantId,
       type: reminderType as any,

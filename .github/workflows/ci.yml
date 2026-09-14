@@ -110,7 +110,11 @@ jobs:
         ports:
           - 127.0.0.1:5432:5432
     env:
-      DATABASE_URL: postgresql://test:testpassword@localhost:5432/aegis_integration
+      DATABASE_OWNER_URL: postgresql://test:testpassword@localhost:5432/aegis_integration
+      DATABASE_URL: postgresql://aegis_app:ci-app-password-0123456789@localhost:5432/aegis_integration
+      DATABASE_APP_PASSWORD: ci-app-password-0123456789
+      DATABASE_SYSTEM_URL: postgresql://aegis_system:ci-system-password-0123456789@localhost:5432/aegis_integration
+      DATABASE_SYSTEM_PASSWORD: ci-system-password-0123456789
       SKIP_ENV_VALIDATION: "1"
       BETTER_AUTH_SECRET: ci-integration-secret-0123456789abcdef0123456789
       BETTER_AUTH_URL: http://localhost:3000
