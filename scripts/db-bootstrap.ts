@@ -10,6 +10,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { Client } from "pg";
+import { PgBoss } from "pg-boss";
 import { SQL_MANIFEST } from "../prisma/sql/manifest";
 
 async function main() {
@@ -40,6 +41,8 @@ async function main() {
     }
     await grantAppRole(client);
     await grantSystemRole(client);
+    await ensureJobQueueSchema(connectionString);
+    await grantJobQueueSchema(client);
   } finally {
     await client.end();
   }
@@ -102,6 +105,35 @@ async function grantSystemRole(client: Client) {
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO aegis_system;
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO aegis_system;
     REVOKE UPDATE, DELETE ON "AuditLog" FROM aegis_system;
+  `);
+}
+
+/**
+ * pg-boss (src/lib/job-queue.ts) runs as aegis_app, which has no CREATE
+ * privilege — it can never install or migrate its own `pgboss` schema.
+ * Running pg-boss's own start()/stop() once here, as the owner, installs
+ * or migrates that schema so the app's own start() at runtime finds it
+ * already at the expected version and only ever does read-only checks
+ * (contractor.js: isInstalled + schemaVersion, no DDL) before granting
+ * aegis_app the DML rights it needs on the data. A pg-boss version bump
+ * needs a `db:bootstrap` re-run before deploy, same as any other schema
+ * change.
+ */
+async function ensureJobQueueSchema(connectionString: string) {
+  const boss = new PgBoss({ connectionString });
+  await boss.start();
+  await boss.stop();
+}
+
+/** Runs after ensureJobQueueSchema so the pgboss schema exists to grant on. */
+async function grantJobQueueSchema(client: Client) {
+  await client.query(`
+    GRANT USAGE ON SCHEMA pgboss TO aegis_app;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA pgboss TO aegis_app;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA pgboss TO aegis_app;
+    GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pgboss TO aegis_app;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA pgboss GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO aegis_app;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA pgboss GRANT USAGE, SELECT ON SEQUENCES TO aegis_app;
   `);
 }
 
