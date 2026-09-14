@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { getModuleAdminView } from "@/data-access/module-admin";
 import {
   integrationOwner,
@@ -6,6 +6,8 @@ import {
   createUser,
   resetDatabase,
   withFixtures,
+  fakeSession,
+  mockSessionModule,
 } from "../../../tests/integration/harness";
 
 let tenantId: string;
@@ -144,5 +146,51 @@ describe("getModuleAdminView", () => {
     expect(forex?.isCore).toBe(false);
     expect(forex?.group).toBe("pack");
     expect(forex?.packLabel).toBe("Pack · example-forex 1.0.0");
+  });
+});
+
+describe("saveModuleWeights", () => {
+  async function caeSession() {
+    const cae = await integrationOwner.user.findFirstOrThrow({
+      where: { tenantId, roles: { has: "CAE" } },
+      select: { id: true },
+    });
+    return fakeSession({ id: cae.id, tenantId, roles: ["CAE"] });
+  }
+
+  it("rejects a weight outside 1-100", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { saveModuleWeights } =
+      await import("@/actions/module-admin/save-module-weights");
+
+    const crd = await integrationOwner.auditModule.findFirstOrThrow({
+      where: { tenantId, code: "CRD" },
+    });
+    const result = await saveModuleWeights([{ moduleId: crd.id, weight: 0 }]);
+    expect(result).toEqual({
+      success: false,
+      error: expect.stringContaining("1"),
+    });
+  });
+
+  it("saves a valid weight change", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { saveModuleWeights } =
+      await import("@/actions/module-admin/save-module-weights");
+
+    const crd = await integrationOwner.auditModule.findFirstOrThrow({
+      where: { tenantId, code: "CRD" },
+    });
+    // weight is Decimal(5,4) (schema.prisma) — same overflow constraint noted
+    // in the beforeAll fixture above; the brief's literal 45 exceeds it, so
+    // 5 stands in as a valid, in-range 1-100 value here.
+    const result = await saveModuleWeights([{ moduleId: crd.id, weight: 5 }]);
+    expect(result.success).toBe(true);
+    const updated = await integrationOwner.auditModule.findUniqueOrThrow({
+      where: { id: crd.id },
+    });
+    expect(Number(updated.weight)).toBe(5);
   });
 });
