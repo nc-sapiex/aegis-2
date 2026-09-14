@@ -39,6 +39,7 @@ const {
       userBranchAssignment: { create: vi.fn(async () => ({ id: "uba" })) },
       auditLog: { create: vi.fn(async () => ({ id: "log" })) },
       onboardingProgress: { delete: vi.fn(async () => ({})) },
+      $queryRaw: vi.fn(async () => [{ nextval: 1n }]),
     },
   };
 });

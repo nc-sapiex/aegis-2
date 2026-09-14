@@ -266,6 +266,14 @@ export async function completeOnboardingTransaction(
       invitedUsersForEmail = createdUsers;
 
       // 7. Create audit log entries
+      // ponytail: sequenceNumber fetched explicitly because dropping
+      // @default(autoincrement()) removed it from Prisma's create-input type;
+      // the Postgres sequence still auto-populates at runtime until Task 3
+      // moves to per-tenant, trigger-assigned sequencing.
+      const [{ nextval: onboardingSequenceNumber }] = await tx.$queryRaw<
+        { nextval: bigint }[]
+      >`-- tenantId: not applicable, global sequence, not tenant-owned rows
+        SELECT nextval('"AuditLog_sequenceNumber_seq"')`;
       await tx.auditLog.create({
         data: {
           tenantId: data.tenantId,
@@ -273,6 +281,7 @@ export async function completeOnboardingTransaction(
           recordId: data.tenantId,
           operation: "UPDATE",
           actionType: "onboarding.completed",
+          sequenceNumber: onboardingSequenceNumber,
           newData: {
             departments: createdDepts.length,
             branches: createdBranches.length,

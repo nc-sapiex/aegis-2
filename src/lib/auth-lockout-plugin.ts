@@ -193,6 +193,15 @@ export const accountLockout = (
               // Log lockout event to AuditLog for security monitoring. No
               // real tenant applies (pre-auth, keyed by email), and AuditLog
               // is RLS-protected, so this write must bypass via prismaSystem.
+              // ponytail: sequenceNumber fetched explicitly because dropping
+              // @default(autoincrement()) removed it from Prisma's
+              // create-input type; the Postgres sequence still
+              // auto-populates at runtime until Task 3 moves to per-tenant,
+              // trigger-assigned sequencing.
+              const [{ nextval: lockoutSequenceNumber }] =
+                await prismaSystem.$queryRaw<
+                  { nextval: bigint }[]
+                >`SELECT nextval('"AuditLog_sequenceNumber_seq"')`;
               await prismaSystem.auditLog.create({
                 data: {
                   tenantId: "00000000-0000-0000-0000-000000000000", // System event
@@ -200,6 +209,7 @@ export const accountLockout = (
                   recordId: email,
                   operation: "LOCKOUT",
                   actionType: "account.locked",
+                  sequenceNumber: lockoutSequenceNumber,
                   oldData: { recentFailures },
                   newData: { lockedUntil: lockUntil.toISOString() },
                   ipAddress: ip,
