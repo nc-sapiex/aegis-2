@@ -721,6 +721,46 @@ async function main() {
     counters[node.depth] = (counters[node.depth] ?? 0) + 1;
   }
 
+  // Depth-1 CRD-HLN is the AuditModule; depth >= 1 nodes in its subtree
+  // hang off that moduleId. Depth 0 (CRD) spans modules and stays null.
+  const housingNode = await prisma.examinationNode.findUnique({
+    where: { tenantId_code: { tenantId, code: "CRD-HLN" } },
+    select: { name: true, path: true, weight: true, isActive: true },
+  });
+  if (!housingNode) {
+    throw new Error("CRD-HLN examination node missing after upsert.");
+  }
+
+  const housingModule = await prisma.auditModule.upsert({
+    where: { tenantId_code: { tenantId, code: "CRD-HLN" } },
+    create: {
+      tenantId,
+      code: "CRD-HLN",
+      name: housingNode.name,
+      domain: "CREDIT",
+      kinds: ["CHECKLIST", "POPULATION_SAMPLE"],
+      applicability: {},
+      weight: housingNode.weight,
+      isActive: housingNode.isActive,
+    },
+    update: {
+      name: housingNode.name,
+      kinds: ["CHECKLIST", "POPULATION_SAMPLE"],
+      weight: housingNode.weight,
+      isActive: housingNode.isActive,
+    },
+    select: { id: true },
+  });
+
+  await prisma.examinationNode.updateMany({
+    where: {
+      tenantId,
+      path: { startsWith: housingNode.path },
+      depth: { gte: 1 },
+    },
+    data: { moduleId: housingModule.id, origin: "BANK" },
+  });
+
   /* ---------------------------------------------------------------- */
   /*  Summary table                                                   */
   /* ---------------------------------------------------------------- */
