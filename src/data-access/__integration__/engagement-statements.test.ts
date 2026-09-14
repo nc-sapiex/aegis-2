@@ -5,7 +5,7 @@ import {
   getModuleRailData,
 } from "@/data-access/engagement-statements";
 import {
-  integrationPrisma,
+  integrationOwner,
   createTenant,
   createUser,
   resetDatabase,
@@ -22,7 +22,7 @@ beforeAll(async () => {
   await withFixtures(async () => {
     tenantId = (await createTenant("Snapshot Bank")).id;
     await createUser(tenantId, ["CAE"]);
-    const branch = await integrationPrisma.branch.create({
+    const branch = await integrationOwner.branch.create({
       data: {
         tenantId,
         name: "Test Branch",
@@ -33,7 +33,7 @@ beforeAll(async () => {
         loanProducts: [],
       },
     });
-    const auditModule = await integrationPrisma.auditModule.create({
+    const auditModule = await integrationOwner.auditModule.create({
       data: {
         tenantId,
         code: "CRD",
@@ -44,7 +44,7 @@ beforeAll(async () => {
       },
     });
     moduleId = auditModule.id;
-    const node = await integrationPrisma.examinationNode.create({
+    const node = await integrationOwner.examinationNode.create({
       data: {
         tenantId,
         moduleId,
@@ -59,10 +59,10 @@ beforeAll(async () => {
       },
     });
     nodeId = node.id;
-    const auditPlan = await integrationPrisma.auditPlan.create({
+    const auditPlan = await integrationOwner.auditPlan.create({
       data: { tenantId, year: 2026, quarter: "Q1_APR_JUN" },
     });
-    const engagement = await integrationPrisma.auditEngagement.create({
+    const engagement = await integrationOwner.auditEngagement.create({
       data: {
         tenantId,
         auditPlanId: auditPlan.id,
@@ -71,18 +71,18 @@ beforeAll(async () => {
       },
     });
     engagementId = engagement.id;
-    await integrationPrisma.engagementModule.create({
+    await integrationOwner.engagementModule.create({
       data: { tenantId, engagementId, moduleId, isAutoSelected: true },
     });
   });
 });
 
-afterAll(async () => integrationPrisma.$disconnect());
+afterAll(async () => integrationOwner.$disconnect());
 
 describe("materializeEngagementStatements", () => {
   it("snapshots every node of every selected module into EngagementStatement", async () => {
     await materializeEngagementStatements(
-      integrationPrisma as never,
+      integrationOwner as never,
       engagementId,
       tenantId,
     );
@@ -93,7 +93,7 @@ describe("materializeEngagementStatements", () => {
   });
 
   it("a later edit to the bank statement does not change the snapshot", async () => {
-    await integrationPrisma.examinationNode.update({
+    await integrationOwner.examinationNode.update({
       where: { id: nodeId },
       data: { description: "Loan file is complete and signed" },
     });
@@ -117,7 +117,7 @@ describe("getModuleRailData", () => {
 
   it("counts a scored response toward scored and score", async () => {
     await withFixtures(() =>
-      integrationPrisma.examinationResponse.create({
+      integrationOwner.examinationResponse.create({
         data: {
           tenantId,
           engagementId,

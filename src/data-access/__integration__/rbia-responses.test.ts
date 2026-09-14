@@ -8,7 +8,7 @@ import {
   vi,
 } from "vitest";
 import {
-  integrationPrisma,
+  integrationOwner,
   createTenant,
   createUser,
   fakeSession,
@@ -30,7 +30,7 @@ beforeAll(async () => {
     tenantId = (await createTenant("Score Bank")).id;
     const user = await createUser(tenantId, ["LEAD_AUDITOR"]);
     userId = user.id;
-    const branch = await integrationPrisma.branch.create({
+    const branch = await integrationOwner.branch.create({
       data: {
         tenantId,
         name: "B",
@@ -39,10 +39,10 @@ beforeAll(async () => {
         state: "MH",
       },
     });
-    const auditPlan = await integrationPrisma.auditPlan.create({
+    const auditPlan = await integrationOwner.auditPlan.create({
       data: { tenantId, year: 2026, quarter: "Q1_APR_JUN" },
     });
-    const engagement = await integrationPrisma.auditEngagement.create({
+    const engagement = await integrationOwner.auditEngagement.create({
       data: {
         tenantId,
         auditPlanId: auditPlan.id,
@@ -52,7 +52,7 @@ beforeAll(async () => {
     });
     engagementId = engagement.id;
     branchId = branch.id;
-    const auditModule = await integrationPrisma.auditModule.create({
+    const auditModule = await integrationOwner.auditModule.create({
       data: {
         tenantId,
         code: "CRD",
@@ -62,7 +62,7 @@ beforeAll(async () => {
         applicability: {},
       },
     });
-    const node = await integrationPrisma.examinationNode.create({
+    const node = await integrationOwner.examinationNode.create({
       data: {
         tenantId,
         moduleId: auditModule.id,
@@ -77,11 +77,11 @@ beforeAll(async () => {
       },
     });
     nodeId = node.id;
-    await integrationPrisma.examinationResponse.create({
+    await integrationOwner.examinationResponse.create({
       data: { tenantId, engagementId, nodeId },
     });
 
-    const unscoredNode = await integrationPrisma.examinationNode.create({
+    const unscoredNode = await integrationOwner.examinationNode.create({
       data: {
         tenantId,
         moduleId: auditModule.id,
@@ -99,7 +99,7 @@ beforeAll(async () => {
   });
 });
 
-afterAll(async () => integrationPrisma.$disconnect());
+afterAll(async () => integrationOwner.$disconnect());
 
 describe("scoreStatement", () => {
   beforeEach(() => {
@@ -163,7 +163,7 @@ describe("scoreStatement", () => {
 
   it("refuses to score once the engagement's score is frozen", async () => {
     await withFixtures(() =>
-      integrationPrisma.branchRbiaScore.create({
+      integrationOwner.branchRbiaScore.create({
         data: {
           tenantId,
           engagementId,

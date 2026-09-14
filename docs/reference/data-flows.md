@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `21dadb4` (module-framework/foundation)
+> Source commit: `e1fb184` (module-framework/foundation)
 
 Which processes read and write which tables.
 
@@ -37,13 +37,13 @@ reachability graph.
 
 | Job | Audited | Tables touched directly |
 |---|---|---|
-| `compliance-escalation` | — | `Tenant` |
-| `deadline-reminder` | yes | `NotificationQueue`, `Observation`, `Tenant` |
+| `compliance-escalation` | — | — |
+| `deadline-reminder` | yes | `NotificationQueue`, `Observation` |
 | `notification-processor` | — | — |
-| `overdue-escalation` | yes | `NotificationQueue`, `Observation`, `Tenant`, `User` |
-| `rbia-overdue-escalation` | yes | `BmResponseBatch`, `NotificationQueue`, `Tenant`, `User` |
-| `snapshot-metrics` | — | `DashboardSnapshot`, `Tenant` |
-| `weekly-digest` | yes | `NotificationQueue`, `Observation`, `Tenant`, `User` |
+| `overdue-escalation` | yes | `NotificationQueue`, `Observation`, `User` |
+| `rbia-overdue-escalation` | yes | `BmResponseBatch`, `NotificationQueue`, `User` |
+| `snapshot-metrics` | — | `DashboardSnapshot` |
+| `weekly-digest` | yes | `NotificationQueue`, `Observation`, `User` |
 
 ## Most widely accessed tables
 

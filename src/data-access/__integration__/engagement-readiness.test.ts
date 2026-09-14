@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getEngagementReadiness } from "@/data-access/engagement-readiness";
 import {
-  integrationPrisma,
+  integrationOwner,
   createTenant,
   createUser,
   resetDatabase,
@@ -17,13 +17,13 @@ beforeAll(async () => {
   await withFixtures(async () => {
     tenantId = (await createTenant("Ready Bank")).id;
     await createUser(tenantId, ["CAE"]);
-    const branch = await integrationPrisma.branch.create({
+    const branch = await integrationOwner.branch.create({
       data: { tenantId, name: "B", code: "B01", city: "Pune", state: "MH" },
     });
-    const auditPlan = await integrationPrisma.auditPlan.create({
+    const auditPlan = await integrationOwner.auditPlan.create({
       data: { tenantId, year: 2026, quarter: "Q1_APR_JUN" },
     });
-    const engagement = await integrationPrisma.auditEngagement.create({
+    const engagement = await integrationOwner.auditEngagement.create({
       data: {
         tenantId,
         auditPlanId: auditPlan.id,
@@ -32,7 +32,7 @@ beforeAll(async () => {
       },
     });
     engagementId = engagement.id;
-    const auditModule = await integrationPrisma.auditModule.create({
+    const auditModule = await integrationOwner.auditModule.create({
       data: {
         tenantId,
         code: "CRD",
@@ -42,7 +42,7 @@ beforeAll(async () => {
         applicability: {},
       },
     });
-    const node = await integrationPrisma.examinationNode.create({
+    const node = await integrationOwner.examinationNode.create({
       data: {
         tenantId,
         moduleId: auditModule.id,
@@ -56,7 +56,7 @@ beforeAll(async () => {
       },
     });
     nodeId = node.id;
-    await integrationPrisma.engagementStatement.create({
+    await integrationOwner.engagementStatement.create({
       data: {
         tenantId,
         engagementId,
@@ -67,7 +67,7 @@ beforeAll(async () => {
         origin: "BANK",
       },
     });
-    await integrationPrisma.examinationResponse.create({
+    await integrationOwner.examinationResponse.create({
       // remarks_due: scored below Largely, no remarks yet
       data: {
         tenantId,
@@ -79,7 +79,7 @@ beforeAll(async () => {
   });
 });
 
-afterAll(async () => integrationPrisma.$disconnect());
+afterAll(async () => integrationOwner.$disconnect());
 
 describe("getEngagementReadiness", () => {
   it("counts a remarks-due row and reports fieldwork incomplete", async () => {
@@ -90,11 +90,11 @@ describe("getEngagementReadiness", () => {
 
   it("reports fieldwork incomplete for a statement with no response row yet", async () => {
     const untouchedNode = await withFixtures(async () => {
-      const node = await integrationPrisma.examinationNode.create({
+      const node = await integrationOwner.examinationNode.create({
         data: {
           tenantId,
           moduleId: (
-            await integrationPrisma.auditModule.findFirstOrThrow({
+            await integrationOwner.auditModule.findFirstOrThrow({
               where: { tenantId, code: "CRD" },
             })
           ).id,
@@ -107,7 +107,7 @@ describe("getEngagementReadiness", () => {
           isCritical: false,
         },
       });
-      await integrationPrisma.engagementStatement.create({
+      await integrationOwner.engagementStatement.create({
         data: {
           tenantId,
           engagementId,
