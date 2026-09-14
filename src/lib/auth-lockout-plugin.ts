@@ -200,8 +200,18 @@ export const accountLockout = (
               // violation). It never was part of any tenant's chain, so it
               // keeps its own tiny dedicated sequence and leaves
               // prevHash/rowHash NULL rather than faking a chain linkage.
+              // A future chain-verification job must exclude this event by
+              // tenantId = the sentinel above -- NOT by prevHash IS NULL
+              // (not equivalent: that would let a NULL'd-out real tenant
+              // row hide from verification instead of failing it).
               // Revisit if a verifiable chain for system security events is
               // ever required.
+              //
+              // Deliberately not wrapped in try/catch: a failure here (e.g.
+              // a sequence collision, see the migration's setval comment)
+              // must surface as an error, not be swallowed -- hiding a
+              // security event is worse than a loud 500 after the lockout
+              // itself has already applied.
               await prismaSystem.$executeRaw`
                 INSERT INTO "AuditLog" (
                   "sequenceNumber", "tenantId", "tableName", "recordId", operation,

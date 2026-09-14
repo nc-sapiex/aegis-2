@@ -34,7 +34,14 @@
 -- in the first place, so it keeps its own tiny dedicated sequence
 -- (AuditLog_system_sequence_seq, below) instead of joining one, and leaves
 -- "prevHash"/"rowHash" NULL (both nullable) rather than faking a chain
--- linkage for a row no tenant chain will ever verify.
+-- linkage for a row no tenant chain will ever verify. A future
+-- chain-verification job must exclude these rows by
+-- "tenantId" = '00000000-0000-0000-0000-000000000000' (or by walking real
+-- "Tenant" rows) -- NOT by "prevHash" IS NULL. Those are not equivalent:
+-- filtering on the nullability of the hash columns would let anyone who can
+-- NULL a real tenant row's prevHash/rowHash hide that row from
+-- verification. Inside a real tenant's chain, a NULL hash is a broken
+-- chain (verification failure), never a reason to skip the row.
 --
 -- _changed_at is truncated to millisecond precision before both storing it
 -- and formatting it with to_char, so there is no rounding/truncation
@@ -45,6 +52,18 @@
 -- conversion (which this app's Prisma pg adapter delegates to) also
 -- truncates -- they already agreed at every boundary case tested, and
 -- date_trunc makes that agreement structural instead of coincidental.
+--
+-- With triggers attached, deleting a "Tenant" row now fails. The FK cascade
+-- (ON DELETE CASCADE) removes that tenant's "AuditChainHead" along with
+-- everything else, but the "Tenant" row's own DELETE fires audit_trigger,
+-- which calls audit_chain_insert(), which re-INSERTs a head row for the
+-- tenant being deleted -- and that insert's own FK to "Tenant" then fails
+-- with 23503, since the row is already gone by the time the AFTER-trigger
+-- runs. Seeds (`withTriggersDetached`) and the integration harness
+-- (TRUNCATE, which fires no triggers) are unaffected, and no application
+-- delete path exists today. Any future tenant offboarding/erasure feature
+-- must either detach triggers around the delete or record its own audit
+-- entry before deleting the row -- not something this task builds.
 
 ALTER TABLE "AuditLog" ALTER COLUMN "sequenceNumber" DROP DEFAULT;
 DROP SEQUENCE IF EXISTS "AuditLog_sequenceNumber_seq";
@@ -52,6 +71,18 @@ DROP SEQUENCE IF EXISTS "AuditLog_sequenceNumber_seq";
 -- Dedicated, narrowly-scoped sequence for the one write that cannot join a
 -- tenant's hash chain (see above). Nothing else may use it.
 CREATE SEQUENCE IF NOT EXISTS "AuditLog_system_sequence_seq";
+
+-- A database that predates this migration already holds sentinel-tenant
+-- rows numbered by the dropped global AuditLog_sequenceNumber_seq. Without
+-- this, a fresh AuditLog_system_sequence_seq starting at 1 collides with
+-- one of those existing rows the first time it's used ((tenantId,
+-- sequenceNumber) is UNIQUE), and the resulting $executeRaw throw is not
+-- caught anywhere in auth-lockout-plugin.ts on purpose (a controller ruling:
+-- swallowing an audit-write failure would hide a security event) -- it
+-- surfaces as a 500 on sign-in, after the lockout itself already applied.
+-- GREATEST(...) means re-running this on every bootstrap never moves the
+-- sequence backward.
+SELECT setval('"AuditLog_system_sequence_seq"', GREATEST(COALESCE((SELECT MAX("sequenceNumber") FROM "AuditLog" WHERE "tenantId" = '00000000-0000-0000-0000-000000000000'), 0), (SELECT last_value FROM "AuditLog_system_sequence_seq")));
 
 CREATE OR REPLACE FUNCTION audit_chain_insert(
   p_tenant_id UUID,
@@ -72,9 +103,21 @@ DECLARE
   _next_sequence BIGINT;
   _canonical TEXT;
   _row_hash BYTEA;
-  _changed_at TIMESTAMPTZ;
+  -- "AuditLog".createdAt/retentionExpiresAt are TIMESTAMP (no time zone),
+  -- so this is TIMESTAMP too, not TIMESTAMPTZ: converting via
+  -- `AT TIME ZONE 'UTC'` up front bakes in the UTC wall-clock value once,
+  -- here, instead of storing a TIMESTAMPTZ into a TIMESTAMP column and
+  -- letting Postgres convert it implicitly through the session's TimeZone
+  -- GUC on INSERT. The hash pins UTC (to_char below has no further
+  -- `AT TIME ZONE`); a server whose TimeZone isn't UTC would otherwise
+  -- store and hash two different instants.
+  _changed_at TIMESTAMP;
 BEGIN
-  _changed_at := date_trunc('milliseconds', p_changed_at);
+  -- date_trunc first (on the TIMESTAMPTZ input): TIMESTAMP(3) rounds to the
+  -- nearest millisecond on storage, while to_char's 'MS' truncates: without
+  -- this, a value ending in .xxx5 or higher would store as one millisecond
+  -- and hash as another.
+  _changed_at := date_trunc('milliseconds', p_changed_at) AT TIME ZONE 'UTC';
 
   -- Lock (creating on first write) the tenant's head row so concurrent
   -- audited writes within the same tenant serialize; different tenants do
@@ -90,7 +133,7 @@ BEGIN
   _canonical := encode(_prev_hash, 'hex') || '|' || p_tenant_id::TEXT || '|' || _next_sequence::TEXT
     || '|' || p_table_name || '|' || p_record_id || '|' || p_operation
     || '|' || coalesce(p_user_id::TEXT, '')
-    || '|' || to_char(_changed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+    || '|' || to_char(_changed_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
     || '|' || coalesce(p_old_data::TEXT, 'null')
     || '|' || coalesce(p_new_data::TEXT, 'null');
   _row_hash := digest(_canonical, 'sha256');
