@@ -16,19 +16,19 @@ section lands.
 
 ## 1. Decisions taken
 
-| # | Decision | Chosen |
-|---|---|---|
-| D1 | Milestone | First real customer, core RBIA cycle only on day one |
-| D2 | Fieldwork model | Module-native examination framework (§6); v5 flat sections removed |
-| D3 | Hosting | Both: bank on-prem and AWS, one artifact |
-| D4 | Audit-log integrity | Real per-tenant hash chain |
-| D5 | Tenant isolation | RLS behind a non-superuser role, gated by a spike; fallback is tightened static checks |
-| D6 | Anti-copy | Signed license file + Docker image only; no phone-home |
-| D7 | Localisation | English only; next-intl removed |
-| D8 | Findings | 5C structure dropped; SDD observation shape adopted |
-| D9 | Modules | Content packs (data, never code); core pack bundled; bank may add statements and set weights |
-| D10 | Scale | Five-point compliance scale with mandatory remarks below "Largely" |
-| D11 | Content authoring | Out of this program; tooling is in |
+| #   | Decision            | Chosen                                                                                       |
+| --- | ------------------- | -------------------------------------------------------------------------------------------- |
+| D1  | Milestone           | First real customer, core RBIA cycle only on day one                                         |
+| D2  | Fieldwork model     | Module-native examination framework (§6); v5 flat sections removed                           |
+| D3  | Hosting             | Both: bank on-prem and AWS, one artifact                                                     |
+| D4  | Audit-log integrity | Real per-tenant hash chain                                                                   |
+| D5  | Tenant isolation    | RLS behind a non-superuser role, gated by a spike; fallback is tightened static checks       |
+| D6  | Anti-copy           | Signed license file + Docker image only; no phone-home                                       |
+| D7  | Localisation        | English only; next-intl removed                                                              |
+| D8  | Findings            | 5C structure dropped; SDD observation shape adopted                                          |
+| D9  | Modules             | Content packs (data, never code); core pack bundled; bank may add statements and set weights |
+| D10 | Scale               | Five-point compliance scale with mandatory remarks below "Largely"                           |
+| D11 | Content authoring   | Out of this program; tooling is in                                                           |
 
 The two design PDFs (SDD v3.0 and the Blueprint v1.0, February 2026) were read in
 full. The SDD's module list is the reference for what "core cycle" means. The
@@ -142,9 +142,17 @@ data-driven over the DAL module list so a new module is covered automatically.
   **per tenant**.
 - New table `AuditChainHead(tenantId PK, lastSequence BIGINT, lastHash BYTEA)`.
   The existing `AFTER` trigger takes `SELECT … FOR UPDATE` on the tenant's
-  head row, computes
-  `rowHash = sha256(prevHash || tenantId || sequenceNumber || tableName || recordId || action || actorUserId || changedAt || canonical_json(old) || canonical_json(new))`,
-  and advances the head. Genesis `prevHash` is 32 zero bytes. Audit inserts
+  head row, computes `rowHash = sha256(canonical)`, where `canonical` is
+  every `AuditLog` column except `rowHash` itself — `prevHash`, `id`,
+  `tenantId`, `sequenceNumber`, `tableName`, `recordId`, `operation`,
+  `actionType`, `justification`, `userId`, `ipAddress`, `sessionId`,
+  `oldData`, `newData`, `createdAt`, `retentionExpiresAt` — each encoded
+  length-prefixed (`-` for NULL, otherwise `<UTF-8 byte length>:<value>`,
+  jsonb columns as Postgres's own `jsonb::text` serialization) and
+  concatenated with no separator, and advances the head. The length prefix
+  makes the concatenation unambiguous without a separator character, so
+  content can never shift across a field boundary the way it could with a
+  delimiter-joined string. Genesis `prevHash` is 32 zero bytes. Audit inserts
   serialize per tenant; different tenants do not contend.
 - `sequenceNumber` becomes per tenant (from the head row). `detectAuditGaps()`
   is rewritten against it and called by the verify job.
@@ -254,13 +262,13 @@ checks land here later.
 
 ### 6.5 Five-point scale and scoring
 
-| `ScoreLabel` | Value |
-|---|---|
-| FULLY_COMPLIANT | 1.00 |
-| LARGELY_COMPLIANT | 0.75 |
-| PARTIALLY_COMPLIANT | 0.50 |
-| MARGINALLY_COMPLIANT | 0.25 |
-| NON_COMPLIANT | 0.00 |
+| `ScoreLabel`         | Value |
+| -------------------- | ----- |
+| FULLY_COMPLIANT      | 1.00  |
+| LARGELY_COMPLIANT    | 0.75  |
+| PARTIALLY_COMPLIANT  | 0.50  |
+| MARGINALLY_COMPLIANT | 0.25  |
+| NON_COMPLIANT        | 0.00  |
 
 - Not applicable is a flag with a reason, never a score.
 - `remarks` (renamed from `workingNotes`) is required when the answer is
@@ -509,7 +517,7 @@ card page (`src/components/account-examination/` is replaced).
 
 - Rail: under the module's sections, "Sample · 40 of 1,212 accounts" expands
   to one row per sampled account: `recordKey · displayName · amount ·
-  classification`, a state word (Untouched, In progress, Complete) and a
+classification`, a state word (Untouched, In progress, Complete) and a
   violation count. Accounts are ordered by `recordKey`.
 - Register: columns `code | question | Compliant | Violation | N/A`; keys
   C, V and 0 on a focused row. Row state words: Unscored, Remarks due,
@@ -776,19 +784,19 @@ Better Auth's built-in flow over the `Mailer` interface. Closes #126.
 
 ## 11. Sequencing (14 weeks)
 
-| Weeks | Work | Gate |
-|---|---|---|
-| 1 | RLS spike; literal allowlist; delete deprecated state machine and dead code; branch protection | Spike verdict in an ADR |
-| 2–3 | RLS rollout, roles, tightened static and integration tests | Cross-tenant tests green |
-| 4–5 | Audit chain, backfill, verify job, admin page | Tamper tests green |
-| 6 | Adapters, remove next-intl, password reset | MinIO and SMTP in CI |
-| 7 | `prisma migrate`, license file and CLI, feature flags | Clean-DB install from one command |
-| 8–9 | Framework: `AuditModule`, `moduleId` FKs, branch profile, `EngagementModule`, `PopulationRecord`, five-point scale, findings without 5C, v5 removal | Static suites green; existing engines' tests green |
-| 10 | Pack format, linter, CLI, installer, entitlement, `core` pack assembled from repo content, example pack | Install/upgrade integration tests green |
-| 11 | Module admin; reporting engine; delete hand-coded reports | Report renders for every module kind |
-| 12 | Core-cycle E2E in smoke; authorization gaps; `generate-board-report` | E2E gates merges |
-| 13 | On-prem compose and installer; install drill; restore drill; AWS checklist run | Both drills recorded |
-| 14 | Onboarding runbook run end to end; customer security statement rewritten from the claims audit; `docs/architecture.md` updated; buffer | Runbook executed on a clean machine |
+| Weeks | Work                                                                                                                                                | Gate                                               |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| 1     | RLS spike; literal allowlist; delete deprecated state machine and dead code; branch protection                                                      | Spike verdict in an ADR                            |
+| 2–3   | RLS rollout, roles, tightened static and integration tests                                                                                          | Cross-tenant tests green                           |
+| 4–5   | Audit chain, backfill, verify job, admin page                                                                                                       | Tamper tests green                                 |
+| 6     | Adapters, remove next-intl, password reset                                                                                                          | MinIO and SMTP in CI                               |
+| 7     | `prisma migrate`, license file and CLI, feature flags                                                                                               | Clean-DB install from one command                  |
+| 8–9   | Framework: `AuditModule`, `moduleId` FKs, branch profile, `EngagementModule`, `PopulationRecord`, five-point scale, findings without 5C, v5 removal | Static suites green; existing engines' tests green |
+| 10    | Pack format, linter, CLI, installer, entitlement, `core` pack assembled from repo content, example pack                                             | Install/upgrade integration tests green            |
+| 11    | Module admin; reporting engine; delete hand-coded reports                                                                                           | Report renders for every module kind               |
+| 12    | Core-cycle E2E in smoke; authorization gaps; `generate-board-report`                                                                                | E2E gates merges                                   |
+| 13    | On-prem compose and installer; install drill; restore drill; AWS checklist run                                                                      | Both drills recorded                               |
+| 14    | Onboarding runbook run end to end; customer security statement rewritten from the claims audit; `docs/architecture.md` updated; buffer              | Runbook executed on a clean machine                |
 
 ## 12. Risks
 
@@ -850,12 +858,13 @@ exists.
 
 ### Approved Mockups
 
-| Screen/Section | Mockup Path | Direction | Notes |
-|---|---|---|---|
+| Screen/Section       | Mockup Path                                                                                                                                                                    | Direction                                                        | Notes                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Examination register | ~/.gstack/projects/nc-sapiex-Dev/designs/examination-statement-row-20260912/wireframe.html (artifact https://claude.ai/code/artifact/09667ad7-286b-4737-bd77-4b51fda2dba4, v3) | Bank inspection register: aligned tick columns, state word, band | D11 16px statement text; D15 radiogroup semantics; D16 rail sheet <900px; D19 percentages above the tick |
-| Audit modules admin | ~/.gstack/projects/nc-sapiex-Dev/designs/module-admin-20260912/wireframe.html (same artifact, tab 2) | Ruled table, packs as a list, side panel | D14 app-wide tokens; D20 statements editor is the register in edit mode |
+| Audit modules admin  | ~/.gstack/projects/nc-sapiex-Dev/designs/module-admin-20260912/wireframe.html (same artifact, tab 2)                                                                           | Ruled table, packs as a list, side panel                         | D14 app-wide tokens; D20 statements editor is the register in edit mode                                  |
 
 ## Implementation Tasks
+
 Synthesized from this review's findings. Each task derives from a specific
 finding above. Run with Claude Code or Codex; checkbox as you ship.
 
@@ -873,7 +882,7 @@ finding above. Run with Claude Code or Codex; checkbox as you ship.
   - Verify: integration test: stale version returns conflict; UI shows Scored by <name>
 - [ ] **T4 (P1, human: ~2 h / CC: ~10 min)** — statement-state — Pure state derivation: scored/required/na/nc, remarks required below Largely, N/A reason separate
   - Surfaced by: §6.5a row states; user review of wireframe v2 (scored flag bug)
-  - Files: src/lib/statement-state.ts, src/lib/__tests__/statement-state.test.ts
+  - Files: src/lib/statement-state.ts, src/lib/**tests**/statement-state.test.ts
   - Verify: pnpm test:unit
 - [ ] **T5 (P2, human: ~2 h / CC: ~10 min)** — resume — EngagementSectionVisit and rail order
   - Surfaced by: Pass 1 D7
@@ -893,7 +902,7 @@ finding above. Run with Claude Code or Codex; checkbox as you ship.
   - Verify: Playwright at 768px: first screen is the register
 - [ ] **T9 (P1, human: ~3 days / CC: ~1.5 h)** — module admin — Packs list, module table with share simulation, weights save, Add bank statement panel per §7.6
   - Surfaced by: Step 0.5 approved wireframe v3 tab 2; Pass 5 D14
-  - Files: src/app/(dashboard)/settings/modules/page.tsx, src/components/modules/*, src/actions/modules/*
+  - Files: src/app/(dashboard)/settings/modules/page.tsx, src/components/modules/_, src/actions/modules/_
   - Verify: unit test for share computation; audited-mutation discipline test passes
 - [ ] **T10 (P2, human: ~2 days / CC: ~1 h)** — statements editor — Register in edit mode for BANK and PACK nodes
   - Surfaced by: Pass 7 D20
@@ -905,7 +914,7 @@ finding above. Run with Claude Code or Codex; checkbox as you ship.
   - Verify: Playwright: raise AP from row, code appears in place, no navigation
 - [ ] **T12 (P2, human: ~2 h / CC: ~10 min)** — formatScore — Percentages for aggregates, ratios on ticks, cap footnote
   - Surfaced by: Pass 7 D19
-  - Files: src/lib/format-score.ts, src/lib/__tests__/format-score.test.ts, rail, header, report templates
+  - Files: src/lib/format-score.ts, src/lib/**tests**/format-score.test.ts, rail, header, report templates
   - Verify: pnpm test:unit; rail shows 91.0
 - [ ] **T13 (P3, human: ~4 h / CC: ~15 min)** — print — Register print stylesheet and Print section action
   - Surfaced by: Pass 7 D21

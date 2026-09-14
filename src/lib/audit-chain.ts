@@ -3,13 +3,24 @@ import { createHash } from "node:crypto";
 /**
  * Per-tenant SHA-256 hash chain (spec §5).
  *
- * Canonical string, joined with "|", in this exact order — the SQL trigger in
+ * Canonical string covers every "AuditLog" column except "rowHash" itself,
+ * in this exact order — the SQL trigger in
  * prisma/migrations/20260913_audit_chain.sql builds the identical string so
  * the nightly verify job can recompute it without touching the database:
  *
- *   hex(prevHash) | tenantId | sequenceNumber | tableName | recordId
- *     | operation | actorUserId-or-empty | changedAt.toISOString()
- *     | oldData-or-"null" | newData-or-"null"
+ *   prevHash, id, tenantId, sequenceNumber, tableName, recordId, operation,
+ *   actionType, justification, userId, ipAddress, sessionId, oldData,
+ *   newData, createdAt, retentionExpiresAt
+ *
+ * Each field is encoded by field() below, then concatenated with NO
+ * separator: field()'s length-prefix encoding (`-` for NULL, otherwise
+ * `<UTF-8 byte length>:<value>`) makes the concatenation unambiguous on its
+ * own, unlike the previous "|"-joined format, where content could shift
+ * across a field boundary without changing the hash (e.g. actionType "a|b"
+ * + justification "c" hashed the same as actionType "a" + justification
+ * "b|c"). The byte length is counted in UTF-8 bytes (`Buffer.byteLength`),
+ * not JS string `.length` (UTF-16 code units), matching Postgres's
+ * `octet_length(convert_to(v, 'UTF8'))` for any multi-byte character.
  *
  * oldData/newData are pre-serialized JSON text, not JS values, and must be
  * the exact string Postgres's `jsonb::text` cast produces — e.g.
@@ -24,9 +35,11 @@ import { createHash } from "node:crypto";
  * directly, not go through Prisma's parsed `Json` scalar.
  *
  * A null actorUserId (systemActor, spec's "the platform acting under policy")
- * canonicalizes to the empty string, matching how setSessionContext leaves
- * app.current_user_id unset for a system Actor (session-context.ts) rather
- * than writing the literal text "null".
+ * is a genuinely absent value, distinct from the empty string — matching how
+ * setSessionContext leaves app.current_user_id unset for a system Actor
+ * (session-context.ts) rather than writing the literal text "". NULL and ""
+ * hash differently for every nullable field in this format (field(null) is
+ * "-"; field("") is "0:").
  *
  * Pure: no Prisma, no clock, no I/O — CLAUDE.md's domain-arithmetic rule.
  */
@@ -34,30 +47,54 @@ import { createHash } from "node:crypto";
 export const GENESIS_HASH: Buffer = Buffer.alloc(32);
 
 export type ChainableRow = {
+  id: string;
   tenantId: string;
   sequenceNumber: bigint;
   tableName: string;
   recordId: string;
   operation: string;
+  actionType: string | null;
+  justification: string | null;
   actorUserId: string | null;
-  changedAt: Date;
+  ipAddress: string | null;
+  sessionId: string | null;
   oldData: string | null;
   newData: string | null;
+  changedAt: Date;
+  retentionExpiresAt: Date | null;
 };
 
+/** NULL -> "-"; non-NULL v -> "<UTF-8 byte length of v>:" || v. */
+function field(v: string | null): string {
+  if (v === null) return "-";
+  return `${Buffer.byteLength(v, "utf8")}:${v}`;
+}
+
+function isoMs(d: Date): string {
+  return d.toISOString();
+}
+
 function canonicalString(row: ChainableRow, prevHash: Buffer): string {
-  return [
-    prevHash.toString("hex"),
-    row.tenantId,
-    row.sequenceNumber.toString(),
-    row.tableName,
-    row.recordId,
-    row.operation,
-    row.actorUserId ?? "",
-    row.changedAt.toISOString(),
-    row.oldData ?? "null",
-    row.newData ?? "null",
-  ].join("|");
+  return (
+    field(prevHash.toString("hex")) +
+    field(row.id) +
+    field(row.tenantId) +
+    field(row.sequenceNumber.toString()) +
+    field(row.tableName) +
+    field(row.recordId) +
+    field(row.operation) +
+    field(row.actionType) +
+    field(row.justification) +
+    field(row.actorUserId) +
+    field(row.ipAddress) +
+    field(row.sessionId) +
+    field(row.oldData) +
+    field(row.newData) +
+    field(isoMs(row.changedAt)) +
+    field(
+      row.retentionExpiresAt === null ? null : isoMs(row.retentionExpiresAt),
+    )
+  );
 }
 
 export function hashRow(row: ChainableRow, prevHash: Buffer): Buffer {

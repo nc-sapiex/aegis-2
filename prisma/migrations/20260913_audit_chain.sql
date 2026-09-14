@@ -7,14 +7,40 @@
 -- assigns itself from each tenant's AuditChainHead row.
 --
 -- Canonical string built here MUST match src/lib/audit-chain.ts's
--- canonicalString() byte-for-byte: hex(prevHash) | tenantId | sequenceNumber
--- | tableName | recordId | operation | actorUserId-or-empty
--- | changedAt (ISO-8601, milliseconds, "Z") | oldData-or-"null"
--- | newData-or-"null". oldData/newData are hashed as Postgres's own
--- `jsonb::text` serialization (e.g. `{"a": 1}`, with the space jsonb_out
--- inserts after ":"/","), not JS's compact `JSON.stringify`: see
--- audit-chain.ts's doc comment for why re-deriving that text via
--- JSON.parse+JSON.stringify on the TS side does not round-trip.
+-- canonicalString() byte-for-byte. It covers every "AuditLog" column except
+-- "rowHash" itself, in this exact order: prevHash, id, tenantId,
+-- sequenceNumber, tableName, recordId, operation, actionType,
+-- justification, userId, ipAddress, sessionId, oldData, newData, createdAt,
+-- retentionExpiresAt.
+--
+-- Each field is encoded with audit_chain_field(), below, before
+-- concatenating -- there is no separator character between fields, because
+-- a length-prefixed encoding needs none and a "|"-joined string (the
+-- previous format) could shift content across a field boundary without
+-- changing the hash (e.g. actionType "a|b" + justification "c" hashing the
+-- same as actionType "a" + justification "b|c"):
+--
+--   enc(NULL) = "-"
+--   enc(v)    = "<UTF-8 byte length of v, decimal>:" || v
+--
+-- This is unambiguous left to right: NULL is exactly "-", and every non-NULL
+-- field starts with a decimal digit followed by ":" and then exactly that
+-- many UTF-8 bytes of content -- a value can never be confused with a
+-- length prefix or with the next field's start. The byte length (not
+-- character/UTF-16-unit count) makes the prefix -- and the hash --
+-- independent of both server_encoding and which language runtime computed
+-- it.
+--
+-- oldData/newData are still hashed as Postgres's own `jsonb::text`
+-- serialization (e.g. `{"a": 1}`, with the space jsonb_out inserts after
+-- ":"/","), not JS's compact `JSON.stringify`: see audit-chain.ts's doc
+-- comment for why re-deriving that text via JSON.parse+JSON.stringify on
+-- the TS side does not round-trip.
+--
+-- NULL is distinct from the empty string everywhere in this format: a NULL
+-- justification/actionType/ipAddress/sessionId/userId/oldData/newData
+-- encodes as "-", never as "0:" (empty-but-present) or a sentinel word.
+-- Swapping NULL and "" changes the hash.
 --
 -- The chain-computing core lives in audit_chain_insert(), a standalone
 -- function callable both by the trigger (audit_trigger_function, below) and
@@ -84,6 +110,19 @@ CREATE SEQUENCE IF NOT EXISTS "AuditLog_system_sequence_seq";
 -- sequence backward.
 SELECT setval('"AuditLog_system_sequence_seq"', GREATEST(COALESCE((SELECT MAX("sequenceNumber") FROM "AuditLog" WHERE "tenantId" = '00000000-0000-0000-0000-000000000000'), 0), (SELECT last_value FROM "AuditLog_system_sequence_seq")));
 
+-- Length-prefixed field encoder shared by every canonical-string field:
+-- NULL -> "-"; non-NULL v -> "<UTF-8 byte length of v>:" || v. IMMUTABLE
+-- (same input always yields the same output, no I/O) so the planner may
+-- inline/fold it; convert_to(...,'UTF8') makes the byte count independent
+-- of server_encoding.
+CREATE OR REPLACE FUNCTION audit_chain_field(v TEXT)
+RETURNS TEXT LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE
+    WHEN v IS NULL THEN '-'
+    ELSE octet_length(convert_to(v, 'UTF8'))::TEXT || ':' || v
+  END
+$$;
+
 CREATE OR REPLACE FUNCTION audit_chain_insert(
   p_tenant_id UUID,
   p_table_name TEXT,
@@ -99,10 +138,12 @@ CREATE OR REPLACE FUNCTION audit_chain_insert(
   p_changed_at TIMESTAMPTZ DEFAULT NOW()
 ) RETURNS VOID AS $$
 DECLARE
+  _id UUID := gen_random_uuid();
   _prev_hash BYTEA;
   _next_sequence BIGINT;
   _canonical TEXT;
   _row_hash BYTEA;
+  _retention_expires_at TIMESTAMP;
   -- "AuditLog".createdAt/retentionExpiresAt are TIMESTAMP (no time zone),
   -- so this is TIMESTAMP too, not TIMESTAMPTZ: converting via
   -- `AT TIME ZONE 'UTC'` up front bakes in the UTC wall-clock value once,
@@ -129,23 +170,41 @@ BEGIN
   SELECT "lastSequence", "lastHash" INTO _next_sequence, _prev_hash
     FROM "AuditChainHead" WHERE "tenantId" = p_tenant_id FOR UPDATE;
   _next_sequence := _next_sequence + 1;
+  _retention_expires_at := _changed_at + INTERVAL '10 years';
 
-  _canonical := encode(_prev_hash, 'hex') || '|' || p_tenant_id::TEXT || '|' || _next_sequence::TEXT
-    || '|' || p_table_name || '|' || p_record_id || '|' || p_operation
-    || '|' || coalesce(p_user_id::TEXT, '')
-    || '|' || to_char(_changed_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
-    || '|' || coalesce(p_old_data::TEXT, 'null')
-    || '|' || coalesce(p_new_data::TEXT, 'null');
-  _row_hash := digest(_canonical, 'sha256');
+  -- 16 fields, every "AuditLog" column except "rowHash", in this exact
+  -- order (must match src/lib/audit-chain.ts's canonicalString()):
+  -- prevHash, id, tenantId, sequenceNumber, tableName, recordId, operation,
+  -- actionType, justification, userId, ipAddress, sessionId, oldData,
+  -- newData, createdAt, retentionExpiresAt. No separator: audit_chain_field
+  -- makes the concatenation unambiguous on its own (see header comment).
+  _canonical :=
+    audit_chain_field(encode(_prev_hash, 'hex'))
+    || audit_chain_field(_id::TEXT)
+    || audit_chain_field(p_tenant_id::TEXT)
+    || audit_chain_field(_next_sequence::TEXT)
+    || audit_chain_field(p_table_name)
+    || audit_chain_field(p_record_id)
+    || audit_chain_field(p_operation)
+    || audit_chain_field(p_action_type)
+    || audit_chain_field(p_justification)
+    || audit_chain_field(p_user_id::TEXT)
+    || audit_chain_field(p_ip_address)
+    || audit_chain_field(p_session_id)
+    || audit_chain_field(p_old_data::TEXT)
+    || audit_chain_field(p_new_data::TEXT)
+    || audit_chain_field(to_char(_changed_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+    || audit_chain_field(to_char(_retention_expires_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'));
+  _row_hash := digest(convert_to(_canonical, 'UTF8'), 'sha256');
 
   INSERT INTO "AuditLog" (
     id, "tenantId", "userId", "tableName", "recordId", operation, "actionType",
     justification, "oldData", "newData", "ipAddress", "sessionId",
     "retentionExpiresAt", "createdAt", "sequenceNumber", "prevHash", "rowHash"
   ) VALUES (
-    gen_random_uuid(), p_tenant_id, p_user_id, p_table_name, p_record_id, p_operation,
+    _id, p_tenant_id, p_user_id, p_table_name, p_record_id, p_operation,
     p_action_type, p_justification, p_old_data, p_new_data, p_ip_address, p_session_id,
-    _changed_at + INTERVAL '10 years', _changed_at, _next_sequence, _prev_hash, _row_hash
+    _retention_expires_at, _changed_at, _next_sequence, _prev_hash, _row_hash
   );
 
   UPDATE "AuditChainHead"
