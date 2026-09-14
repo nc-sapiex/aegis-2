@@ -68,7 +68,8 @@ export function AddModuleDialog({
   const newlyCheckedModules = useMemo(
     () =>
       allModules.filter(
-        (m) => checkState[m.id]?.checked && !currentSelectionModuleIds.has(m.id),
+        (m) =>
+          checkState[m.id]?.checked && !currentSelectionModuleIds.has(m.id),
       ),
     [allModules, checkState, currentSelectionModuleIds],
   );
