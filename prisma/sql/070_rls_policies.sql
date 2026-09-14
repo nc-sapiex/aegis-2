@@ -43,6 +43,20 @@ CREATE POLICY tenant_isolation ON "AuditCalendar"
   USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
   WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
+ALTER TABLE "AuditChainHead" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "AuditChainHead" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON "AuditChainHead";
+CREATE POLICY tenant_isolation ON "AuditChainHead"
+  USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+  WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+
+ALTER TABLE "AuditChainVerification" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "AuditChainVerification" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tenant_isolation ON "AuditChainVerification";
+CREATE POLICY tenant_isolation ON "AuditChainVerification"
+  USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+  WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
+
 ALTER TABLE "AuditEngagement" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "AuditEngagement" FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON "AuditEngagement";

@@ -4,10 +4,10 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `28b1e1e` (tenant-isolation-rls-rebased)
+> Source commit: `5dc2a09` (worktree-plan2-audit-chain)
 
 Every table AEGIS maintains, with its columns, types and relationships.
-**77 models** and **22 enumerations**.
+**79 models** and **22 enumerations**.
 
 Conventions used throughout the schema:
 
@@ -74,6 +74,8 @@ Conventions used throughout the schema:
 - [UserBranchAssignment](#userbranchassignment)
 - [AuditeeResponse](#auditeeresponse)
 - [AuditLog](#auditlog)
+- [AuditChainHead](#auditchainhead)
+- [AuditChainVerification](#auditchainverification)
 - [NotificationQueue](#notificationqueue)
 - [EmailLog](#emaillog)
 - [NotificationPreference](#notificationpreference)
@@ -193,6 +195,8 @@ Conventions used throughout the schema:
 | `notificationPreferences` | NotificationPreference[] | no | FK→NotificationPreference |  |  |
 | `boardReports` | BoardReport[] | no | FK→BoardReport |  |  |
 | `dashboardSnapshots` | DashboardSnapshot[] | no | FK→DashboardSnapshot |  |  |
+| `auditChainHead` | AuditChainHead | yes | FK→AuditChainHead |  |  |
+| `auditChainVerifications` | AuditChainVerification[] | no | FK→AuditChainVerification |  |  |
 
 ## User
 
@@ -1648,7 +1652,7 @@ Indexes and constraints:
 | Column | Type | Null | Key | Default | Notes |
 |---|---|---|---|---|---|
 | `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
-| `sequenceNumber` | BigInt | no |  | `autoincrement()` |  |
+| `sequenceNumber` | BigInt | no |  |  |  |
 | `tenantId` | String `@db.Uuid` | no |  |  |  |
 | `tableName` | String | no |  |  |  |
 | `recordId` | String | no |  |  |  |
@@ -1660,6 +1664,8 @@ Indexes and constraints:
 | `ipAddress` | String | yes |  |  | RBI cyber security framework fields |
 | `sessionId` | String | yes |  |  |  |
 | `retentionExpiresAt` | DateTime | yes |  |  | Retention: computed as createdAt + 10 years (D14, PMLA) |
+| `prevHash` | Bytes | yes |  |  | Per-tenant hash chain (spec §5). NULL only transiently: nullable so `prisma db push` can add the column before the backfill (Task 5) and the trigger rewrite (Task 3) populate every row. |
+| `rowHash` | Bytes | yes |  |  |  |
 | `createdAt` | DateTime | no |  | `now()` |  |
 
 Indexes and constraints:
@@ -1668,6 +1674,38 @@ Indexes and constraints:
 - `@@index([tableName, recordId])`
 - `@@index([actionType])`
 - `@@index([createdAt])`
+- `@@unique([tenantId, sequenceNumber])`
+
+## AuditChainHead
+
+*Tenant-scoped:* **yes** — always filter by `tenantId`
+
+| Column | Type | Null | Key | Default | Notes |
+|---|---|---|---|---|---|
+| `tenantId` | String `@db.Uuid` | no | PK |  |  |
+| `tenant` | Tenant | no | FK→Tenant |  | relation |
+| `lastSequence` | BigInt | no |  | `0` |  |
+| `lastHash` | Bytes | no |  |  |  |
+| `lastVerifiedSequence` | BigInt | no |  | `0` | Checkpoint the nightly job advances on a clean verification (Task 7). Distinct from lastSequence/lastHash above, which the trigger advances on every write and which may be ahead of what's actually been verified. |
+| `lastVerifiedHash` | Bytes | yes |  |  |  |
+| `updatedAt` | DateTime | no |  |  |  |
+
+## AuditChainVerification
+
+*Tenant-scoped:* **yes** — always filter by `tenantId`
+
+| Column | Type | Null | Key | Default | Notes |
+|---|---|---|---|---|---|
+| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
+| `tenantId` | String `@db.Uuid` | no |  |  |  |
+| `tenant` | Tenant | no | FK→Tenant |  | relation |
+| `verifiedAt` | DateTime | no |  | `now()` |  |
+| `ok` | Boolean | no |  |  |  |
+| `firstBadSequence` | BigInt | yes |  |  |  |
+
+Indexes and constraints:
+
+- `@@index([tenantId, verifiedAt])`
 
 ## NotificationQueue
 
@@ -2289,7 +2327,7 @@ Indian Financial Year quarters (D16) Q1 = Apr-Jun, Q2 = Jul-Sep, Q3 = Oct-Dec, Q
 
 ### NotificationType
 
-`OBSERVATION_ASSIGNED` · `RESPONSE_SUBMITTED` · `DEADLINE_REMINDER_7D` · `DEADLINE_REMINDER_3D` · `DEADLINE_REMINDER_1D` · `OVERDUE_ESCALATION` · `WEEKLY_DIGEST` · `BULK_DIGEST` · `INVITATION`
+`OBSERVATION_ASSIGNED` · `RESPONSE_SUBMITTED` · `DEADLINE_REMINDER_7D` · `DEADLINE_REMINDER_3D` · `DEADLINE_REMINDER_1D` · `OVERDUE_ESCALATION` · `WEEKLY_DIGEST` · `BULK_DIGEST` · `INVITATION` · `AUDIT_CHAIN_TAMPER_DETECTED`
 
 ### NotificationStatus
 
