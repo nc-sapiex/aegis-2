@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `e1fb184` (module-framework/foundation)
+> Source commit: `56e8e06` (module-framework/foundation)
 
 Which processes read and write which tables.
 
@@ -21,7 +21,7 @@ reachability graph.
 | `(root)` | 8 | `Account`, `AuditeeResponse`, `Evidence`, `Observation`, `ObservationTimeline`, `Tenant`, `User` |
 | `account-examination` | 1 | `AccountExamResponse`, `AuditEngagement`, `ExaminationQuestion`, `PopulationRecord` |
 | `admin` | 4 | `AuditCalendar`, `Branch`, `ReportTemplate`, `Zone` |
-| `audit-execution` | 7 | `AuditEngagement`, `AuditExaminationResponse`, `AuditModule`, `AuditTeamMember`, `Branch`, `CashCheck`, `EngagementModule`, `Evidence`, `LoanReview` |
+| `audit-execution` | 6 | `AuditEngagement`, `AuditModule`, `AuditTeamMember`, `Branch`, `CashCheck`, `EngagementModule` |
 | `audit-plans` | 3 | `AuditEngagement`, `AuditPlan`, `Branch` |
 | `compliance` | 5 | `BoardReport`, `ComplianceItem`, `NotificationQueue`, `User` |
 | `examination-questions` | 1 | `ExaminationQuestion` |
@@ -56,12 +56,12 @@ Tables reached from the greatest number of domains — the ones where a schema c
 | `Branch` | 4 | `admin`, `audit-execution`, `audit-plans`, `ram` |
 | `PopulationRecord` | 3 | `account-examination`, `loan-portfolio`, `sampling` |
 | `AuditModule` | 3 | `audit-execution`, `loan-portfolio`, `rbia` |
-| `Evidence` | 3 | `(root)`, `audit-execution`, `rbia` |
 | `ObservationTimeline` | 3 | `(root)`, `observations`, `repeat-findings` |
 | `User` | 3 | `(root)`, `compliance`, `jobs` |
 | `ExaminationQuestion` | 2 | `account-examination`, `examination-questions` |
 | `ReportTemplate` | 2 | `admin`, `reports` |
 | `EngagementModule` | 2 | `audit-execution`, `rbia` |
+| `Evidence` | 2 | `(root)`, `rbia` |
 | `BoardReport` | 2 | `compliance`, `reports` |
 | `ComplianceItem` | 2 | `compliance`, `observations` |
 | `NotificationQueue` | 2 | `compliance`, `jobs` |
@@ -79,7 +79,7 @@ flowchart LR
         T_Branch["Branch"]
         T_PopulationRecord["PopulationRecord"]
         T_AuditModule["AuditModule"]
-        T_Evidence["Evidence"]
+        T_ObservationTimeline["ObservationTimeline"]
     end
     D_account_examination["account-examination"]
     D_account_examination --> T_AuditEngagement
@@ -115,9 +115,9 @@ flowchart LR
     D_audit_execution --> T_AuditModule
     D_loan_portfolio --> T_AuditModule
     D_rbia --> T_AuditModule
-    D__root_ --> T_Evidence
-    D_audit_execution --> T_Evidence
-    D_rbia --> T_Evidence
+    D__root_ --> T_ObservationTimeline
+    D_observations --> T_ObservationTimeline
+    D_repeat_findings --> T_ObservationTimeline
 ```
 
 ## The observation lifecycle

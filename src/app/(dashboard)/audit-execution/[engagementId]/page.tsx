@@ -30,11 +30,7 @@ export default async function AuditExecutionPage({ params }: PageProps) {
   }
 
   // ENGG-07: Gateway fork — RBIA engagements redirect to v6.0 UI
-  // Compound check: auditType is RBIA AND no legacy sectionInstances
-  // This handles pre-v6.0 engagements that may have auditType="RBIA" default but use legacy sections
-  const isRbiaEngagement =
-    (engagement as any).auditType === "RBIA" &&
-    ((engagement as any).sectionInstances?.length ?? 0) === 0;
+  const isRbiaEngagement = engagement.auditType === "RBIA";
 
   if (isRbiaEngagement) {
     redirect(`/audit-execution/${engagementId}/rbia`);
@@ -72,15 +68,6 @@ export default async function AuditExecutionPage({ params }: PageProps) {
         where: { tenantId },
         select: { id: true, name: true, email: true },
         orderBy: { name: "asc" },
-      })
-    : [];
-
-  // Fetch examination areas for section allocation (R10)
-  const sectionOptions = canManageTeam
-    ? await db.examinationArea.findMany({
-        where: { tenantId, isActive: true },
-        select: { code: true, name: true },
-        orderBy: { displayOrder: "asc" },
       })
     : [];
 
@@ -127,7 +114,6 @@ export default async function AuditExecutionPage({ params }: PageProps) {
               name: u.name ?? "Unnamed",
               email: u.email,
             }))}
-            sectionOptions={sectionOptions}
           />
         </div>
       </div>

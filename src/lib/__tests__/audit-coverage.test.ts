@@ -22,7 +22,6 @@ const REGULATED_MODELS = [
   "RamAssessment",
   "RamAssessmentScore",
   "BranchRbiaScore",
-  "AuditExaminationResponse",
   "ExaminationResponse",
   "AccountExamResponse",
   "PopulationRecord",

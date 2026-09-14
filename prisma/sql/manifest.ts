@@ -53,7 +53,6 @@ const AUDIT_TRIGGER_TABLES = [
   "RamAssessment",
   "RamAssessmentScore",
   "BranchRbiaScore",
-  "AuditExaminationResponse",
   // Remaining scoring tables; their write paths now set session context.
   "ExaminationResponse",
   "EngagementSectionNa",

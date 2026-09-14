@@ -4,10 +4,10 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `e1fb184` (module-framework/foundation)
+> Source commit: `56e8e06` (module-framework/foundation)
 
 Every table AEGIS maintains, with its columns, types and relationships.
-**81 models** and **25 enumerations**.
+**75 models** and **23 enumerations**.
 
 Conventions used throughout the schema:
 
@@ -40,13 +40,7 @@ Conventions used throughout the schema:
 - [RamParameterConfig](#ramparameterconfig)
 - [RamAssessment](#ramassessment)
 - [RamAssessmentScore](#ramassessmentscore)
-- [ExaminationArea](#examinationarea)
-- [ExaminationItem](#examinationitem)
-- [AuditExaminationResponse](#auditexaminationresponse)
-- [AuditSectionInstance](#auditsectioninstance)
 - [CashCheck](#cashcheck)
-- [LoanReview](#loanreview)
-- [SmaNpaEntry](#smanpaentry)
 - [ComplianceItem](#complianceitem)
 - [ReportTemplate](#reporttemplate)
 - [AuditCalendar](#auditcalendar)
@@ -152,13 +146,7 @@ Conventions used throughout the schema:
 | `auditTeamMembers` | AuditTeamMember[] | no | FK→AuditTeamMember |  |  |
 | `ramParameterConfigs` | RamParameterConfig[] | no | FK→RamParameterConfig |  |  |
 | `ramAssessments` | RamAssessment[] | no | FK→RamAssessment |  |  |
-| `examinationAreas` | ExaminationArea[] | no | FK→ExaminationArea |  |  |
-| `examinationItems` | ExaminationItem[] | no | FK→ExaminationItem |  |  |
-| `auditExaminationResponses` | AuditExaminationResponse[] | no | FK→AuditExaminationResponse |  |  |
-| `auditSectionInstances` | AuditSectionInstance[] | no | FK→AuditSectionInstance |  |  |
 | `cashChecks` | CashCheck[] | no | FK→CashCheck |  |  |
-| `loanReviews` | LoanReview[] | no | FK→LoanReview |  |  |
-| `smaNpaEntries` | SmaNpaEntry[] | no | FK→SmaNpaEntry |  |  |
 | `complianceItems` | ComplianceItem[] | no | FK→ComplianceItem |  |  |
 | `reportTemplates` | ReportTemplate[] | no | FK→ReportTemplate |  |  |
 | `auditCalendarEvents` | AuditCalendar[] | no | FK→AuditCalendar |  |  |
@@ -355,7 +343,6 @@ Indexes and constraints:
 | `evidence` | Evidence[] | no | FK→Evidence |  |  |
 | `auditeeResponses` | AuditeeResponse[] | no | FK→AuditeeResponse |  |  |
 | `rbiCirculars` | ObservationRbiCircular[] | no | FK→ObservationRbiCircular |  |  |
-| `examinationResponses` | AuditExaminationResponse[] | no | FK→AuditExaminationResponse |  |  |
 | `complianceItem` | ComplianceItem | yes | FK→ComplianceItem |  |  |
 | `issues` | Issue[] | no | FK→Issue |  |  |
 
@@ -418,10 +405,8 @@ Indexes and constraints:
 | Column | Type | Null | Key | Default | Notes |
 |---|---|---|---|---|---|
 | `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
-| `observationId` | String `@db.Uuid` | yes |  |  | Polymorphic evidence attachment (R27: generalized evidence) Exactly one of observationId or examinationResponseId should be set |
+| `observationId` | String `@db.Uuid` | yes |  |  | Polymorphic evidence attachment (R27: generalized evidence) |
 | `observation` | Observation | yes | FK→Observation |  | relation |
-| `examinationResponseId` | String `@db.Uuid` | yes |  |  |  |
-| `examinationResponse` | AuditExaminationResponse | yes | FK→AuditExaminationResponse |  | relation |
 | `tenantId` | String `@db.Uuid` | no |  |  |  |
 | `tenant` | Tenant | no | FK→Tenant |  | relation |
 | `filename` | String | no |  |  |  |
@@ -444,7 +429,6 @@ Indexes and constraints:
 
 - `@@index([tenantId])`
 - `@@index([observationId])`
-- `@@index([examinationResponseId])`
 - `@@index([newExaminationResponseId])`
 - `@@index([actionPointId])`
 - `@@index([accountExamResponseId])`
@@ -676,11 +660,7 @@ Indexes and constraints:
 | `allItemsResolved` | Boolean | no |  | `false` |  |
 | `observations` | Observation[] | no | FK→Observation |  | Relations |
 | `teamMembers` | AuditTeamMember[] | no | FK→AuditTeamMember |  |  |
-| `examinationResponses` | AuditExaminationResponse[] | no | FK→AuditExaminationResponse |  |  |
-| `sectionInstances` | AuditSectionInstance[] | no | FK→AuditSectionInstance |  |  |
 | `cashChecks` | CashCheck[] | no | FK→CashCheck |  |  |
-| `loanReviews` | LoanReview[] | no | FK→LoanReview |  |  |
-| `smaNpaEntries` | SmaNpaEntry[] | no | FK→SmaNpaEntry |  |  |
 | `complianceItems` | ComplianceItem[] | no | FK→ComplianceItem |  |  |
 | `calendarEvents` | AuditCalendar[] | no | FK→AuditCalendar |  |  |
 | `workProgramItems` | WorkProgramItem[] | no | FK→WorkProgramItem |  |  |
@@ -802,106 +782,6 @@ Indexes and constraints:
 - `@@unique([assessmentId, paramConfigId])`
 - `@@index([assessmentId])`
 
-## ExaminationArea
-
-*Tenant-scoped:* **yes** — always filter by `tenantId`
-
-| Column | Type | Null | Key | Default | Notes |
-|---|---|---|---|---|---|
-| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
-| `tenantId` | String `@db.Uuid` | no |  |  |  |
-| `tenant` | Tenant | no | FK→Tenant |  | relation |
-| `description` | String `@db.Text` | yes |  |  |  |
-| `riskWeight` | Decimal `@db.Decimal` | no |  | `1.0` |  |
-| `displayOrder` | Int | no |  |  |  |
-| `isActive` | Boolean | no |  | `true` |  |
-| `createdAt` | DateTime | no |  | `now()` |  |
-| `updatedAt` | DateTime | no |  |  |  |
-| `items` | ExaminationItem[] | no | FK→ExaminationItem |  | Relations |
-
-Indexes and constraints:
-
-- `@@unique([tenantId, code])`
-- `@@index([tenantId])`
-
-## ExaminationItem
-
-*Tenant-scoped:* **yes** — always filter by `tenantId`
-
-| Column | Type | Null | Key | Default | Notes |
-|---|---|---|---|---|---|
-| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
-| `tenantId` | String `@db.Uuid` | no |  |  |  |
-| `tenant` | Tenant | no | FK→Tenant |  | relation |
-| `areaId` | String `@db.Uuid` | no |  |  |  |
-| `area` | ExaminationArea | no | FK→ExaminationArea |  | relation |
-| `particulars` | String `@db.Text` | no |  |  |  |
-| `displayOrder` | Int | no |  |  |  |
-| `isActive` | Boolean | no |  | `true` |  |
-| `createdAt` | DateTime | no |  | `now()` |  |
-| `updatedAt` | DateTime | no |  |  |  |
-| `responses` | AuditExaminationResponse[] | no | FK→AuditExaminationResponse |  | Relations |
-
-Indexes and constraints:
-
-- `@@unique([tenantId, areaId, itemNumber])`
-- `@@index([tenantId])`
-- `@@index([areaId])`
-
-## AuditExaminationResponse
-
-*Tenant-scoped:* **yes** — always filter by `tenantId`
-
-| Column | Type | Null | Key | Default | Notes |
-|---|---|---|---|---|---|
-| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
-| `tenantId` | String `@db.Uuid` | no |  |  |  |
-| `tenant` | Tenant | no | FK→Tenant |  | relation |
-| `engagementId` | String `@db.Uuid` | no |  |  |  |
-| `engagement` | AuditEngagement | no | FK→AuditEngagement |  | relation |
-| `itemId` | String `@db.Uuid` | no |  |  |  |
-| `item` | ExaminationItem | no | FK→ExaminationItem |  | relation |
-| `status` | ExaminationStatus | no |  | `PENDING` |  |
-| `observation` | String `@db.Text` | yes |  |  |  |
-| `respondedById` | String `@db.Uuid` | yes |  |  |  |
-| `respondedAt` | DateTime | yes |  |  |  |
-| `observationId` | String `@db.Uuid` | yes |  |  | Auto-created observation reference (R17) |
-| `linkedObservation` | Observation | yes | FK→Observation |  | relation |
-| `evidence` | Evidence[] | no | FK→Evidence |  | Evidence attachments |
-| `createdAt` | DateTime | no |  | `now()` |  |
-| `updatedAt` | DateTime | no |  |  |  |
-
-Indexes and constraints:
-
-- `@@unique([engagementId, itemId])`
-- `@@index([tenantId])`
-- `@@index([engagementId])`
-- `@@index([observationId])`
-
-## AuditSectionInstance
-
-*Tenant-scoped:* **yes** — always filter by `tenantId`
-
-| Column | Type | Null | Key | Default | Notes |
-|---|---|---|---|---|---|
-| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
-| `tenantId` | String `@db.Uuid` | no |  |  |  |
-| `tenant` | Tenant | no | FK→Tenant |  | relation |
-| `engagementId` | String `@db.Uuid` | no |  |  |  |
-| `engagement` | AuditEngagement | no | FK→AuditEngagement |  | relation |
-| `status` | AuditSectionStatus | no |  | `NOT_STARTED` |  |
-| `assignedToId` | String `@db.Uuid` | yes |  |  |  |
-| `completedAt` | DateTime | yes |  |  |  |
-| `reviewedAt` | DateTime | yes |  |  |  |
-| `createdAt` | DateTime | no |  | `now()` |  |
-| `updatedAt` | DateTime | no |  |  |  |
-
-Indexes and constraints:
-
-- `@@unique([engagementId, sectionCode])`
-- `@@index([tenantId])`
-- `@@index([engagementId])`
-
 ## CashCheck
 
 *Tenant-scoped:* **yes** — always filter by `tenantId`
@@ -926,54 +806,6 @@ Indexes and constraints:
 Indexes and constraints:
 
 - `@@unique([engagementId])`
-- `@@index([tenantId])`
-
-## LoanReview
-
-*Tenant-scoped:* **yes** — always filter by `tenantId`
-
-| Column | Type | Null | Key | Default | Notes |
-|---|---|---|---|---|---|
-| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
-| `tenantId` | String `@db.Uuid` | no |  |  |  |
-| `tenant` | Tenant | no | FK→Tenant |  | relation |
-| `engagementId` | String `@db.Uuid` | no |  |  |  |
-| `engagement` | AuditEngagement | no | FK→AuditEngagement |  | relation |
-| `accountNo` | String | no |  |  |  |
-| `borrowerName` | String | no |  |  |  |
-| `sanctionAmount` | Decimal `@db.Decimal` | no |  |  |  |
-| `outstandingAmount` | Decimal `@db.Decimal` | no |  |  |  |
-| `dpd` | Int | no |  | `0` |  |
-| `auditObservation` | String `@db.Text` | yes |  |  |  |
-| `createdAt` | DateTime | no |  | `now()` |  |
-| `updatedAt` | DateTime | no |  |  |  |
-
-Indexes and constraints:
-
-- `@@index([tenantId])`
-- `@@index([engagementId])`
-- `@@index([engagementId, assetClass])`
-
-## SmaNpaEntry
-
-*Tenant-scoped:* **yes** — always filter by `tenantId`
-
-| Column | Type | Null | Key | Default | Notes |
-|---|---|---|---|---|---|
-| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
-| `tenantId` | String `@db.Uuid` | no |  |  |  |
-| `tenant` | Tenant | no | FK→Tenant |  | relation |
-| `engagementId` | String `@db.Uuid` | no |  |  |  |
-| `engagement` | AuditEngagement | no | FK→AuditEngagement |  | relation |
-| `accountCount` | Int | no |  |  |  |
-| `totalAmount` | Decimal `@db.Decimal` | no |  |  |  |
-| `remarks` | String `@db.Text` | yes |  |  |  |
-| `createdAt` | DateTime | no |  | `now()` |  |
-| `updatedAt` | DateTime | no |  |  |  |
-
-Indexes and constraints:
-
-- `@@unique([engagementId, category])`
 - `@@index([tenantId])`
 
 ## ComplianceItem
@@ -2359,14 +2191,6 @@ Indian Financial Year quarters (D16) Q1 = Apr-Jun, Q2 = Jul-Sep, Q3 = Oct-Dec, Q
 ### RamAssessmentStatus
 
 `DRAFT` · `COMPUTED` · `APPROVED`
-
-### ExaminationStatus
-
-`PENDING` · `COMPLIANT` · `NON_COMPLIANT` · `PARTIAL` · `NOT_APPLICABLE`
-
-### AuditSectionStatus
-
-`NOT_STARTED` · `IN_PROGRESS` · `COMPLETED` · `REVIEWED`
 
 ### AuditPlanStatus
 

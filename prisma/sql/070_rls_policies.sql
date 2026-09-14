@@ -50,13 +50,6 @@ CREATE POLICY tenant_isolation ON "AuditEngagement"
   USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
   WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
-ALTER TABLE "AuditExaminationResponse" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "AuditExaminationResponse" FORCE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS tenant_isolation ON "AuditExaminationResponse";
-CREATE POLICY tenant_isolation ON "AuditExaminationResponse"
-  USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
-  WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
-
 ALTER TABLE "AuditLog" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "AuditLog" FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON "AuditLog";
@@ -75,13 +68,6 @@ ALTER TABLE "AuditPlan" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "AuditPlan" FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON "AuditPlan";
 CREATE POLICY tenant_isolation ON "AuditPlan"
-  USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
-  WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
-
-ALTER TABLE "AuditSectionInstance" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "AuditSectionInstance" FORCE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS tenant_isolation ON "AuditSectionInstance";
-CREATE POLICY tenant_isolation ON "AuditSectionInstance"
   USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
   WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
@@ -232,20 +218,6 @@ CREATE POLICY tenant_isolation ON "Evidence"
   USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
   WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
-ALTER TABLE "ExaminationArea" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "ExaminationArea" FORCE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS tenant_isolation ON "ExaminationArea";
-CREATE POLICY tenant_isolation ON "ExaminationArea"
-  USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
-  WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
-
-ALTER TABLE "ExaminationItem" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "ExaminationItem" FORCE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS tenant_isolation ON "ExaminationItem";
-CREATE POLICY tenant_isolation ON "ExaminationItem"
-  USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
-  WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
-
 ALTER TABLE "ExaminationNode" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ExaminationNode" FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON "ExaminationNode";
@@ -299,13 +271,6 @@ ALTER TABLE "KeyRiskIndicator" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "KeyRiskIndicator" FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON "KeyRiskIndicator";
 CREATE POLICY tenant_isolation ON "KeyRiskIndicator"
-  USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
-  WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
-
-ALTER TABLE "LoanReview" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "LoanReview" FORCE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS tenant_isolation ON "LoanReview";
-CREATE POLICY tenant_isolation ON "LoanReview"
   USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
   WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
@@ -425,13 +390,6 @@ ALTER TABLE "SamplingConfig" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "SamplingConfig" FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON "SamplingConfig";
 CREATE POLICY tenant_isolation ON "SamplingConfig"
-  USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
-  WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
-
-ALTER TABLE "SmaNpaEntry" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "SmaNpaEntry" FORCE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS tenant_isolation ON "SmaNpaEntry";
-CREATE POLICY tenant_isolation ON "SmaNpaEntry"
   USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
   WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 

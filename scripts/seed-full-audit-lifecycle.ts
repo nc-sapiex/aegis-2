@@ -63,14 +63,6 @@ const ID = {
   ci: Array.from({ length: 6 }, (_, i) => uid(`ci:${i + 1}`)),
   ap: Array.from({ length: 12 }, (_, i) => uid(`ap:${i + 1}`)),
   loan: Array.from({ length: 50 }, (_, i) => uid(`loan:${i + 1}`)),
-  sma: [
-    "SMA0",
-    "SMA1",
-    "SMA2",
-    "NPA_SUB_STANDARD",
-    "NPA_DOUBTFUL",
-    "NPA_LOSS",
-  ].map((c) => uid(`sma:${c}`)),
   snap: Array.from({ length: 4 }, (_, i) => uid(`snap:${i}`)),
   log: Array.from({ length: 10 }, (_, i) => uid(`log:${i}`)),
   uba: Array.from({ length: 3 }, (_, i) => uid(`uba:${i}`)),
@@ -975,31 +967,6 @@ async function seedLifecycle() {
   }
   const respondedCount = ACTION_POINTS.filter((a) => a.hasBmResponse).length;
   console.log(`    ✓ 12 action points (${respondedCount} with BM responses)`);
-
-  // 3f. SMA/NPA Entries (6)
-  const smaData = [
-    { category: "SMA0", accountCount: 5, totalAmount: 4850000 },
-    { category: "SMA1", accountCount: 4, totalAmount: 7200000 },
-    { category: "SMA2", accountCount: 3, totalAmount: 6100000 },
-    { category: "NPA_SUB_STANDARD", accountCount: 2, totalAmount: 4500000 },
-    { category: "NPA_DOUBTFUL", accountCount: 1, totalAmount: 3200000 },
-    { category: "NPA_LOSS", accountCount: 0, totalAmount: 0 },
-  ];
-  await prisma.smaNpaEntry.createMany({
-    data: smaData.map((s, i) => ({
-      id: ID.sma[i],
-      tenantId,
-      engagementId: ID.eng1,
-      category: s.category,
-      accountCount: s.accountCount,
-      totalAmount: s.totalAmount,
-      remarks:
-        s.accountCount > 0
-          ? `${s.category} classification as per CBS DPD-based auto-classification. Verified against branch records.`
-          : "No accounts in this category.",
-    })),
-  });
-  console.log("    ✓ 6 SMA/NPA entries");
 
   // 3g. Meetings
   await prisma.engagementMeeting.createMany({

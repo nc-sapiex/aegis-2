@@ -38,19 +38,10 @@ export async function generateAuditReportXLSX(
   // Tab 4: Cash Verification
   await addCashVerificationSheet(workbook, auditData);
 
-  // Tab 5: Loan Review
-  await addLoanReviewSheet(workbook, auditData);
-
-  // Tab 6: SMA/NPA Analysis
-  await addSmaNpaSheet(workbook, auditData);
-
-  // Tab 7: Branch Profile
+  // Tab 5: Branch Profile
   await addBranchProfileSheet(workbook, auditData);
 
-  // Tabs 8-32: Examination Responses by Area (25 functional areas)
-  await addExaminationResponseSheets(workbook, auditData);
-
-  // Tab 33: Team Members
+  // Tab 6: Team Members
   await addTeamMembersSheet(workbook, auditData);
 
   // Generate buffer
@@ -312,92 +303,7 @@ async function addCashVerificationSheet(
 }
 
 /**
- * Tab 5: Loan Review
- */
-async function addLoanReviewSheet(
-  workbook: ExcelJS.Workbook,
-  data: AuditReportData,
-) {
-  const sheet = workbook.addWorksheet("Loan Review");
-
-  const headers = [
-    "S.No.",
-    "Account No",
-    "Borrower Name",
-    "Product Type",
-    "Sanction Amount",
-    "Outstanding Amount",
-    "Asset Class",
-    "DPD",
-    "Audit Observation",
-  ];
-
-  sheet.addRow(headers);
-  sheet.getRow(1).font = { bold: true };
-  sheet.getRow(1).fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FFD9E1F2" },
-  };
-
-  data.loanReviews?.forEach((loan: any, idx: number) => {
-    sheet.addRow([
-      idx + 1,
-      loan.accountNo,
-      loan.borrowerName,
-      loan.productType,
-      Number(loan.sanctionAmount),
-      Number(loan.outstandingAmount),
-      loan.assetClass,
-      loan.dpd,
-      loan.auditObservation || "N/A",
-    ]);
-  });
-
-  sheet.getColumn(1).width = 6;
-  sheet.getColumn(2).width = 15;
-  sheet.getColumn(3).width = 25;
-  sheet.getColumn(4).width = 20;
-  sheet.getColumn(5).width = 15;
-  sheet.getColumn(6).width = 15;
-  sheet.getColumn(7).width = 15;
-  sheet.getColumn(8).width = 8;
-  sheet.getColumn(9).width = 40;
-}
-
-/**
- * Tab 6: SMA/NPA Analysis
- */
-async function addSmaNpaSheet(
-  workbook: ExcelJS.Workbook,
-  data: AuditReportData,
-) {
-  const sheet = workbook.addWorksheet("SMA-NPA Analysis");
-
-  const headers = ["Category", "Account Count", "Total Amount (₹)"];
-  sheet.addRow(headers);
-  sheet.getRow(1).font = { bold: true };
-  sheet.getRow(1).fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FFD9E1F2" },
-  };
-
-  data.smaNpaEntries?.forEach((entry: any) => {
-    sheet.addRow([
-      entry.category,
-      entry.accountCount,
-      Number(entry.totalAmount),
-    ]);
-  });
-
-  sheet.getColumn(1).width = 20;
-  sheet.getColumn(2).width = 15;
-  sheet.getColumn(3).width = 20;
-}
-
-/**
- * Tab 7: Branch Profile
+ * Tab 5: Branch Profile
  */
 async function addBranchProfileSheet(
   workbook: ExcelJS.Workbook,
@@ -432,61 +338,6 @@ async function addBranchProfileSheet(
 
   sheet.getColumn("A").width = 25;
   sheet.getColumn("B").width = 40;
-}
-
-/**
- * Tabs 8-32: Examination Responses by Area
- */
-async function addExaminationResponseSheets(
-  workbook: ExcelJS.Workbook,
-  data: AuditReportData,
-) {
-  // Group responses by area
-  const responsesByArea = new Map<string, any[]>();
-
-  data.examinationResponses?.forEach((resp: any) => {
-    const areaName = resp.item?.area?.name || "Unknown";
-    if (!responsesByArea.has(areaName)) {
-      responsesByArea.set(areaName, []);
-    }
-    responsesByArea.get(areaName)?.push(resp);
-  });
-
-  // Create one sheet per area
-  responsesByArea.forEach((responses, areaName) => {
-    const sheet = workbook.addWorksheet(areaName.substring(0, 31)); // Excel limit
-
-    const headers = [
-      "Item No",
-      "Particulars",
-      "Status",
-      "Observation",
-      "Risk Rating",
-    ];
-    sheet.addRow(headers);
-    sheet.getRow(1).font = { bold: true };
-    sheet.getRow(1).fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FFD9E1F2" },
-    };
-
-    responses.forEach((resp) => {
-      sheet.addRow([
-        resp.item?.itemNumber || "N/A",
-        resp.item?.particulars || "N/A",
-        resp.status,
-        resp.observation || "N/A",
-        resp.riskRating || "N/A",
-      ]);
-    });
-
-    sheet.getColumn(1).width = 12;
-    sheet.getColumn(2).width = 60;
-    sheet.getColumn(3).width = 15;
-    sheet.getColumn(4).width = 40;
-    sheet.getColumn(5).width = 12;
-  });
 }
 
 /**
