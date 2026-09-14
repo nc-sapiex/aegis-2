@@ -291,3 +291,173 @@ describe("addBankStatement", () => {
     expect(result).toEqual({ success: false, error: "Module not found." });
   });
 });
+
+describe("toggleModule", () => {
+  async function caeSession() {
+    const cae = await integrationOwner.user.findFirstOrThrow({
+      where: { tenantId, roles: { has: "CAE" } },
+      select: { id: true },
+    });
+    return fakeSession({ id: cae.id, tenantId, roles: ["CAE"] });
+  }
+
+  it("rejects switching off a core module", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { toggleModule } =
+      await import("@/actions/module-admin/toggle-module");
+
+    const coreMod = await integrationOwner.auditModule.findFirstOrThrow({
+      where: { tenantId, code: "CORE-MOD" },
+    });
+    const result = await toggleModule(coreMod.id, false);
+    expect(result.success).toBe(false);
+  });
+
+  it("allows switching off a bank-authored module", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { toggleModule } =
+      await import("@/actions/module-admin/toggle-module");
+
+    const ops = await integrationOwner.auditModule.findFirstOrThrow({
+      where: { tenantId, code: "OPS" },
+    });
+    const result = await toggleModule(ops.id, false); // OPS is bank-authored (packId null), not core — should succeed
+    expect(result.success).toBe(true);
+    await toggleModule(ops.id, true); // restore for later tests
+  });
+});
+
+describe("editStatement", () => {
+  async function caeSession() {
+    const cae = await integrationOwner.user.findFirstOrThrow({
+      where: { tenantId, roles: { has: "CAE" } },
+      select: { id: true },
+    });
+    return fakeSession({ id: cae.id, tenantId, roles: ["CAE"] });
+  }
+
+  it("a BANK row accepts a text edit", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { editStatement } =
+      await import("@/actions/module-admin/edit-statement");
+
+    const node = await integrationOwner.examinationNode.findFirstOrThrow({
+      where: { tenantId, code: "OPS-B01" },
+    });
+    const result = await editStatement(node.id, {
+      text: "Local check, revised wording",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a text edit on a PACK-origin row but allows weight/isCritical/isActive", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { editStatement } =
+      await import("@/actions/module-admin/edit-statement");
+
+    // Uses the CRD module (not OPS) so this fixture doesn't join OPS-B01/
+    // OPS-B02's sibling set and disturb the reorderStatement tests below.
+    const crdModule = await integrationOwner.auditModule.findFirstOrThrow({
+      where: { tenantId, code: "CRD" },
+    });
+    const packNode = await integrationOwner.examinationNode.create({
+      data: {
+        tenantId,
+        moduleId: crdModule.id,
+        code: "CRD-P01",
+        name: "Pack-authored check",
+        path: "CRD/CRD-P01",
+        depth: 1,
+        isLeaf: true,
+        weight: 1,
+        isCritical: false,
+        description: "x",
+        origin: "PACK",
+      },
+    });
+
+    const rejected = await editStatement(packNode.id, { text: "Rewritten" });
+    expect(rejected).toEqual({
+      success: false,
+      error: "Statement text is pack-owned and cannot be edited.",
+    });
+
+    const allowed = await editStatement(packNode.id, {
+      weight: 2,
+      isCritical: true,
+      isActive: false,
+    });
+    expect(allowed.success).toBe(true);
+    const updated = await integrationOwner.examinationNode.findUniqueOrThrow({
+      where: { id: packNode.id },
+    });
+    expect(Number(updated.weight)).toBe(2);
+    expect(updated.isCritical).toBe(true);
+    expect(updated.isActive).toBe(false);
+  });
+});
+
+describe("reorderStatement", () => {
+  async function caeSession() {
+    const cae = await integrationOwner.user.findFirstOrThrow({
+      where: { tenantId, roles: { has: "CAE" } },
+      select: { id: true },
+    });
+    return fakeSession({ id: cae.id, tenantId, roles: ["CAE"] });
+  }
+
+  it("moving the first statement in a section up is a no-op success, not an error", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { reorderStatement } =
+      await import("@/actions/module-admin/reorder-statement");
+
+    const node = await integrationOwner.examinationNode.findFirstOrThrow({
+      where: { tenantId, code: "OPS-B01" },
+    });
+    const result = await reorderStatement(node.id, "up");
+    expect(result.success).toBe(true);
+  });
+
+  it("moving a statement down swaps displayOrder with its sibling", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { reorderStatement } =
+      await import("@/actions/module-admin/reorder-statement");
+
+    // Both fixtures default displayOrder to 0 — give them distinct values so
+    // the swap assertion below actually exercises the swap, not a no-op.
+    await integrationOwner.examinationNode.updateMany({
+      where: { tenantId, code: "OPS-B01" },
+      data: { displayOrder: 0 },
+    });
+    await integrationOwner.examinationNode.updateMany({
+      where: { tenantId, code: "OPS-B02" },
+      data: { displayOrder: 1 },
+    });
+    const b01 = await integrationOwner.examinationNode.findFirstOrThrow({
+      where: { tenantId, code: "OPS-B01" },
+    });
+    const b02 = await integrationOwner.examinationNode.findFirstOrThrow({
+      where: { tenantId, code: "OPS-B02" },
+    });
+    const b01Order = b01.displayOrder;
+    const b02Order = b02.displayOrder;
+
+    const result = await reorderStatement(b01.id, "down");
+    expect(result.success).toBe(true);
+
+    const b01After = await integrationOwner.examinationNode.findUniqueOrThrow({
+      where: { id: b01.id },
+    });
+    const b02After = await integrationOwner.examinationNode.findUniqueOrThrow({
+      where: { id: b02.id },
+    });
+    expect(b01After.displayOrder).toBe(b02Order);
+    expect(b02After.displayOrder).toBe(b01Order);
+  });
+});
