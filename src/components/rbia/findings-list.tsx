@@ -42,6 +42,7 @@ interface FindingsListProps {
   actionPoints: ActionPointData[];
   carryForwardActionPoints: CarryForwardActionPointData[];
   observations: ObservationData[];
+  modules: { id: string; code: string; name: string }[];
   engagementId: string;
   branchId: string;
   engagementStatus: string;
@@ -202,7 +203,7 @@ function FindingRow({
   const prefix = isAP ? `AP-${(item.data as ActionPointData).serialNo}` : "OBS";
 
   // Module code for APs
-  const moduleCode = isAP ? (item.data as ActionPointData).moduleCode : null;
+  const moduleCode = isAP ? (item.data as ActionPointData).module.code : null;
 
   return (
     <Card
@@ -291,20 +292,9 @@ function FindingRow({
               </p>
             )}
             {!isAP && (
-              <div className="space-y-2 text-sm">
-                <p>
-                  <span className="font-medium">Condition: </span>
-                  <span className="text-muted-foreground">
-                    {(item.data as ObservationData).condition}
-                  </span>
-                </p>
-                <p>
-                  <span className="font-medium">Criteria: </span>
-                  <span className="text-muted-foreground">
-                    {(item.data as ObservationData).criteria}
-                  </span>
-                </p>
-              </div>
+              <p className="text-muted-foreground text-sm">
+                {(item.data as ObservationData).description}
+              </p>
             )}
 
             {/* Source examination response link (for APs) */}
@@ -392,6 +382,7 @@ export function FindingsList({
   actionPoints,
   carryForwardActionPoints,
   observations,
+  modules,
   engagementId,
   branchId,
   engagementStatus,
@@ -537,6 +528,7 @@ export function FindingsList({
             mode={formState.mode}
             existingData={formState.editData}
             sourceActionPointId={formState.sourceActionPointId}
+            modules={modules}
             onCancel={closeForm}
             onSuccess={handleFormSuccess}
           />
@@ -646,6 +638,7 @@ export function FindingsList({
           mode={formState.mode}
           existingData={formState.editData}
           sourceActionPointId={formState.sourceActionPointId}
+          modules={modules}
           onCancel={closeForm}
           onSuccess={handleFormSuccess}
         />

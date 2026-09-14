@@ -103,7 +103,7 @@ export async function createActionPoint(
             title: validated.title,
             description: validated.description,
             severity: validated.severity,
-            moduleCode: validated.moduleCode,
+            moduleId: validated.moduleId,
             sourceResponseId: validated.sourceResponseId ?? null,
             status: "DRAFT",
             createdById: session.user.id,
@@ -381,7 +381,12 @@ export async function promoteToObservation(
         // Verify the ActionPoint exists and belongs to tenant
         const ap = await tx.actionPoint.findFirst({
           where: { id: validated.actionPointId, tenantId },
-          select: { id: true, engagementId: true, branchId: true },
+          select: {
+            id: true,
+            engagementId: true,
+            branchId: true,
+            moduleId: true,
+          },
         });
         if (!ap) {
           throw new Error("Action Point not found");
@@ -393,19 +398,19 @@ export async function promoteToObservation(
           select: { id: true, branchId: true },
         });
 
-        // Create the formal Observation with 5C fields + sourceActionPointId link
+        // Create the formal Observation, linked back to the promoted ActionPoint
         return tx.observation.create({
           data: {
             tenantId,
             title: validated.title,
-            condition: validated.condition,
-            criteria: validated.criteria,
-            cause: validated.cause,
-            effect: validated.effect,
+            description: validated.description,
             recommendation: validated.recommendation,
             severity: validated.severity,
+            pertainsTo: validated.pertainsTo,
+            amountInvolved: validated.amountInvolved,
+            branchComments: validated.branchComments,
             status: "DRAFT",
-            observationType: "FORMAL",
+            moduleId: ap.moduleId,
             engagementId: validated.engagementId,
             branchId: engagement?.branchId ?? ap.branchId,
             sourceActionPointId: ap.id,

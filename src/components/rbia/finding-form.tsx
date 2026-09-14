@@ -35,24 +35,30 @@ const ActionPointFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(200),
   description: z.string().min(10, "Description must be at least 10 characters"),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
-  moduleCode: z.string().min(1, "Module code is required"),
+  moduleId: z.string().uuid("Module is required"),
 });
 
 type ActionPointFormValues = z.infer<typeof ActionPointFormSchema>;
 
 const ObservationFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(200),
-  condition: z.string().min(10, "Condition must be at least 10 characters"),
-  criteria: z.string().min(10, "Criteria must be at least 10 characters"),
-  cause: z.string().min(10, "Cause must be at least 10 characters"),
-  effect: z.string().min(10, "Effect must be at least 10 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
   recommendation: z
     .string()
     .min(10, "Recommendation must be at least 10 characters"),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
+  pertainsTo: z.enum(["FINANCE", "OPERATIONS", "LEGAL_RECOVERY", "HR", "IT"]),
 });
 
 type ObservationFormValues = z.infer<typeof ObservationFormSchema>;
+
+const PERTAINS_TO_OPTIONS = [
+  { value: "FINANCE", label: "Finance" },
+  { value: "OPERATIONS", label: "Operations" },
+  { value: "LEGAL_RECOVERY", label: "Legal / Recovery" },
+  { value: "HR", label: "HR" },
+  { value: "IT", label: "IT" },
+] as const;
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -64,6 +70,7 @@ interface FindingFormProps {
   sourceActionPointId?: string;
   /** Pre-fills severity on a fresh create from the register row's tick (never overrides existingData). */
   suggestedSeverity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" | null;
+  modules: { id: string; code: string; name: string }[];
   onCancel: () => void;
   onSuccess: () => void;
 }
@@ -95,6 +102,7 @@ export function FindingForm({
   existingData,
   sourceActionPointId,
   suggestedSeverity,
+  modules,
   onCancel,
   onSuccess,
 }: FindingFormProps) {
@@ -113,13 +121,13 @@ export function FindingForm({
             title: existingData.title,
             description: existingData.description,
             severity: existingData.severity,
-            moduleCode: existingData.moduleCode,
+            moduleId: existingData.moduleId,
           }
         : {
             title: "",
             description: "",
             severity: suggestedSeverity ?? "MEDIUM",
-            moduleCode: "",
+            moduleId: "",
           },
   });
 
@@ -131,33 +139,27 @@ export function FindingForm({
       mode === "promote" && existingData && "serialNo" in existingData
         ? {
             title: existingData.title,
-            condition: existingData.description,
-            criteria: "",
-            cause: "",
-            effect: "",
+            description: existingData.description,
             recommendation: "",
             severity: existingData.severity,
+            pertainsTo: "OPERATIONS",
           }
         : mode === "create-observation" &&
             existingData &&
-            "condition" in existingData
+            !("serialNo" in existingData)
           ? {
               title: existingData.title,
-              condition: existingData.condition,
-              criteria: existingData.criteria,
-              cause: existingData.cause,
-              effect: existingData.effect,
+              description: existingData.description,
               recommendation: existingData.recommendation,
               severity: existingData.severity,
+              pertainsTo: existingData.pertainsTo,
             }
           : {
               title: "",
-              condition: "",
-              criteria: "",
-              cause: "",
-              effect: "",
+              description: "",
               recommendation: "",
               severity: suggestedSeverity ?? "MEDIUM",
+              pertainsTo: "OPERATIONS",
             },
   });
 
@@ -185,7 +187,7 @@ export function FindingForm({
             title: values.title,
             description: values.description,
             severity: values.severity,
-            moduleCode: values.moduleCode,
+            moduleId: values.moduleId,
           });
           if (!result.success) {
             toast.error(result.error);
@@ -209,12 +211,10 @@ export function FindingForm({
             actionPointId: sourceActionPointId,
             engagementId,
             title: values.title,
-            condition: values.condition,
-            criteria: values.criteria,
-            cause: values.cause,
-            effect: values.effect,
+            description: values.description,
             recommendation: values.recommendation,
             severity: values.severity,
+            pertainsTo: values.pertainsTo,
           });
           if (!result.success) {
             toast.error(result.error);
@@ -274,67 +274,20 @@ export function FindingForm({
               )}
             </div>
 
-            {/* 5C Fields */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="obs-condition">Condition (What is)</Label>
-                <Textarea
-                  id="obs-condition"
-                  placeholder="Describe the current condition..."
-                  rows={3}
-                  {...obsForm.register("condition")}
-                />
-                {obsForm.formState.errors.condition && (
-                  <p className="text-xs text-red-600">
-                    {obsForm.formState.errors.condition.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="obs-criteria">Criteria (What should be)</Label>
-                <Textarea
-                  id="obs-criteria"
-                  placeholder="Reference standard or requirement..."
-                  rows={3}
-                  {...obsForm.register("criteria")}
-                />
-                {obsForm.formState.errors.criteria && (
-                  <p className="text-xs text-red-600">
-                    {obsForm.formState.errors.criteria.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="obs-cause">Cause (Why it happened)</Label>
-                <Textarea
-                  id="obs-cause"
-                  placeholder="Root cause of the gap..."
-                  rows={3}
-                  {...obsForm.register("cause")}
-                />
-                {obsForm.formState.errors.cause && (
-                  <p className="text-xs text-red-600">
-                    {obsForm.formState.errors.cause.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="obs-effect">Effect (Impact)</Label>
-                <Textarea
-                  id="obs-effect"
-                  placeholder="Impact on the bank..."
-                  rows={3}
-                  {...obsForm.register("effect")}
-                />
-                {obsForm.formState.errors.effect && (
-                  <p className="text-xs text-red-600">
-                    {obsForm.formState.errors.effect.message}
-                  </p>
-                )}
-              </div>
+            {/* Description */}
+            <div className="space-y-1.5">
+              <Label htmlFor="obs-description">Description</Label>
+              <Textarea
+                id="obs-description"
+                placeholder="Describe the finding: what was found, what was expected, why it happened, and its impact..."
+                rows={5}
+                {...obsForm.register("description")}
+              />
+              {obsForm.formState.errors.description && (
+                <p className="text-xs text-red-600">
+                  {obsForm.formState.errors.description.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -352,29 +305,56 @@ export function FindingForm({
               )}
             </div>
 
-            {/* Severity */}
-            <div className="space-y-1.5">
-              <Label>Severity</Label>
-              <Select
-                value={obsForm.watch("severity")}
-                onValueChange={(v) =>
-                  obsForm.setValue(
-                    "severity",
-                    v as ObservationFormValues["severity"],
-                  )
-                }
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SEVERITY_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-wrap items-start gap-4">
+              {/* Severity */}
+              <div className="space-y-1.5">
+                <Label>Severity</Label>
+                <Select
+                  value={obsForm.watch("severity")}
+                  onValueChange={(v) =>
+                    obsForm.setValue(
+                      "severity",
+                      v as ObservationFormValues["severity"],
+                    )
+                  }
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEVERITY_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Pertains To */}
+              <div className="space-y-1.5">
+                <Label>Pertains To</Label>
+                <Select
+                  value={obsForm.watch("pertainsTo")}
+                  onValueChange={(v) =>
+                    obsForm.setValue(
+                      "pertainsTo",
+                      v as ObservationFormValues["pertainsTo"],
+                    )
+                  }
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PERTAINS_TO_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Actions */}
@@ -459,19 +439,28 @@ export function FindingForm({
                 </Select>
               </div>
 
-              {/* Module Code */}
+              {/* Module */}
               {mode !== "edit-ap" && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="ap-module">Module Code</Label>
-                  <Input
-                    id="ap-module"
-                    placeholder="e.g. CASH, LOANS"
-                    className="w-40"
-                    {...apForm.register("moduleCode")}
-                  />
-                  {apForm.formState.errors.moduleCode && (
+                  <Label htmlFor="ap-module">Module</Label>
+                  <Select
+                    value={apForm.watch("moduleId")}
+                    onValueChange={(v) => apForm.setValue("moduleId", v)}
+                  >
+                    <SelectTrigger id="ap-module" className="w-48">
+                      <SelectValue placeholder="Select module" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {modules.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.code} — {m.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {apForm.formState.errors.moduleId && (
                     <p className="text-xs text-red-600">
-                      {apForm.formState.errors.moduleCode.message}
+                      {apForm.formState.errors.moduleId.message}
                     </p>
                   )}
                 </div>

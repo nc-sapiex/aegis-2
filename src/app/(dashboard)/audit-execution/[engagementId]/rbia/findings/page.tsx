@@ -1,6 +1,7 @@
 import { getRequiredSession } from "@/data-access/session";
 import { getEngagementWithTeam } from "@/data-access/audit-execution";
 import { getEngagementFindings } from "@/data-access/rbia-findings";
+import { getAllModules } from "@/data-access/rbia-examination";
 import { hasPermission } from "@/lib/permissions";
 import { notFound } from "next/navigation";
 import { FindingsList } from "@/components/rbia/findings-list";
@@ -30,11 +31,10 @@ export default async function FindingsPage({ params }: PageProps) {
     notFound();
   }
 
-  const findings = await getEngagementFindings(
-    session,
-    engagementId,
-    engagement.branchId,
-  );
+  const [findings, modules] = await Promise.all([
+    getEngagementFindings(session, engagementId, engagement.branchId),
+    getAllModules(session),
+  ]);
 
   const canManageFindings = hasPermission(userRoles, "action_point:manage");
 
@@ -43,6 +43,7 @@ export default async function FindingsPage({ params }: PageProps) {
       actionPoints={findings.actionPoints}
       carryForwardActionPoints={findings.carryForwardActionPoints}
       observations={findings.observations}
+      modules={modules}
       engagementId={engagementId}
       branchId={engagement.branchId ?? ""}
       engagementStatus={engagement.status}

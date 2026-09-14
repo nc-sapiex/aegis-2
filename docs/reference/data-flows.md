@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `56e8e06` (module-framework/foundation)
+> Source commit: `53c9f74` (module-framework/foundation)
 
 Which processes read and write which tables.
 

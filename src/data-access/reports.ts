@@ -88,10 +88,10 @@ export async function aggregateReportData(
     severity: o.severity,
     status: o.status,
     branch: o.branch?.name ?? "",
-    excerpt: o.condition
-      ? o.condition.length > 150
-        ? o.condition.slice(0, 150) + "..."
-        : o.condition
+    excerpt: o.description
+      ? o.description.length > 150
+        ? o.description.slice(0, 150) + "..."
+        : o.description
       : "",
     assignedTo: o.assignedTo?.name ?? "",
     dueDate: formatDateIndian(o.dueDate),

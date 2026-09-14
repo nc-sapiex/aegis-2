@@ -36,7 +36,7 @@ export type BmResponseActionPointData = {
   title: string;
   description: string;
   severity: Severity;
-  moduleCode: string;
+  module: { code: string; name: string };
   status: ActionPointStatus;
   bmResponseText: string | null;
   bmResponseDate: Date | null;
@@ -122,7 +122,7 @@ export async function getBmResponseBatchForEngagement(
       title: true,
       description: true,
       severity: true,
-      moduleCode: true,
+      module: { select: { code: true, name: true } },
       status: true,
       bmResponseText: true,
       bmResponseDate: true,

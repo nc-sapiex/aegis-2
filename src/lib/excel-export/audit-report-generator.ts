@@ -140,10 +140,7 @@ async function addObservationsSheet(
     "Observation Title",
     "Severity",
     "Audit Area",
-    "Condition",
-    "Criteria",
-    "Cause",
-    "Effect",
+    "Description",
     "Recommendation",
     "Status",
   ];
@@ -163,10 +160,7 @@ async function addObservationsSheet(
       obs.title,
       obs.severity,
       obs.auditArea?.name || "N/A",
-      obs.condition,
-      obs.criteria,
-      obs.cause,
-      obs.effect,
+      obs.description,
       obs.recommendation,
       obs.status,
     ]);
@@ -179,10 +173,7 @@ async function addObservationsSheet(
   sheet.getColumn(4).width = 20;
   sheet.getColumn(5).width = 30;
   sheet.getColumn(6).width = 30;
-  sheet.getColumn(7).width = 30;
-  sheet.getColumn(8).width = 30;
-  sheet.getColumn(9).width = 30;
-  sheet.getColumn(10).width = 15;
+  sheet.getColumn(7).width = 15;
 }
 
 /**
@@ -227,7 +218,7 @@ async function addObservationsBySeveritySheet(
     sheet.getRow(headerRow).values = [
       "S.No.",
       "Title",
-      "Condition",
+      "Description",
       "Recommendation",
     ];
     sheet.getRow(headerRow).font = { bold: true };
@@ -238,7 +229,7 @@ async function addObservationsBySeveritySheet(
       sheet.getRow(dataRow).values = [
         i + 1,
         obs.title,
-        obs.condition,
+        obs.description,
         obs.recommendation,
       ];
     });

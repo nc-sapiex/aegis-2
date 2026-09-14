@@ -83,7 +83,7 @@ export async function renderEmailTemplate(
         severity: p.severity ?? "MEDIUM",
         branchName: p.branchName ?? "",
         dueDate: p.dueDate ?? "",
-        conditionExcerpt: p.conditionExcerpt ?? "",
+        descriptionExcerpt: p.descriptionExcerpt ?? "",
         observationUrl:
           p.observationUrl ?? `${appUrl}/findings/${p.observationId ?? ""}`,
       });

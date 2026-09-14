@@ -330,13 +330,6 @@ CREATE POLICY tenant_isolation ON "PopulationSchema"
   USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
   WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
-ALTER TABLE "PositiveObservation" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "PositiveObservation" FORCE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS tenant_isolation ON "PositiveObservation";
-CREATE POLICY tenant_isolation ON "PositiveObservation"
-  USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
-  WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
-
 ALTER TABLE "QaSelfAssessment" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "QaSelfAssessment" FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_isolation ON "QaSelfAssessment";

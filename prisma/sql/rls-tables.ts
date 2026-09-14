@@ -47,7 +47,6 @@ export const RLS_TABLES = [
   "PolicyDocument",
   "PopulationRecord",
   "PopulationSchema",
-  "PositiveObservation",
   "QaSelfAssessment",
   "RamAssessment",
   "RamParameterConfig",

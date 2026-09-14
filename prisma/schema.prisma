@@ -51,6 +51,19 @@ enum ObservationStatus {
   CLOSED
 }
 
+enum ObservationPertainsTo {
+  FINANCE
+  OPERATIONS
+  LEGAL_RECOVERY
+  HR
+  IT
+}
+
+enum ActionPointKind {
+  FINDING
+  POSITIVE
+}
+
 enum ComplianceStatus {
   COMPLIANT
   PARTIAL
@@ -314,7 +327,6 @@ model Tenant {
   // v6.0 RBIA relations
   auditModules           AuditModule[]
   examinationNodes       ExaminationNode[]
-  positiveObservations   PositiveObservation[]
   // v7.0 Sample-Based Examination relations
   examinationQuestions    ExaminationQuestion[]
   populationRecords      PopulationRecord[]
@@ -443,14 +455,20 @@ model Observation {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   title          String
-  condition      String   @db.Text
-  criteria       String   @db.Text
-  cause          String   @db.Text
-  effect         String   @db.Text
+  description    String   @db.Text
   recommendation String   @db.Text
 
-  severity Severity
-  status   ObservationStatus @default(DRAFT)
+  severity     Severity
+  status       ObservationStatus @default(DRAFT)
+  pertainsTo   ObservationPertainsTo
+  amountInvolved Decimal? @db.Decimal(15, 2)
+  branchComments String? @db.Text
+
+  moduleId String      @db.Uuid
+  module   AuditModule @relation(fields: [moduleId], references: [id])
+
+  sourceResponseId String?              @db.Uuid
+  sourceResponse   ExaminationResponse? @relation(fields: [sourceResponseId], references: [id])
 
   assignedToId String? @db.Uuid
   assignedTo   User?   @relation("AssignedTo", fields: [assignedToId], references: [id])
@@ -482,11 +500,9 @@ model Observation {
   // Risk categorization
   riskCategory String?
 
-  // v6.0: discriminator for observation type
-  observationType String @default("AUTO_LEGACY") // "FORMAL" or "AUTO_LEGACY"
-
   // v6.0: link back to the ActionPoint that was promoted to this Observation (Phase 20)
-  sourceActionPointId String? @db.Uuid
+  sourceActionPointId String?      @db.Uuid
+  sourceActionPoint   ActionPoint? @relation("PromotedFromActionPoint", fields: [sourceActionPointId], references: [id])
 
   // Engagement tracking (Phase 12 — links observation to audit engagement)
   engagementId String?          @db.Uuid
@@ -875,7 +891,6 @@ model AuditEngagement {
   meetings                EngagementMeeting[]
   actionPointsV2          ActionPoint[]
   bmResponseBatch         BmResponseBatch?
-  positiveObservations    PositiveObservation[]
   // v7.0 Sample-Based Examination relations
   populationRecords      PopulationRecord[]
   samplingConfigs        SamplingConfig[]
@@ -2001,6 +2016,8 @@ model AuditModule {
   populationRecords PopulationRecord[]
   populationSchema  PopulationSchema?
   engagementModules EngagementModule[]
+  observations      Observation[]
+  actionPoints      ActionPoint[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -2098,6 +2115,7 @@ model ExaminationResponse {
 
   // Relations to findings
   actionPoints ActionPoint[]
+  observations Observation[]
 
   @@unique([engagementId, nodeId])
   @@index([tenantId])
@@ -2257,7 +2275,10 @@ model ActionPoint {
   title        String
   description  String          @db.Text
   severity     Severity
-  moduleCode   String          // ExaminationNode code for traceability
+  kind         ActionPointKind @default(FINDING)
+
+  moduleId String      @db.Uuid
+  module   AuditModule @relation(fields: [moduleId], references: [id])
 
   // Source traceability
   sourceResponseId String?             @db.Uuid
@@ -2281,6 +2302,9 @@ model ActionPoint {
 
   // v6.0: Evidence attachments from BM responses
   evidence        Evidence[]    @relation("ActionPointEvidence")
+
+  // v6.0 Phase 20: promotion of an ActionPoint to a formal Observation
+  promotedObservations Observation[] @relation("PromotedFromActionPoint")
 
   createdById String @db.Uuid
   createdAt   DateTime @default(now())
@@ -2312,28 +2336,6 @@ model BmResponseBatch {
 
   @@index([tenantId])
   @@index([status, deadline])
-}
-
-// ─── Positive Observation (v6.0 — commendable practices per engagement) ─────
-
-model PositiveObservation {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId       String @db.Uuid
-  tenant         Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  engagementId   String          @db.Uuid
-  engagement     AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-
-  title          String
-  description    String @db.Text
-  moduleCode     String // ExaminationNode code
-
-  createdById    String @db.Uuid
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@index([tenantId])
-  @@index([engagementId])
 }
 
 // ─── v7.0 Examination Question (account-level question library per credit module) ──

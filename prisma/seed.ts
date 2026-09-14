@@ -871,6 +871,33 @@ async function main() {
 
   console.log("  Creating observations...");
 
+  // Observation.moduleId is a required FK. The real per-domain AuditModule
+  // rows come from scripts/backfill/module-native.ts (run against real
+  // ExaminationNode content), which this seed doesn't create — so give
+  // seeded observations one generic module to satisfy the FK.
+  const genModuleA = await prisma.auditModule.upsert({
+    where: { tenantId_code: { tenantId: tenantA.id, code: "GEN" } },
+    update: {},
+    create: {
+      tenantId: tenantA.id,
+      code: "GEN",
+      name: "General",
+      domain: "OTHER",
+      kinds: ["CHECKLIST"],
+    },
+  });
+  const genModuleB = await prisma.auditModule.upsert({
+    where: { tenantId_code: { tenantId: tenantB.id, code: "GEN" } },
+    update: {},
+    create: {
+      tenantId: tenantB.id,
+      code: "GEN",
+      name: "General",
+      domain: "OTHER",
+      kinds: ["CHECKLIST"],
+    },
+  });
+
   const findingsJson = await import("../src/data/seed/findings.json");
   const findings = findingsJson.findings;
 
@@ -903,13 +930,12 @@ async function main() {
       data: {
         tenantId: tenantA.id,
         title: f.title,
-        condition: f.observation,
-        criteria: f.riskImpact,
-        cause: f.rootCause,
-        effect: f.riskImpact,
+        description: `${f.observation}\n\nCriteria: ${f.riskImpact}\n\nRoot cause: ${f.rootCause}`,
         recommendation: f.actionPlan,
         severity: mapSeverity(f.severity),
         status: mapObservationStatus(f.status),
+        pertainsTo: "OPERATIONS",
+        moduleId: genModuleA.id,
         assignedToId,
         branchId: branches[branchIdx].id,
         auditAreaId: areaMap.get(areaName) ?? auditAreas[0].id,
@@ -942,13 +968,13 @@ async function main() {
     data: {
       tenantId: tenantB.id,
       title: "Test Bank Finding — Cash Reserve",
-      condition: "CRR maintenance below threshold",
-      criteria: "RBI minimum CRR requirement",
-      cause: "Liquidity management gap",
-      effect: "Regulatory penalty risk",
+      description:
+        "CRR maintenance below threshold. Criteria: RBI minimum CRR requirement. Root cause: Liquidity management gap.",
       recommendation: "Improve daily CRR monitoring",
       severity: Severity.MEDIUM,
       status: ObservationStatus.DRAFT,
+      pertainsTo: "FINANCE",
+      moduleId: genModuleB.id,
       branchId: branchB.id,
       createdById: userBankB.id,
     },
