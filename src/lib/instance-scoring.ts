@@ -142,3 +142,22 @@ export function computeModuleComplianceScores(
 
   return results;
 }
+
+/**
+ * True when every sampled account × active question cell is N/A and none are
+ * COMPLIANT/VIOLATION. Distinguishes "examination finished as not applicable"
+ * from "not examined yet" (empty tallies look the same to scoring).
+ */
+export function isCompleteExclusiveNotApplicable(input: {
+  sampledAccountCount: number;
+  activeQuestionCount: number;
+  notApplicableCount: number;
+  scoredCount: number;
+}): boolean {
+  const expected = input.sampledAccountCount * input.activeQuestionCount;
+  return (
+    expected > 0 &&
+    input.scoredCount === 0 &&
+    input.notApplicableCount === expected
+  );
+}

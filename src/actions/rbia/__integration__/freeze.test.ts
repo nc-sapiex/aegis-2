@@ -97,14 +97,29 @@ async function seedExamination(tenantId: string, userId: string) {
       opsModule.id,
     );
     const credit = await node("CREDIT", "ROOT/CREDIT", 1, false, root.id);
-    await node("CREDIT-001", "ROOT/CREDIT/CREDIT-001", 2, true, credit.id);
+    const creditLeaf = await node(
+      "CREDIT-001",
+      "ROOT/CREDIT/CREDIT-001",
+      2,
+      true,
+      credit.id,
+    );
 
     // Only OPS is in scope for this engagement.
     await integrationOwner.engagementModule.create({
       data: { tenantId, engagementId: engagement.id, moduleId: opsModule.id },
     });
 
-    return { engagementId: engagement.id, opsA, opsB, userId };
+    return {
+      engagementId: engagement.id,
+      branchId: branch.id,
+      ops,
+      opsA,
+      opsB,
+      credit,
+      creditLeaf,
+      userId,
+    };
   });
 }
 
@@ -222,5 +237,95 @@ describe("freezeRbiaScore completeness", () => {
     const result = await freezeRbiaScore({ engagementId: seed.engagementId });
     expect(result.success).toBe(false);
     if (!result.success) expect(result.code).toBe("INCOMPLETE_EXAMINATION");
+  });
+
+  it("freezes when a selected credit module is fully examined as N/A", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    await withFixtures(async () => {
+      const creditModule = await integrationOwner.auditModule.create({
+        data: {
+          tenantId: tenant.id,
+          code: "CREDIT",
+          name: "CREDIT",
+          domain: "CREDIT",
+          kinds: ["POPULATION_SAMPLE"],
+          applicability: {},
+        },
+        select: { id: true },
+      });
+      await integrationOwner.examinationNode.updateMany({
+        where: { id: { in: [seed.credit.id, seed.creditLeaf.id] } },
+        data: { moduleId: creditModule.id },
+      });
+      await integrationOwner.engagementModule.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: creditModule.id,
+        },
+      });
+      const record = await integrationOwner.populationRecord.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          branchId: seed.branchId,
+          moduleId: creditModule.id,
+          recordKey: "LN-NA-001",
+          displayName: "N/A Borrower",
+          amount: 750_000,
+          date: new Date("2025-01-15"),
+          classification: "STANDARD",
+          metadata: { productType: "Housing Loan", sanctionAmount: 1_000_000 },
+          isSampled: true,
+        },
+        select: { id: true },
+      });
+      const question = await integrationOwner.examinationQuestion.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: creditModule.id,
+          text: "Does this product feature apply?",
+        },
+        select: { id: true },
+      });
+      await integrationOwner.accountExamResponse.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          recordId: record.id,
+          questionId: question.id,
+          status: null,
+          isNotApplicable: true,
+          respondedById: cae.id,
+        },
+      });
+    });
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.compositeScore).toBe(1);
+
+    const creditResponse =
+      await integrationOwner.examinationResponse.findUniqueOrThrow({
+        where: {
+          engagementId_nodeId: {
+            engagementId: seed.engagementId,
+            nodeId: seed.creditLeaf.id,
+          },
+        },
+        select: { isNotApplicable: true, scoreLabel: true },
+      });
+    expect(creditResponse.isNotApplicable).toBe(true);
+    expect(creditResponse.scoreLabel).toBeNull();
   });
 });

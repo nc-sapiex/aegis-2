@@ -35,7 +35,6 @@ export interface NavItem {
   title: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  tKey: string;
   requiredPermission: Permission;
 }
 
@@ -54,91 +53,78 @@ export const navItems: NavItem[] = [
     title: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
-    tKey: "dashboard",
     requiredPermission: "dashboard:auditor", // Fallback, will be dynamically replaced
   },
   {
     title: "Compliance",
     href: "/compliance",
     icon: Shield,
-    tKey: "compliance",
     requiredPermission: "compliance:read",
   },
   {
     title: "Audit Planning",
     href: "/audit-plans",
     icon: ClipboardList,
-    tKey: "auditPlanning",
     requiredPermission: "audit_plan:read",
   },
   {
     title: "Findings",
     href: "/findings",
     icon: Search,
-    tKey: "findings",
     requiredPermission: "observation:read",
   },
   {
     title: "Analytics",
     href: "/analytics",
     icon: BarChart3,
-    tKey: "analytics",
     requiredPermission: "dashboard:cae", // CAE or CEO
   },
   {
     title: "Calendar",
     href: "/calendar",
     icon: Calendar,
-    tKey: "calendar",
     requiredPermission: "calendar:manage",
   },
   {
     title: "Reports",
     href: "/reports",
     icon: FileText,
-    tKey: "reports",
     requiredPermission: "report:read",
   },
   {
     title: "Auditee Portal",
     href: "/auditee",
     icon: UserCheck,
-    tKey: "auditeePortal",
     requiredPermission: "observation:read", // Auditees can read their assigned observations
   },
   {
     title: "RAM Assessments",
     href: "/ram",
     icon: Gauge,
-    tKey: "ramAssessments",
     requiredPermission: "ram:read",
   },
   {
     title: "Audit Execution",
     href: "/audit-execution",
     icon: Activity,
-    tKey: "auditExecution",
     requiredPermission: "audit_execution:read",
   },
   {
     title: "Audit Trail",
     href: "/audit-trail",
     icon: Clock,
-    tKey: "auditTrail",
     requiredPermission: "audit_trail:read",
   },
   {
     title: "Admin",
     href: "/admin",
     icon: Users,
-    tKey: "admin",
     requiredPermission: "admin:manage_users",
   },
   {
     title: "Settings",
     href: "/settings",
     icon: Settings,
-    tKey: "settings",
     requiredPermission: "admin:manage_settings",
   },
 ];

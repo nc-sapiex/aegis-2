@@ -26,6 +26,10 @@ import {
   BmBatchOverdueEmail,
   getBmBatchOverdueSubject,
 } from "./templates/bm-batch-overdue-email";
+import {
+  PasswordResetEmail,
+  getPasswordResetSubject,
+} from "./templates/password-reset-email";
 import { env } from "@/env";
 
 /**
@@ -177,6 +181,16 @@ export async function renderEmailTemplate(
         batchId: p.batchId ?? "",
       });
       subject = getBmBatchOverdueSubject(p.branchName ?? "Unknown Branch");
+      break;
+
+    case "password-reset":
+      element = createElement(PasswordResetEmail, {
+        bankName,
+        appUrl,
+        userName: p.userName ?? "",
+        resetUrl: p.resetUrl ?? `${appUrl}/reset-password`,
+      });
+      subject = getPasswordResetSubject(bankName);
       break;
 
     default:

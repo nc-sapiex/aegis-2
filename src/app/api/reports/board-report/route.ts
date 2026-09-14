@@ -7,16 +7,12 @@ import {
   getBoardReportById,
 } from "@/data-access/reports";
 import { BoardReport } from "@/components/pdf-report/board-report";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { generateDownloadUrl } from "@/lib/s3";
+import { generateDownloadUrl, uploadToS3 } from "@/lib/s3";
 import { verifyCsrf } from "@/lib/csrf";
 import crypto from "node:crypto";
 import React from "react";
 
 export const dynamic = "force-dynamic";
-
-const s3Client = new S3Client({ region: "ap-south-1" });
-const BUCKET = process.env.S3_BUCKET_NAME ?? "aegis-evidence-dev";
 
 /**
  * POST /api/reports/board-report
@@ -83,15 +79,11 @@ export async function POST(request: NextRequest) {
     const reportId = crypto.randomUUID();
     const s3Key = `${tenantId}/reports/${year}/${quarter}/${reportId}.pdf`;
 
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: BUCKET,
-        Key: s3Key,
-        Body: pdfBuffer,
-        ContentType: "application/pdf",
-        ServerSideEncryption: "AES256",
-      }),
-    );
+    await uploadToS3({
+      key: s3Key,
+      body: pdfBuffer,
+      contentType: "application/pdf",
+    });
 
     // Create audit trail record
     const metricsSnapshot = {
