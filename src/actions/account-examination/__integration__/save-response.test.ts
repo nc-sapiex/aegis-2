@@ -31,10 +31,21 @@ async function seedEngagement(
       data: { tenantId, year: 2026, quarter: "Q1_APR_JUN", status: "PLANNED" },
       select: { id: true },
     });
+    const branch = await integrationOwner.branch.create({
+      data: {
+        tenantId,
+        code: `BR-${randomUUID().slice(0, 8)}`,
+        name: "Main",
+        city: "Pune",
+        state: "MH",
+      },
+      select: { id: true },
+    });
     const engagement = await integrationOwner.auditEngagement.create({
       data: {
         tenantId,
         auditPlanId: plan.id,
+        branchId: branch.id,
         auditNumber: `RBIA/2026-27/${randomUUID().slice(0, 8)}/V1`,
         periodFrom: new Date("2026-04-01"),
         periodTo: new Date("2026-06-30"),

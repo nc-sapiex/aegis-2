@@ -20,6 +20,7 @@ export const SQL_MANIFEST = [
   "prisma/sql/050_observation_indexes.sql",
   "prisma/sql/060_tenant_composite_fks.sql",
   "prisma/sql/070_rls_policies.sql",
+  "prisma/sql/080_rbia_branch_required.sql",
 ] as const;
 
 /**
@@ -89,6 +90,7 @@ export const REQUIRED_OBJECTS: RequiredObjects = {
     "engagement_branch_same_tenant",
     "engagement_area_same_tenant",
     "team_member_engagement_same_tenant",
+    "rbia_requires_branch",
   ],
   policies: RLS_TABLES,
 };
