@@ -18,6 +18,7 @@ import {
 } from "../../../tests/integration/harness";
 
 let tenantId: string;
+let branchId: string;
 let engagementId: string;
 let nodeId: string;
 let userId: string;
@@ -49,6 +50,7 @@ beforeAll(async () => {
       },
     });
     engagementId = engagement.id;
+    branchId = branch.id;
     const auditModule = await integrationPrisma.auditModule.create({
       data: {
         tenantId,
@@ -127,5 +129,33 @@ describe("scoreStatement", () => {
     });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.version).toBe(3);
+  });
+
+  it("refuses to score once the engagement's score is frozen", async () => {
+    await withFixtures(() =>
+      integrationPrisma.branchRbiaScore.create({
+        data: {
+          tenantId,
+          engagementId,
+          branchId,
+          compositeScore: 0.5,
+          ratingBand: "SATISFACTORY",
+          moduleScores: {},
+          scoringTreeSnapshot: {},
+          frozenAt: new Date(),
+        },
+      }),
+    );
+
+    const { scoreStatement } = await import("@/actions/rbia/score-statement");
+    const result = await scoreStatement({
+      engagementId,
+      nodeId,
+      scoreLabel: "FULLY_COMPLIANT",
+      remarks: null,
+      expectedVersion: 3,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toMatch(/frozen/i);
   });
 });

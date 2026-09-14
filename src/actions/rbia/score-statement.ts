@@ -51,6 +51,19 @@ export async function scoreStatement(input: ScoreStatementInput) {
       userActor(session),
       "rbia.statement_scored",
       async (tx) => {
+        // No DB trigger guards ExaminationResponse the way
+        // prevent_frozen_score_update guards BranchRbiaScore — only that
+        // table's own row is immutable after freeze. Check here so a plain
+        // rbia:examine caller can't edit a frozen engagement's responses;
+        // that path is rbia:revise_score (revise-score.ts) by design.
+        const engagement = await tx.auditEngagement.findFirst({
+          where: { id: engagementId, tenantId },
+          select: { branchRbiaScore: { select: { frozenAt: true } } },
+        });
+        if (engagement?.branchRbiaScore?.frozenAt) {
+          throw new Error("SCORE_FROZEN");
+        }
+
         const result = await tx.examinationResponse.updateMany({
           where: { tenantId, engagementId, nodeId, version: expectedVersion },
           data: {
@@ -81,6 +94,12 @@ export async function scoreStatement(input: ScoreStatementInput) {
         success: false as const,
         error: "Someone else scored this statement. Reload to see the latest.",
         conflict: true as const,
+      };
+    }
+    if (err instanceof Error && err.message === "SCORE_FROZEN") {
+      return {
+        success: false as const,
+        error: "This engagement's score is frozen. Use score revision instead.",
       };
     }
     throw err;
