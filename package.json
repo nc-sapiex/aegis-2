@@ -25,6 +25,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:smoke": "playwright test --grep @smoke",
+    "pack": "tsx scripts/aegis-pack/cli.ts",
     "test:e2e:ui": "playwright test --ui",
     "build:analyze": "ANALYZE=true next build --webpack",
     "seed:lifecycle": "tsx scripts/seed-full-audit-lifecycle.ts",
