@@ -101,6 +101,16 @@ SESSION_COOKIE='...' ENGAGEMENT_ID=<uuid> pnpm spike:rls  # load check before ea
   with `withAuditedMutation` → page with guard → permission entry →
   `pnpm docs:reference`
 
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues in `nc-sapiex/aegis-2` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
 ## Gotchas
 
 - `prisma db push` alone leaves no triggers, views, RLS policies or
