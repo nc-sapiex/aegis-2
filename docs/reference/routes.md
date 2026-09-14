@@ -4,9 +4,9 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `c4483ea` (content-packs/foundation)
+> Source commit: `653295d` (module-admin-reporting/foundation)
 
-Every addressable path in the application: **46 pages** and
+Every addressable path in the application: **48 pages** and
 **10 HTTP endpoints**.
 
 Pages are React Server Components under the Next.js App Router. Route groups in
@@ -54,12 +54,14 @@ the URL, so they are stripped here.
 | `/findings` | `src/app/(dashboard)/findings/page.tsx` |
 | `/findings/[id]` | `src/app/(dashboard)/findings/[id]/page.tsx` |
 | `/findings/new` | `src/app/(dashboard)/findings/new/page.tsx` |
+| `/forgot-password` | `src/app/(auth)/forgot-password/page.tsx` |
 | `/login` | `src/app/(auth)/login/page.tsx` |
 | `/onboarding` | `src/app/(onboarding)/onboarding/page.tsx` |
 | `/pre-audit-profiling/[branchId]` | `src/app/(dashboard)/pre-audit-profiling/[branchId]/page.tsx` |
 | `/ram` | `src/app/(dashboard)/ram/page.tsx` |
 | `/ram/[assessmentId]` | `src/app/(dashboard)/ram/[assessmentId]/page.tsx` |
 | `/reports` | `src/app/(dashboard)/reports/page.tsx` |
+| `/reset-password` | `src/app/(auth)/reset-password/page.tsx` |
 | `/settings` | `src/app/(dashboard)/settings/page.tsx` |
 | `/settings/compliance` | `src/app/(dashboard)/settings/compliance/page.tsx` |
 | `/settings/notifications` | `src/app/(dashboard)/settings/notifications/page.tsx` |
