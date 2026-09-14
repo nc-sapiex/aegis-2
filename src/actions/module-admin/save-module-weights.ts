@@ -32,6 +32,9 @@ export async function saveModuleWeights(
     where: { tenantId, id: { in: input.map((i) => i.moduleId) } },
     include: { packInstall: true },
   });
+  if (modules.length !== input.length) {
+    return { success: false, error: "One or more modules were not found." };
+  }
   const coreIds = new Set(
     modules.filter((m) => m.packInstall?.packCode === "core").map((m) => m.id),
   );

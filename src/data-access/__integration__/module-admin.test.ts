@@ -167,7 +167,22 @@ describe("saveModuleWeights", () => {
     const result = await saveModuleWeights([{ moduleId: crd.id, weight: 0 }]);
     expect(result).toEqual({
       success: false,
-      error: expect.stringContaining("1"),
+      error: "Weight must be an integer from 1 to 100 (got 0).",
+    });
+  });
+
+  it("rejects a moduleId not scoped to the caller's tenant", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { saveModuleWeights } =
+      await import("@/actions/module-admin/save-module-weights");
+
+    const result = await saveModuleWeights([
+      { moduleId: "00000000-0000-0000-0000-000000000000", weight: 5 },
+    ]);
+    expect(result).toEqual({
+      success: false,
+      error: "One or more modules were not found.",
     });
   });
 

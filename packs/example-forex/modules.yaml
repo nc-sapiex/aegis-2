@@ -4,4 +4,4 @@
   domain: FOREX
   kinds: [CHECKLIST]
   applicability: { hasForex: true }
-  weight: 1.5
+  weight: 2

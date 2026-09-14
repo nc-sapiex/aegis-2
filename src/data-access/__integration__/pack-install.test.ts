@@ -47,7 +47,7 @@ beforeAll(async () => {
   );
   await writeFile(
     join(sourceDir, "modules.yaml"),
-    "- code: FX\n  name: Forex\n  domain: FOREX\n  kinds: [CHECKLIST]\n  applicability: { hasForex: true }\n  weight: 1.5\n",
+    "- code: FX\n  name: Forex\n  domain: FOREX\n  kinds: [CHECKLIST]\n  applicability: { hasForex: true }\n  weight: 2\n",
   );
   await writeFile(
     join(sourceDir, "nodes.yaml"),
