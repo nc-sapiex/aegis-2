@@ -811,7 +811,7 @@ async function seedLifecycle() {
         nodeId: node.id,
         score: s.score,
         scoreLabel: s.label as any,
-        workingNotes: s.notes || null,
+        remarks: s.notes || null,
         flagForObservation: s.flag?.includes("obs") ?? false,
         flagForActionPoint: s.flag?.includes("ap") ?? false,
         respondedById:
@@ -979,7 +979,8 @@ async function seedLifecycle() {
         title: ap.title,
         description: ap.description,
         severity: ap.severity as any,
-        moduleCode: ap.moduleCode,
+        kind: "FINDING",
+        moduleId: housingModule.id,
         sourceResponseId: sourceNode ? uid(`er:${sourceNode.code}`) : null,
         status: "ISSUED",
         bmResponseText: ap.hasBmResponse
@@ -1354,13 +1355,11 @@ async function seedLifecycle() {
         title: obs.title,
         severity: obs.severity as any,
         status: obs.status as any,
-        criteria: obs.criteria,
-        condition: obs.condition,
-        cause: obs.cause,
-        effect: obs.effect,
+        description: `${obs.condition}\n\nCriteria: ${obs.criteria}\n\nRoot cause: ${obs.cause}\n\nEffect: ${obs.effect}`,
         recommendation: obs.recommendation,
         riskCategory: obs.riskCategory,
-        observationType: "FORMAL",
+        pertainsTo: obs.riskCategory === "COMPLIANCE" ? "OPERATIONS" : "FINANCE",
+        moduleId: housingModule.id,
         branchId: kothrudId,
         auditAreaId: creditArea.id,
         engagementId: ID.eng1,
@@ -1371,7 +1370,7 @@ async function seedLifecycle() {
       },
     });
   }
-  console.log("  ✓ 6 formal observations (5C format)");
+  console.log("  ✓ 6 formal observations");
 
   // A LOW-severity observation parked in COMPLIANCE, so the E2E suite can
   // exercise the COMPLIANCE → CLOSED transition deterministically. The title is
@@ -1388,13 +1387,13 @@ async function seedLifecycle() {
     data: {
       tenantId,
       title: "E2E fixture: low severity awaiting closure",
-      condition: "Register not initialled for two days",
-      criteria: "Branch operations manual, clause 4.2",
-      cause: "Officer on leave without a delegate",
-      effect: "Minor control lapse",
+      description:
+        "Register not initialled for two days. Criteria: Branch operations manual, clause 4.2. Root cause: Officer on leave without a delegate. Effect: Minor control lapse.",
       recommendation: "Nominate a standing delegate",
       severity: "LOW",
       status: "COMPLIANCE",
+      pertainsTo: "OPERATIONS",
+      moduleId: housingModule.id,
       branchId: kothrudId,
       auditAreaId: creditArea.id,
       createdById: sureshId,
