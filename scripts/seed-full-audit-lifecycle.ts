@@ -594,14 +594,22 @@ async function seedLifecycle() {
     },
   });
   const nodeByCode = new Map(examNodes.map((n) => [n.code, n]));
-  const moduleNode = nodeByCode.get("CRD-HLN");
-  if (!moduleNode)
+  if (!nodeByCode.has("CRD-HLN"))
     throw new Error(
       "CRD-HLN examination node not found. Run seed-rbia-housing first.",
     );
 
+  const auditModule = await prisma.auditModule.findUnique({
+    where: { tenantId_code: { tenantId, code: "CRD-HLN" } },
+    select: { id: true },
+  });
+  if (!auditModule)
+    throw new Error(
+      "CRD-HLN AuditModule not found. Run seed-rbia-housing first.",
+    );
+
   const examQuestions = await prisma.examinationQuestion.findMany({
-    where: { tenantId, moduleCode: "CRD-HLN", isActive: true },
+    where: { tenantId, moduleId: auditModule.id, isActive: true },
     select: { id: true, text: true, category: true },
     orderBy: { displayOrder: "asc" },
   });
@@ -779,12 +787,12 @@ async function seedLifecycle() {
   });
 
   // Module selection
-  await prisma.engagementModuleSelection.create({
+  await prisma.engagementModule.create({
     data: {
       id: ID.modSel,
       tenantId,
       engagementId: ID.eng1,
-      moduleNodeId: moduleNode.id,
+      moduleId: auditModule.id,
       isAutoSelected: true,
       selectionReason: "Branch type: BRANCH — Housing Loans module applicable",
     },
@@ -810,7 +818,7 @@ async function seedLifecycle() {
         nodeId: node.id,
         score: s.score,
         scoreLabel: s.label as any,
-        workingNotes: s.notes || null,
+        remarks: s.notes || null,
         flagForObservation: s.flag?.includes("obs") ?? false,
         flagForActionPoint: s.flag?.includes("ap") ?? false,
         respondedById:
@@ -825,8 +833,8 @@ async function seedLifecycle() {
   }
   console.log(`    ✓ ${SCORES.length} examination responses`);
 
-  // 3b. Loan Accounts (50)
-  console.log("  Creating loan accounts...");
+  // 3b. Population records (50 housing-loan accounts)
+  console.log("  Creating population records...");
   const loanIds: string[] = [];
   const sampledIndices = [0, 5, 10, 15, 20, 25, 35, 40, 47, 49]; // mix of asset classes
   for (let i = 0; i < 50; i++) {
@@ -835,26 +843,26 @@ async function seedLifecycle() {
     const outstanding = Math.round(sanction * (0.6 + (i % 4) * 0.1));
     const isSampled = sampledIndices.includes(i);
     const acctNo = `HL-KTH-2025-${String(i + 1).padStart(4, "0")}`;
-    await prisma.loanAccount.create({
+    await prisma.populationRecord.create({
       data: {
         id: ID.loan[i],
         tenantId,
         engagementId: ID.eng1,
         branchId: kothrudId,
-        moduleCode: "CRD-HLN",
-        accountNo: acctNo,
-        borrowerName: `${FIRST_NAMES[i]} ${LAST_NAMES[i]}`,
-        productType: PRODUCTS[i % PRODUCTS.length],
-        sanctionAmount: sanction,
-        sanctionDate: d(
+        moduleId: auditModule.id,
+        recordKey: acctNo,
+        displayName: `${FIRST_NAMES[i]} ${LAST_NAMES[i]}`,
+        amount: outstanding,
+        date: d(
           `${2020 + (i % 5)}-${String((i % 12) + 1).padStart(2, "0")}-15`,
         ),
-        outstandingAmount: outstanding,
-        assetClass,
-        dpd,
+        classification: assetClass,
         isSampled,
         sampledAt: isSampled ? d("2025-11-05T10:00:00Z") : null,
         metadata: {
+          productType: PRODUCTS[i % PRODUCTS.length],
+          sanctionAmount: sanction,
+          dpd,
           ltvRatio: 70 + (i % 20),
           interestRate: 8.5 + (i % 10) * 0.1,
           tenure: 120 + (i % 12) * 12,
@@ -863,7 +871,7 @@ async function seedLifecycle() {
     });
     if (isSampled) loanIds.push(ID.loan[i]);
   }
-  console.log("    ✓ 50 loan accounts (10 sampled)");
+  console.log("    ✓ 50 population records (10 sampled)");
 
   // 3c. Sampling Config
   await prisma.samplingConfig.create({
@@ -871,7 +879,7 @@ async function seedLifecycle() {
       id: ID.sampling,
       tenantId,
       engagementId: ID.eng1,
-      moduleCode: "CRD-HLN",
+      moduleId: auditModule.id,
       sampleSizePct: 20.0,
       criteriaBuckets: [
         {
@@ -931,7 +939,7 @@ async function seedLifecycle() {
           id: uid(`aer:${ai}-${qi}`),
           tenantId,
           engagementId: ID.eng1,
-          loanAccountId: loanId,
+          recordId: loanId,
           questionId: q.id,
           status: status as any,
           note,

@@ -2,7 +2,8 @@
  * seed-rbia-housing.ts
  * ---------------------------------------------------------------------------
  * Standalone seed script that upserts 31 ExaminationNode records forming a
- * complete Housing-Loans examination tree for RBIA v6.0.
+ * complete Housing-Loans examination tree for RBIA v6.0, plus the CRD-HLN
+ * AuditModule those nodes (depth >= 1) belong to.
  *
  * Hierarchy
  *   depth 0  CRD                          (root - Credit Risk)
@@ -720,6 +721,52 @@ async function main() {
     codeToPath[node.code] = path;
     counters[node.depth] = (counters[node.depth] ?? 0) + 1;
   }
+
+  /* ---------------------------------------------------------------- */
+  /*  AuditModule for CRD-HLN (depth-1 housing module)                */
+  /* ---------------------------------------------------------------- */
+  const housingModule = NODES.find(
+    (n) => n.code === "CRD-HLN" && n.depth === 1,
+  );
+  if (!housingModule) {
+    throw new Error("CRD-HLN depth-1 node definition missing.");
+  }
+  const housingPath = codeToPath["CRD-HLN"];
+  if (!housingPath) {
+    throw new Error("CRD-HLN path was not computed.");
+  }
+
+  const auditModule = await prisma.auditModule.upsert({
+    where: { tenantId_code: { tenantId, code: "CRD-HLN" } },
+    create: {
+      tenantId,
+      code: "CRD-HLN",
+      name: housingModule.name,
+      domain: "CREDIT",
+      kinds: ["CHECKLIST", "POPULATION_SAMPLE"],
+      applicability: {},
+      weight: housingModule.weight,
+      isActive: true,
+    },
+    update: {
+      name: housingModule.name,
+      kinds: ["CHECKLIST", "POPULATION_SAMPLE"],
+      weight: housingModule.weight,
+      isActive: true,
+    },
+  });
+
+  const stamped = await prisma.examinationNode.updateMany({
+    where: {
+      tenantId,
+      depth: { gte: 1 },
+      path: { startsWith: housingPath },
+    },
+    data: { moduleId: auditModule.id, origin: "BANK" },
+  });
+  console.log(
+    `AuditModule CRD-HLN (${auditModule.id}): stamped moduleId on ${stamped.count} nodes.\n`,
+  );
 
   /* ---------------------------------------------------------------- */
   /*  Summary table                                                   */
