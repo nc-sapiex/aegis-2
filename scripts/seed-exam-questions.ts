@@ -8,9 +8,9 @@
  * Questions: 25 questions across 7 categories
  *
  * Architecture: Each credit module gets its own question set identified by
- * moduleCode. The same pattern can be applied for Gold Loans (CRD-GLD),
- * Vehicle Loans (CRD-VHL), or any other credit module by changing the
- * moduleCode and question definitions.
+ * AuditModule.code (looked up to moduleId). The same pattern can be applied
+ * for Gold Loans (CRD-GLD), Vehicle Loans (CRD-VHL), or any other credit
+ * module by changing the moduleCode and question definitions.
  *
  * RBI Reference Style: General regulation area names only — not specific
  * circular numbers (e.g. "Master Direction on Housing Finance", not
@@ -21,9 +21,10 @@
  *   pnpm seed:exam-questions [--tenant-id=<uuid>]
  *   pnpm tsx scripts/seed-exam-questions.ts [--tenant-id=<uuid>]
  *
- * Idempotent: uses upsert on @@unique([tenantId, moduleCode, text]).
+ * Idempotent: uses upsert on @@unique([tenantId, moduleId, text]).
  * Re-running updates metadata (rbiReference, bestPracticeTip, weight, etc.)
- * but does not create duplicate questions.
+ * but does not create duplicate questions. Requires seed-rbia-housing first
+ * so the CRD-HLN AuditModule exists.
  * ---------------------------------------------------------------------------
  */
 
@@ -394,23 +395,41 @@ const HOUSING_LOAN_QUESTIONS: QuestionDef[] = [
 async function main() {
   const tenantId = await resolveTenantId();
 
+  const moduleIds = new Map<string, string>();
+  async function resolveModuleId(code: string): Promise<string> {
+    const cached = moduleIds.get(code);
+    if (cached) return cached;
+    const found = await prisma.auditModule.findUnique({
+      where: { tenantId_code: { tenantId, code } },
+      select: { id: true },
+    });
+    if (!found) {
+      throw new Error(
+        `AuditModule ${code} not found. Run pnpm seed:rbia-housing first.`,
+      );
+    }
+    moduleIds.set(code, found.id);
+    return found.id;
+  }
+
   console.log("\nUpserting ExaminationQuestion records ...\n");
 
   let upsertCount = 0;
   const categoryCount: Record<string, number> = {};
 
   for (const q of HOUSING_LOAN_QUESTIONS) {
+    const moduleId = await resolveModuleId(q.moduleCode);
     await prisma.examinationQuestion.upsert({
       where: {
-        tenantId_moduleCode_text: {
+        tenantId_moduleId_text: {
           tenantId,
-          moduleCode: q.moduleCode,
+          moduleId,
           text: q.text,
         },
       },
       create: {
         tenantId,
-        moduleCode: q.moduleCode,
+        moduleId,
         text: q.text,
         rbiReference: q.rbiReference,
         bestPracticeTip: q.bestPracticeTip,
