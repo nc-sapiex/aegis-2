@@ -12,6 +12,26 @@ let shutdownRegistered = false;
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // Checked before startWorkers() so a hard-fail here doesn't leave
+    // pg-boss workers running with no server to serve requests.
+    if (process.env.LICENSE_FILE_PATH) {
+      const { loadLicense } = await import("./lib/license");
+      const host = process.env.NEXT_PUBLIC_APP_URL
+        ? new URL(process.env.NEXT_PUBLIC_APP_URL).hostname
+        : "localhost";
+      const result = loadLicense(host);
+      if (result.status === "invalid") {
+        throw new Error(
+          `License check failed (${result.reason}). Refusing to start.`,
+        );
+      }
+      if (result.status === "grace") {
+        console.warn(
+          `[license] Running in the grace period, ${result.daysRemaining} day(s) remaining. Renew before it ends.`,
+        );
+      }
+    }
+
     const { startWorkers, stopWorkers } = await import("./lib/job-queue");
     await startWorkers();
 

@@ -58,6 +58,11 @@ export const env = createEnv({
     SMTP_USER: z.string().min(1).optional(),
     SMTP_PASSWORD: z.string().min(1).optional(),
 
+    // License file (adapters/licensing plan) — optional; unset means no
+    // license check at boot (the SaaS/no-license-file case).
+    LICENSE_FILE_PATH: z.string().min(1).optional(),
+    LICENSE_PUBLIC_KEY: z.string().min(1).optional(),
+
     // Sentry Error Tracking
     // Optional — error tracking degrades gracefully when not configured
     SENTRY_DSN: z.string().url().optional(),
@@ -109,6 +114,8 @@ export const env = createEnv({
     SMTP_PORT: process.env.SMTP_PORT,
     SMTP_USER: process.env.SMTP_USER,
     SMTP_PASSWORD: process.env.SMTP_PASSWORD,
+    LICENSE_FILE_PATH: process.env.LICENSE_FILE_PATH,
+    LICENSE_PUBLIC_KEY: process.env.LICENSE_PUBLIC_KEY,
     SENTRY_DSN: process.env.SENTRY_DSN,
     SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
     NODE_ENV: process.env.NODE_ENV,

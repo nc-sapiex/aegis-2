@@ -17,6 +17,7 @@
     "db:apply": "tsx scripts/db-apply.ts",
     "db:verify": "tsx scripts/db-verify.ts",
     "db:studio": "prisma studio",
+    "license": "tsx scripts/aegis-license.ts",
     "seed:master-directions": "tsx prisma/seed-master-directions.ts",
     "seed:rbia-housing": "tsx scripts/seed-rbia-housing.ts",
     "seed:exam-questions": "tsx scripts/seed-exam-questions.ts",
