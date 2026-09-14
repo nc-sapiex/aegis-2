@@ -96,13 +96,32 @@ async function seedExamination(tenantId: string, userId: string) {
       ops.id,
       opsModule.id,
     );
-    const credit = await node("CREDIT", "ROOT/CREDIT", 1, false, root.id);
+    const creditModule = await integrationOwner.auditModule.create({
+      data: {
+        tenantId,
+        code: "CREDIT",
+        name: "CREDIT",
+        domain: "OTHER",
+        kinds: ["CHECKLIST"],
+        applicability: {},
+      },
+      select: { id: true },
+    });
+    const credit = await node(
+      "CREDIT",
+      "ROOT/CREDIT",
+      1,
+      false,
+      root.id,
+      creditModule.id,
+    );
     const creditLeaf = await node(
       "CREDIT-001",
       "ROOT/CREDIT/CREDIT-001",
       2,
       true,
       credit.id,
+      creditModule.id,
     );
 
     // Only OPS is in scope for this engagement.
@@ -117,6 +136,7 @@ async function seedExamination(tenantId: string, userId: string) {
       opsA,
       opsB,
       credit,
+      creditModule,
       creditLeaf,
       userId,
     };
@@ -247,26 +267,24 @@ describe("freezeRbiaScore completeness", () => {
     await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
 
     await withFixtures(async () => {
-      await integrationOwner.engagementModuleSelection.create({
+      await integrationOwner.engagementModule.create({
         data: {
           tenantId: tenant.id,
           engagementId: seed.engagementId,
-          moduleNodeId: seed.credit.id,
+          moduleId: seed.creditModule.id,
         },
       });
-      const account = await integrationOwner.loanAccount.create({
+      const record = await integrationOwner.populationRecord.create({
         data: {
           tenantId: tenant.id,
           engagementId: seed.engagementId,
+          moduleId: seed.creditModule.id,
           branchId: seed.branchId,
-          moduleCode: "CREDIT",
-          accountNo: "LN-NA-001",
-          borrowerName: "N/A Borrower",
-          productType: "Housing Loan",
-          sanctionAmount: 1_000_000,
-          sanctionDate: new Date("2025-01-15"),
-          outstandingAmount: 750_000,
-          assetClass: "STANDARD",
+          recordKey: "LN-NA-001",
+          displayName: "N/A Borrower",
+          amount: 1_000_000,
+          date: new Date("2025-01-15"),
+          classification: "STANDARD",
           isSampled: true,
         },
         select: { id: true },
@@ -274,7 +292,7 @@ describe("freezeRbiaScore completeness", () => {
       const question = await integrationOwner.examinationQuestion.create({
         data: {
           tenantId: tenant.id,
-          moduleCode: "CREDIT",
+          moduleId: seed.creditModule.id,
           text: "Does this product feature apply?",
         },
         select: { id: true },
@@ -283,7 +301,7 @@ describe("freezeRbiaScore completeness", () => {
         data: {
           tenantId: tenant.id,
           engagementId: seed.engagementId,
-          loanAccountId: account.id,
+          recordId: record.id,
           questionId: question.id,
           status: null,
           isNotApplicable: true,

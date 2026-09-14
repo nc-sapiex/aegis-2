@@ -252,11 +252,14 @@ async function registerIsCompleteExclusiveNotApplicable(
 ): Promise<boolean> {
   if (questionIds.length === 0) return false;
 
-  const sampledAccounts = await db.loanAccount.findMany({
-    where: { engagementId, moduleCode, isSampled: true, tenantId },
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+  if (!moduleId) return false;
+
+  const sampledRecords = await db.populationRecord.findMany({
+    where: { engagementId, moduleId, isSampled: true, tenantId },
     select: { id: true },
   });
-  const sampledIds = sampledAccounts.map((account) => account.id);
+  const sampledIds = sampledRecords.map((record) => record.id);
   if (sampledIds.length === 0) return false;
 
   const [notApplicableCount, scoredCount] = await Promise.all([
@@ -264,7 +267,7 @@ async function registerIsCompleteExclusiveNotApplicable(
       where: {
         engagementId,
         tenantId,
-        loanAccountId: { in: sampledIds },
+        recordId: { in: sampledIds },
         questionId: { in: questionIds },
         isNotApplicable: true,
       },
@@ -273,7 +276,7 @@ async function registerIsCompleteExclusiveNotApplicable(
       where: {
         engagementId,
         tenantId,
-        loanAccountId: { in: sampledIds },
+        recordId: { in: sampledIds },
         questionId: { in: questionIds },
         isNotApplicable: false,
       },
