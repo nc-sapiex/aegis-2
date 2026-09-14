@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { create as createTar } from "tar";
 import { parse as parseYaml } from "yaml";
 import { computeContentHash } from "./hash";
+import { lintPack } from "./lint";
 import {
   PackModuleFileSchema,
   PackNodeFileSchema,
@@ -57,6 +58,17 @@ export async function buildPackArchive(
     contentHash,
     signature: "",
   };
+
+  const lintResult = lintPack({
+    manifest,
+    modules,
+    nodes,
+    questions,
+    populationSchemas,
+  });
+  if (!lintResult.ok) {
+    throw new Error(`pack lint failed:\n${lintResult.errors.join("\n")}`);
+  }
 
   const staging = join(sourceDir, ".staging");
   await mkdir(staging, { recursive: true });

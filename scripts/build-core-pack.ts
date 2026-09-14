@@ -85,7 +85,10 @@ async function buildIaFormatContent(): Promise<{
         `examination-items.json references unknown areaCode "${item.areaCode}"`,
       );
     }
-    const code = `${area.code}-${item.itemNumber}`;
+    // item.itemNumber is not unique within an area (real data has 3
+    // collisions across the 568 statements); item.displayOrder is globally
+    // unique across all items, so it's the safe disambiguator.
+    const code = `${area.code}-${item.displayOrder}`;
     return {
       code,
       moduleCode: area.code,
@@ -157,8 +160,12 @@ function buildHousingLoanContent(): {
     }),
   );
 
-  const questions: PackQuestion[] = HOUSING_LOAN_QUESTIONS.map((q) => ({
-    code: `${q.moduleCode}-Q${q.displayOrder}`,
+  // q.displayOrder resets per checklist category (1-5, then 1-4, ...) — it's
+  // a display grouping, not a unique key (the real unique key is
+  // tenantId_moduleId_text, per seed-exam-questions.ts). Array position is
+  // globally unique per module and stable across regenerations.
+  const questions: PackQuestion[] = HOUSING_LOAN_QUESTIONS.map((q, i) => ({
+    code: `${q.moduleCode}-Q${i + 1}`,
     moduleCode: q.moduleCode,
     text: q.text,
     rbiReference: q.rbiReference ?? undefined,

@@ -36,14 +36,14 @@
   rbiReference: Master Direction on Housing Finance
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q1
+- code: CRD-HLN-Q6
   moduleCode: CRD-HLN
   text: Was the property valuation conducted by a bank-empanelled valuer, and is
     the valuation report within the policy-prescribed validity period?
   rbiReference: Master Direction on Housing Finance
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q2
+- code: CRD-HLN-Q7
   moduleCode: CRD-HLN
   text: Is the loan-to-value (LTV) ratio within RBI-prescribed limits — up to 90%
     for loans up to Rs. 30 lakh, 80% for Rs. 30-75 lakh, and 75% for loans above
@@ -51,60 +51,60 @@
   rbiReference: Master Direction on Housing Finance
   weight: 1.5
   isCritical: false
-- code: CRD-HLN-Q3
+- code: CRD-HLN-Q8
   moduleCode: CRD-HLN
   text: Is property insurance coverage (covering full reinstatement value with the
     bank as loss-payee) in place and current, along with life insurance or
     PMJJBY coverage for the borrower as per policy?
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q4
+- code: CRD-HLN-Q9
   moduleCode: CRD-HLN
   text: Has periodic re-valuation of the mortgaged property been conducted at the
     frequency prescribed by policy (at least once in three years)?
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q1
+- code: CRD-HLN-Q10
   moduleCode: CRD-HLN
   text: Has the borrower's repayment capacity been assessed with EMI/NMI ratio
     within policy limits, based on audited financials, ITR, and banking
     statements for the last 12 months?
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q2
+- code: CRD-HLN-Q11
   moduleCode: CRD-HLN
   text: Has a credit bureau report (CIBIL/Equifax) been obtained and evaluated for
     all applicants, co-applicants, and guarantors, with credit score meeting
     policy threshold and no undisclosed overdue accounts?
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q3
+- code: CRD-HLN-Q12
   moduleCode: CRD-HLN
   text: Was the loan sanctioned by the competent authority within the
     Board-approved delegation of powers, with committee-level approval (with
     signed minutes) for loans at or above the applicable threshold?
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q4
+- code: CRD-HLN-Q13
   moduleCode: CRD-HLN
   text: Was a pre-sanction site visit/inspection of the property conducted and
     documented before sanction?
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q1
+- code: CRD-HLN-Q14
   moduleCode: CRD-HLN
   text: For under-construction properties, are disbursements released in stages
     linked to certified construction progress, with physical verification by a
     bank official or empanelled engineer before each tranche?
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q2
+- code: CRD-HLN-Q15
   moduleCode: CRD-HLN
   text: Has end-use verification been completed within the prescribed timeframe
     after final disbursement, with end-use certificate on file?
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q3
+- code: CRD-HLN-Q16
   moduleCode: CRD-HLN
   text: Was no disbursement released before mortgage creation, and are all
     conditions precedent in the sanction letter (insurance, PDC/ECS/NACH
@@ -112,7 +112,7 @@
   rbiReference: Master Direction on Housing Finance
   weight: 1.5
   isCritical: false
-- code: CRD-HLN-Q1
+- code: CRD-HLN-Q17
   moduleCode: CRD-HLN
   text: Is the housing loan correctly classified under Priority Sector Lending per
     RBI guidelines — loans up to Rs. 35 lakh (metropolitan) / Rs. 25 lakh
@@ -120,7 +120,7 @@
   rbiReference: Master Direction on PSL
   weight: 2
   isCritical: true
-- code: CRD-HLN-Q2
+- code: CRD-HLN-Q18
   moduleCode: CRD-HLN
   text: If classified under PSL for EWS/LIG/MIG categories (PMAY), is the
     borrower's income category correctly identified and documented, with CLSS
@@ -128,7 +128,7 @@
   rbiReference: Master Direction on PSL
   weight: 1.5
   isCritical: true
-- code: CRD-HLN-Q3
+- code: CRD-HLN-Q19
   moduleCode: CRD-HLN
   text: Is the interest rate applied linked to the Board-approved benchmark
     (EBLR/MCLR/PLR) and within the approved pricing grid based on credit score,
@@ -137,7 +137,7 @@
   rbiReference: Master Direction on Interest Rate on Advances
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q4
+- code: CRD-HLN-Q20
   moduleCode: CRD-HLN
   text: Are all statutory returns related to housing loans filed within prescribed
     timelines — CRILC reporting for SMA-2/NPA accounts, NHB quarterly returns,
@@ -145,7 +145,7 @@
   rbiReference: Master Direction on Housing Finance
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q1
+- code: CRD-HLN-Q21
   moduleCode: CRD-HLN
   text: Is NPA classification timely per RBI IRAC norms — accounts classified as
     NPA after 90 days past due without manual override — and is the CBS-driven
@@ -153,7 +153,7 @@
   rbiReference: Master Circular on Income Recognition and Asset Classification
   weight: 2
   isCritical: true
-- code: CRD-HLN-Q2
+- code: CRD-HLN-Q22
   moduleCode: CRD-HLN
   text: Is provisioning held as per RBI IRAC norms — 15% for sub-standard, 25-40%
     for doubtful (age-based), and 100% for loss assets — with correct asset
@@ -161,7 +161,7 @@
   rbiReference: Master Circular on Income Recognition and Asset Classification
   weight: 1.5
   isCritical: true
-- code: CRD-HLN-Q3
+- code: CRD-HLN-Q23
   moduleCode: CRD-HLN
   text: Is any restructuring or rescheduling of housing loan properly documented,
     classified as per the applicable restructuring framework, and recovery
@@ -169,7 +169,7 @@
   rbiReference: Master Circular on Income Recognition and Asset Classification
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q1
+- code: CRD-HLN-Q24
   moduleCode: CRD-HLN
   text: Is SMA (Special Mention Account) classification generated by CBS
     automatically based on DPD — SMA-0 (1-30 days), SMA-1 (31-60 days), SMA-2
@@ -178,7 +178,7 @@
   rbiReference: RBI Prudential Framework for Resolution of Stressed Assets
   weight: 1
   isCritical: false
-- code: CRD-HLN-Q2
+- code: CRD-HLN-Q25
   moduleCode: CRD-HLN
   text: Is the borrower's account reviewed at least annually with updated income
     assessment, EMI collection tracked through NACH/ECS with bounce instances
