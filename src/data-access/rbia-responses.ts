@@ -27,7 +27,9 @@ function readString(record: Record<string, unknown> | null, key: string) {
 function toIsoTimestamp(value: string | null, fallback: Date): string {
   if (!value) return fallback.toISOString();
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? fallback.toISOString() : parsed.toISOString();
+  return Number.isNaN(parsed.getTime())
+    ? fallback.toISOString()
+    : parsed.toISOString();
 }
 
 export async function getResponse(
@@ -62,7 +64,10 @@ export async function getSectionScoredResponseCount(
     where: {
       tenantId,
       isLeaf: true,
-      OR: [{ id: moduleNode.id }, { path: { startsWith: `${moduleNode.path}/` } }],
+      OR: [
+        { id: moduleNode.id },
+        { path: { startsWith: `${moduleNode.path}/` } },
+      ],
     },
     select: { id: true },
   });
@@ -108,9 +113,10 @@ export async function getResponseHistory(
     readString(firstRevisionOldData, "respondedById") ?? response.respondedById;
   const userIds = [
     ...new Set(
-      [originalResponderId, ...logs.map((log) => log.userId).filter(Boolean)].filter(
-        Boolean,
-      ),
+      [
+        originalResponderId,
+        ...logs.map((log) => log.userId).filter(Boolean),
+      ].filter(Boolean),
     ),
   ] as string[];
   const users = userIds.length
@@ -141,7 +147,9 @@ export async function getResponseHistory(
       return {
         scoreLabel: readString(newData, "scoreLabel") ?? "UNSCORED",
         reason: log.justification ?? "",
-        revisedByName: log.userId ? (userNameById.get(log.userId) ?? "Unknown") : "System",
+        revisedByName: log.userId
+          ? (userNameById.get(log.userId) ?? "Unknown")
+          : "System",
         revisedAt: log.createdAt.toISOString(),
       };
     }),

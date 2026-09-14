@@ -56,11 +56,7 @@ const INR = new Intl.NumberFormat("en-IN", {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type SortKey =
-  | "accountNo"
-  | "borrowerName"
-  | "sanctionAmount"
-  | "outstandingAmount"
-  | "dpd";
+  "accountNo" | "borrowerName" | "sanctionAmount" | "outstandingAmount" | "dpd";
 type SortDir = "asc" | "desc";
 
 interface SampledAccount {

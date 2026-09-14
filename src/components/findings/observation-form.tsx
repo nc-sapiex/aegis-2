@@ -46,10 +46,7 @@ async function submitAction(
     effect: formData.get("effect") as string,
     recommendation: formData.get("recommendation") as string,
     severity: formData.get("severity") as
-      | "LOW"
-      | "MEDIUM"
-      | "HIGH"
-      | "CRITICAL",
+      "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
     branchId: (formData.get("branchId") as string) || undefined,
     auditAreaId: (formData.get("auditAreaId") as string) || undefined,
     riskCategory: (formData.get("riskCategory") as string) || undefined,

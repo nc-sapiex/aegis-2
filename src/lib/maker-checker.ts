@@ -1,8 +1,7 @@
 import type { ObservationStatus } from "@/generated/prisma/enums";
 
 export type MakerCheckerResult =
-  | { allowed: true }
-  | { allowed: false; reason: string };
+  { allowed: true } | { allowed: false; reason: string };
 
 /** Someone who already acted on this record, named for the refusal message. */
 interface PriorAct {

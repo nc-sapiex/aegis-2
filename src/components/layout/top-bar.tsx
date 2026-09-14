@@ -62,7 +62,6 @@ function isDynamicSegment(segment: string): boolean {
   return false;
 }
 
-
 export function TopBar() {
   const t = useTranslations("TopBar");
   const tNav = useTranslations("Navigation");

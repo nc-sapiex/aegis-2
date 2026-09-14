@@ -15,11 +15,7 @@ export class TenantRefError extends Error {
 }
 
 export type TenantRef =
-  | "auditPlanId"
-  | "branchId"
-  | "auditAreaId"
-  | "engagementId"
-  | "userId";
+  "auditPlanId" | "branchId" | "auditAreaId" | "engagementId" | "userId";
 
 type Resolver = (
   tx: Prisma.TransactionClient,

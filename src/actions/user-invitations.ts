@@ -66,15 +66,13 @@ export async function sendUserInvitations(users: InviteUserInput[]) {
         createInvitedUsers(tx, {
           tenantId,
           invitedBy: session.user.id,
-          invites: minted.map(
-            ({ invite, tokenHash }): InvitedUserInput => ({
-              name: invite.name,
-              email: invite.email,
-              roles: invite.roles as InvitedUserInput["roles"],
-              branchAssignments: invite.branchAssignments,
-              tokenHash,
-            }),
-          ),
+          invites: minted.map(({ invite, tokenHash }): InvitedUserInput => ({
+            name: invite.name,
+            email: invite.email,
+            roles: invite.roles as InvitedUserInput["roles"],
+            branchAssignments: invite.branchAssignments,
+            tokenHash,
+          })),
         }),
     );
 

@@ -67,11 +67,7 @@ export type NodeScoreResult = {
  * Applied to composite scores (0.0 – 1.0).
  */
 export type RatingBand =
-  | "VERY_GOOD"
-  | "GOOD"
-  | "SATISFACTORY"
-  | "MODERATE"
-  | "POOR";
+  "VERY_GOOD" | "GOOD" | "SATISFACTORY" | "MODERATE" | "POOR";
 
 // ─── Core Functions ──────────────────────────────────────────────────────────
 
