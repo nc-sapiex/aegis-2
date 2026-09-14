@@ -901,6 +901,7 @@ model AuditEngagement {
   branchRbiaScore         BranchRbiaScore?
   engagementModules       EngagementModule[]
   engagementStatements    EngagementStatement[]
+  sectionVisits           EngagementSectionVisit[]
   sectionNaMarks          EngagementSectionNa[]
   meetings                EngagementMeeting[]
   actionPointsV2          ActionPoint[]
@@ -2377,6 +2378,20 @@ model EngagementStatement {
   @@unique([engagementId, nodeId])
   @@unique([engagementId, questionId])
   @@index([tenantId])
+  @@index([engagementId])
+}
+
+// Not tenant-scoped: no independent existence outside its engagement, reads
+// always join through engagementId (already tenant-checked by its own FK).
+// Not audited, per spec §6.5a — a UX convenience, not a compliance record.
+model EngagementSectionVisit {
+  engagementId String          @db.Uuid
+  engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  userId       String          @db.Uuid
+  sectionId    String          @db.Uuid // an ExaminationNode id (depth 1, the module/section boundary)
+  visitedAt    DateTime        @updatedAt
+
+  @@id([engagementId, userId])
   @@index([engagementId])
 }
 

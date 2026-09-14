@@ -4,10 +4,10 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `f060328` (module-framework/foundation)
+> Source commit: `d82fb9f` (module-framework/foundation)
 
 Every table AEGIS maintains, with its columns, types and relationships.
-**80 models** and **25 enumerations**.
+**81 models** and **25 enumerations**.
 
 Conventions used throughout the schema:
 
@@ -88,6 +88,7 @@ Conventions used throughout the schema:
 - [BranchRbiaScore](#branchrbiascore)
 - [EngagementModule](#engagementmodule)
 - [EngagementStatement](#engagementstatement)
+- [EngagementSectionVisit](#engagementsectionvisit)
 - [EngagementSectionNa](#engagementsectionna)
 - [EngagementMeeting](#engagementmeeting)
 - [ActionPoint](#actionpoint)
@@ -689,6 +690,7 @@ Indexes and constraints:
 | `branchRbiaScore` | BranchRbiaScore | yes | FK→BranchRbiaScore |  |  |
 | `engagementModules` | EngagementModule[] | no | FK→EngagementModule |  |  |
 | `engagementStatements` | EngagementStatement[] | no | FK→EngagementStatement |  |  |
+| `sectionVisits` | EngagementSectionVisit[] | no | FK→EngagementSectionVisit |  |  |
 | `sectionNaMarks` | EngagementSectionNa[] | no | FK→EngagementSectionNa |  |  |
 | `meetings` | EngagementMeeting[] | no | FK→EngagementMeeting |  |  |
 | `actionPointsV2` | ActionPoint[] | no | FK→ActionPoint |  |  |
@@ -2020,6 +2022,25 @@ Indexes and constraints:
 - `@@unique([engagementId, nodeId])`
 - `@@unique([engagementId, questionId])`
 - `@@index([tenantId])`
+- `@@index([engagementId])`
+
+## EngagementSectionVisit
+
+Not tenant-scoped: no independent existence outside its engagement, reads always join through engagementId (already tenant-checked by its own FK). Not audited, per spec §6.5a — a UX convenience, not a compliance record.
+
+*Tenant-scoped:* no
+
+| Column | Type | Null | Key | Default | Notes |
+|---|---|---|---|---|---|
+| `engagementId` | String `@db.Uuid` | no |  |  |  |
+| `engagement` | AuditEngagement | no | FK→AuditEngagement |  | relation |
+| `userId` | String `@db.Uuid` | no |  |  |  |
+| `sectionId` | String `@db.Uuid` | no |  |  |  |
+| `visitedAt` | DateTime | no |  |  |  |
+
+Indexes and constraints:
+
+- `@@id([engagementId, userId])`
 - `@@index([engagementId])`
 
 ## EngagementSectionNa
