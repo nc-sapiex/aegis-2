@@ -265,34 +265,23 @@ export async function completeOnboardingTransaction(
       });
       invitedUsersForEmail = createdUsers;
 
-      // 7. Create audit log entries
-      // ponytail: sequenceNumber fetched explicitly because dropping
-      // @default(autoincrement()) removed it from Prisma's create-input type;
-      // the Postgres sequence still auto-populates at runtime until Task 3
-      // moves to per-tenant, trigger-assigned sequencing.
-      const [{ nextval: onboardingSequenceNumber }] = await tx.$queryRaw<
-        { nextval: bigint }[]
-      >`-- tenantId: not applicable, global sequence, not tenant-owned rows
-        SELECT nextval('"AuditLog_sequenceNumber_seq"')`;
-      await tx.auditLog.create({
-        data: {
-          tenantId: data.tenantId,
-          tableName: "Tenant",
-          recordId: data.tenantId,
-          operation: "UPDATE",
-          actionType: "onboarding.completed",
-          sequenceNumber: onboardingSequenceNumber,
-          newData: {
-            departments: createdDepts.length,
-            branches: createdBranches.length,
-            complianceItems: complianceRecords.length,
-            invitedUsers: createdUsers.length,
-          } as Prisma.InputJsonValue,
-          userId: data.userId,
-          ipAddress: data.ipAddress,
-          sessionId: data.sessionId,
-        },
+      // 7. Create audit log entry. This is a synthetic aggregate event (no
+      // domain-table trigger fires for it), so it calls the trigger's own
+      // chain-computing core directly rather than tx.auditLog.create(),
+      // which would leave sequenceNumber/prevHash/rowHash unset.
+      const onboardingSummary = JSON.stringify({
+        departments: createdDepts.length,
+        branches: createdBranches.length,
+        complianceItems: complianceRecords.length,
+        invitedUsers: createdUsers.length,
       });
+      await tx.$executeRaw`
+        SELECT audit_chain_insert(
+          ${data.tenantId}::uuid, 'Tenant', ${data.tenantId}, 'UPDATE', 'onboarding.completed',
+          NULL, NULL, ${onboardingSummary}::jsonb,
+          ${data.ipAddress}, ${data.sessionId}, ${data.userId}::uuid
+        )
+      `;
 
       // 8. Delete onboarding progress record
       await tx.onboardingProgress

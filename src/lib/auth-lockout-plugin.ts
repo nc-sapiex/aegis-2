@@ -193,31 +193,29 @@ export const accountLockout = (
               // Log lockout event to AuditLog for security monitoring. No
               // real tenant applies (pre-auth, keyed by email), and AuditLog
               // is RLS-protected, so this write must bypass via prismaSystem.
-              // ponytail: sequenceNumber fetched explicitly because dropping
-              // @default(autoincrement()) removed it from Prisma's
-              // create-input type; the Postgres sequence still
-              // auto-populates at runtime until Task 3 moves to per-tenant,
-              // trigger-assigned sequencing.
-              const [{ nextval: lockoutSequenceNumber }] =
-                await prismaSystem.$queryRaw<
-                  { nextval: bigint }[]
-                >`SELECT nextval('"AuditLog_sequenceNumber_seq"')`;
-              await prismaSystem.auditLog.create({
-                data: {
-                  tenantId: "00000000-0000-0000-0000-000000000000", // System event
-                  tableName: "User",
-                  recordId: email,
-                  operation: "LOCKOUT",
-                  actionType: "account.locked",
-                  sequenceNumber: lockoutSequenceNumber,
-                  oldData: { recentFailures },
-                  newData: { lockedUntil: lockUntil.toISOString() },
-                  ipAddress: ip,
-                  retentionExpiresAt: new Date(
-                    now.getTime() + 10 * 365.25 * 24 * 60 * 60 * 1000,
-                  ), // 10 years PMLA
-                },
-              });
+              // ponytail: this event cannot join a tenant's hash chain via
+              // audit_chain_insert() -- that function's AuditChainHead
+              // upsert is FK'd to a real "Tenant" row, and this sentinel
+              // tenantId has none (confirmed empirically: 23503 FK
+              // violation). It never was part of any tenant's chain, so it
+              // keeps its own tiny dedicated sequence and leaves
+              // prevHash/rowHash NULL rather than faking a chain linkage.
+              // Revisit if a verifiable chain for system security events is
+              // ever required.
+              await prismaSystem.$executeRaw`
+                INSERT INTO "AuditLog" (
+                  "sequenceNumber", "tenantId", "tableName", "recordId", operation,
+                  "actionType", "oldData", "newData", "ipAddress", "retentionExpiresAt"
+                ) VALUES (
+                  nextval('"AuditLog_system_sequence_seq"'), '00000000-0000-0000-0000-000000000000'::uuid,
+                  'User', ${email}, 'LOCKOUT', 'account.locked',
+                  ${JSON.stringify({ recentFailures })}::jsonb,
+                  ${JSON.stringify({ lockedUntil: lockUntil.toISOString() })}::jsonb,
+                  ${ip},
+                  -- retentionExpiresAt: 10 years, PMLA
+                  ${new Date(now.getTime() + 10 * 365.25 * 24 * 60 * 60 * 1000)}
+                )
+              `;
             }
 
             return noOp;

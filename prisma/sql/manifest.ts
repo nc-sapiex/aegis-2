@@ -15,6 +15,7 @@ export { RLS_TABLES };
 export const SQL_MANIFEST = [
   "prisma/migrations/20260826_audit_trigger_null_safe.sql",
   "prisma/sql/020_attach_audit_triggers.sql",
+  "prisma/migrations/20260913_audit_chain.sql",
   "prisma/migrations/20260209_dashboard_views.sql",
   "prisma/migrations/20260222_rbia_db_guards.sql",
   "prisma/sql/050_observation_indexes.sql",
@@ -71,6 +72,7 @@ export interface RequiredObjects {
 export const REQUIRED_OBJECTS: RequiredObjects = {
   functions: [
     "audit_trigger_function",
+    "audit_chain_insert",
     "prevent_frozen_score_update",
     "fn_extract_fiscal_year",
     "fn_dashboard_health_score",

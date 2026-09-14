@@ -37,9 +37,8 @@ const {
       complianceRequirement: { create: vi.fn(async () => ({ id: "cr" })) },
       user: { create: userCreate },
       userBranchAssignment: { create: vi.fn(async () => ({ id: "uba" })) },
-      auditLog: { create: vi.fn(async () => ({ id: "log" })) },
       onboardingProgress: { delete: vi.fn(async () => ({})) },
-      $queryRaw: vi.fn(async () => [{ nextval: BigInt(1) }]),
+      $executeRaw: vi.fn(async () => 1),
     },
   };
 });

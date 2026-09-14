@@ -58,6 +58,26 @@ describe("SQL manifest", () => {
   });
 });
 
+describe("audit chain migration", () => {
+  it("is present in the manifest after the audit trigger attachment", () => {
+    const i = SQL_MANIFEST.indexOf(
+      "prisma/migrations/20260913_audit_chain.sql",
+    );
+    const j = SQL_MANIFEST.indexOf("prisma/sql/020_attach_audit_triggers.sql");
+    expect(i).toBeGreaterThan(j);
+  });
+
+  it("the migration file computes rowHash with pgcrypto digest(...,'sha256')", () => {
+    const sql = readFileSync(
+      join(process.cwd(), "prisma/migrations/20260913_audit_chain.sql"),
+      "utf8",
+    );
+    expect(sql).toContain("digest(");
+    expect(sql).toContain("'sha256'");
+    expect(sql).toContain("FOR UPDATE");
+  });
+});
+
 import { RLS_TABLES } from "../../../prisma/sql/manifest";
 
 const REFERENCE_TABLES = new Set([
