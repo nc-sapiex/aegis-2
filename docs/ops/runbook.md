@@ -1,7 +1,7 @@
 # AEGIS Ops Runbook
 
 **Environment:** local development only
-**Last verified:** 2026-09-13
+**Last verified:** 2026-09-14
 
 **There is nothing to operate.** AEGIS has no deployed instance, no staging, and
 no production database. The Coolify application that previously served it was
@@ -34,16 +34,20 @@ tables and columns. Verify schema separately with `pnpm db:verify`.
 ```bash
 pnpm install
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d  # PostgreSQL 16 on :5433
+# Copy .env.example → .env. DATABASE_URL is aegis_app; also set
+# DATABASE_OWNER_URL, DATABASE_APP_PASSWORD, DATABASE_SYSTEM_URL,
+# DATABASE_SYSTEM_PASSWORD (see Database roles below).
 pnpm db:generate
 pnpm db:push
-pnpm db:bootstrap     # triggers, views, functions, composite FKs
+pnpm db:bootstrap     # roles, RLS policies, triggers, views, composite FKs
 pnpm db:verify        # asserts they landed
 pnpm db:seed
 pnpm dev
 ```
 
-`pnpm db:push` alone leaves a database with no audit triggers, no dashboard
-views, and no composite foreign keys. `db:bootstrap` is not optional.
+`pnpm db:push` alone leaves a database with no audit triggers, no RLS
+policies, no dashboard views, and no composite foreign keys. `db:bootstrap`
+is not optional.
 
 `pnpm db:seed` is only the first of four scripts. For a populated RBIA
 lifecycle (Kothrud housing-loan visit, frozen score, observations,
@@ -94,12 +98,11 @@ any database, local included, two things are applied by hand, in this order:
 2. `pnpm db:bootstrap`, then `pnpm db:verify`.
 
 Schema first: `prisma/sql/060_tenant_composite_fks.sql` depends on the
-`(tenantId, id)` unique indexes the schema file creates.
+`(tenantId, id)` unique indexes the schema file creates. RLS policies are
+`prisma/sql/070_rls_policies.sql` (generated; applied by bootstrap).
 
-`prisma/migrations/superseded/` is history. **Do not apply it** — it contains
-`add_rls_policies.sql`, which would create an `aegis_app` role and enable
-row-level security on a system whose tenant isolation is enforced in application
-code.
+Do not hunt for `prisma/migrations/superseded/` — that directory is gone.
+Live RLS is `070`, not a dated migration.
 
 Full sequence: [release-checklist.md](release-checklist.md).
 
