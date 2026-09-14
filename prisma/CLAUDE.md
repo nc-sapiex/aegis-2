@@ -34,6 +34,9 @@ shrink-only allowlist.
 
 `WHERE tenantId` stays on every query (spec §4.3). RLS is the second wall.
 
+Ad-hoc `psql "$DATABASE_URL"` after a seed looks empty: `aegis_app` has no
+tenant GUC in that session. Use `DATABASE_OWNER_URL` for operator SQL.
+
 ## Session GUCs read back as `''`, not NULL
 
 On a pooled connection that has previously set them, `current_setting(...)`

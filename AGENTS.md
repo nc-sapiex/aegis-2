@@ -141,13 +141,17 @@ scripts/              # Database bootstrap/verify, seeds, doc generation
 
 - Tenant ID must come from the authenticated session
 - Server actions should use `getRequiredSession()`
-- DAL queries must scope by tenant explicitly
+- DAL queries must scope by tenant explicitly (`where: { tenantId }`)
+- RLS (`FORCE ROW LEVEL SECURITY` on `aegis_app`) is the second wall, not a
+  substitute. Connect as `aegis_app` (`DATABASE_URL`) at runtime; use
+  `DATABASE_OWNER_URL` for push/bootstrap/seed and `DATABASE_SYSTEM_URL`
+  only for the shrink-listed `prismaSystem` reads
 
 ### Multi-Language Support
 
-- Supported locales: English, Hindi, Marathi, Gujarati
-- Banking terminology changes should stay domain-accurate across all
-  locales
+- English only (`src/lib/strings.ts`). next-intl was removed in the 2.0 seed
+  (design decision D7). Do not reintroduce locale packs or Hindi/Marathi/Gujarati
+  UI strings.
 
 ### Deployment
 

@@ -32,11 +32,9 @@ that lacks it gives you an application that fails on those paths while
 `/api/health` stays green, because the check is `SELECT 1` plus a pg-boss row
 count.
 
-**Do not** bulk-apply `prisma/migrations/*.sql`. That directory contains
-`superseded/`, which is history — its README says so, and applying
-`add_rls_policies.sql` would create the `aegis_app` role and enable row-level
-security on a system whose tenant isolation is enforced in application code.
-Apply named files only.
+**Do not** bulk-apply `prisma/migrations/*.sql`. Apply named files only.
+Live RLS is `prisma/sql/070_rls_policies.sql`, applied by `pnpm db:bootstrap`
+— not a dated file in `prisma/migrations/`.
 
 Apply in this order — schema first, because `prisma/sql/060_tenant_composite_fks.sql`
 needs the `(tenantId, id)` unique indexes the schema file creates:
@@ -56,7 +54,8 @@ needs the `(tenantId, id)` unique indexes the schema file creates:
       any returns rows there is cross-tenant data: **stop and repair it.** Do not
       weaken the constraint.
 - [ ] `pnpm db:bootstrap` — applies `prisma/sql/manifest.ts` (triggers, views,
-      functions, composite FKs). Idempotent; safe against a live database.
+      functions, composite FKs, RLS policies). Idempotent; safe against a live
+      database.
 - [ ] `pnpm db:verify` — asserts every required object landed. Exits non-zero
       and lists what is missing.
 - [ ] Merge. Nothing else happens.
