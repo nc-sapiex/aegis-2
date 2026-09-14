@@ -163,7 +163,7 @@ domain (`observations.ts`, `rbia-scoring.ts`, `compliance.ts`, …).
 
 Most server actions call `prismaForTenant()` directly rather than routing
 through a function here, so this layer is a **shared-query library, not a
-strict gateway**. The tenant-isolation test *does* scan `src/actions/` for the
+strict gateway**. The tenant-isolation test _does_ scan `src/actions/` for the
 common query verbs; it still cannot see `$executeRaw` argument-building or a
 `tenantId` that originated in a URL. Review those by hand. When a query is
 used by more than one caller, it belongs here.
