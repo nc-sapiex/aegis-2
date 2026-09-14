@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "@/lib/strings";
 import Image from "next/image";
 import { signUp } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -30,8 +29,6 @@ import {
  */
 export function SignupForm() {
   const router = useRouter();
-  const t = useTranslations("Login");
-  const tCommon = useTranslations("Common");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -88,13 +85,13 @@ export function SignupForm() {
 
     // Validate passwords match
     if (password !== confirmPassword) {
-      setError(t("passwordsDontMatch"));
+      setError("Passwords do not match");
       return;
     }
 
     // Validate password strength
     if (!passwordStrength || passwordStrength === "weak") {
-      setError(t("passwordTooWeak"));
+      setError("Password is too weak. Please meet all requirements.");
       return;
     }
 
@@ -114,16 +111,16 @@ export function SignupForm() {
 
         switch (errorCode) {
           case "EMAIL_ALREADY_EXISTS":
-            setError(t("emailAlreadyExists"));
+            setError("An account with this email already exists.");
             break;
           case "WEAK_PASSWORD":
-            setError(t("passwordTooWeak"));
+            setError("Password is too weak. Please meet all requirements.");
             break;
           case "INVALID_EMAIL":
-            setError(t("invalidEmail"));
+            setError("Invalid email address");
             break;
           default:
-            setError(t("signupFailed"));
+            setError("Signup failed. Please try again.");
         }
       } else if (response.data) {
         // Success - redirect to dashboard
@@ -132,7 +129,7 @@ export function SignupForm() {
       }
     } catch (err) {
       console.error("Signup error:", err);
-      setError(t("signupFailed"));
+      setError("Signup failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -155,14 +152,14 @@ export function SignupForm() {
             />
             <div className="flex flex-col items-center">
               <span className="text-foreground text-xl font-bold tracking-wide">
-                {tCommon("appName")}
+                AEGIS
               </span>
               <span className="text-muted-foreground text-xs tracking-widest">
-                {tCommon("companyName")}
+                SAPIEX TECHNOLOGIES
               </span>
             </div>
             <p className="text-muted-foreground text-center text-sm">
-              {tCommon("appTagline")}
+              Audit & Compliance Platform for UCBs
             </p>
           </div>
 
@@ -180,14 +177,14 @@ export function SignupForm() {
             {/* Name */}
             <div className="space-y-2">
               <Label htmlFor="name" className="text-sm font-medium">
-                {t("fullName")}
+                Full Name
               </Label>
               <div className="relative">
                 <Users className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <Input
                   id="name"
                   type="text"
-                  placeholder={t("namePlaceholder")}
+                  placeholder="Rajesh Deshmukh"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="pl-10"
@@ -199,14 +196,14 @@ export function SignupForm() {
             {/* Email */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">
-                {t("emailAddress")}
+                Email Address
               </Label>
               <div className="relative">
                 <Mail className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder={t("emailPlaceholder")}
+                  placeholder="rajesh.deshmukh@apexbank.example"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
@@ -218,14 +215,14 @@ export function SignupForm() {
             {/* Password */}
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-medium">
-                {t("password")}
+                Password
               </Label>
               <div className="relative">
                 <Lock className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <Input
                   id="password"
                   type="password"
-                  placeholder={t("passwordPlaceholder")}
+                  placeholder="Enter password"
                   value={password}
                   onChange={handlePasswordChange}
                   className="pl-10"
@@ -262,7 +259,7 @@ export function SignupForm() {
                           : "text-slate-300"
                       }`}
                     />
-                    <span>{t("min8Chars")}</span>
+                    <span>At least 8 characters</span>
                   </li>
                   <li className="flex items-center gap-1">
                     <CheckCircle2
@@ -272,7 +269,7 @@ export function SignupForm() {
                           : "text-slate-300"
                       }`}
                     />
-                    <span>{t("oneUppercase")}</span>
+                    <span>One uppercase letter</span>
                   </li>
                   <li className="flex items-center gap-1">
                     <CheckCircle2
@@ -282,7 +279,7 @@ export function SignupForm() {
                           : "text-slate-300"
                       }`}
                     />
-                    <span>{t("oneNumber")}</span>
+                    <span>One number</span>
                   </li>
                 </ul>
               )}
@@ -291,14 +288,14 @@ export function SignupForm() {
             {/* Confirm Password */}
             <div className="space-y-2">
               <Label htmlFor="confirmPassword" className="text-sm font-medium">
-                {t("confirmPassword")}
+                Confirm Password
               </Label>
               <div className="relative">
                 <Lock className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <Input
                   id="confirmPassword"
                   type="password"
-                  placeholder={t("confirmPasswordPlaceholder")}
+                  placeholder="Confirm password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="pl-10"
@@ -313,7 +310,7 @@ export function SignupForm() {
               className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-200/50 transition-all hover:from-blue-700 hover:to-blue-800 hover:shadow-lg"
               disabled={isLoading}
             >
-              {isLoading ? t("signingUp") : t("signUp")}
+              {isLoading ? "Signing up..." : "Sign Up"}
             </Button>
           </form>
 
@@ -329,7 +326,7 @@ export function SignupForm() {
 
       {/* Footer */}
       <p className="text-muted-foreground text-xs">
-        {tCommon("securedBy")} &middot; {tCommon("companyName")}
+        Secured by AEGIS &middot; SAPIEX TECHNOLOGIES
       </p>
     </div>
   );

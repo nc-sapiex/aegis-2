@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useTranslations } from "@/lib/strings";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -63,8 +62,6 @@ function isDynamicSegment(segment: string): boolean {
 }
 
 export function TopBar() {
-  const t = useTranslations("TopBar");
-  const tNav = useTranslations("Navigation");
   const pathname = usePathname();
 
   // Get Better Auth session
@@ -80,7 +77,7 @@ export function TopBar() {
 
   // Derive page name from pathname using navItems
   const currentNav = navItems.find((item) => pathname.startsWith(item.href));
-  const currentPage = currentNav ? tNav(currentNav.tKey) : undefined;
+  const currentPage = currentNav?.title;
 
   // Build multi-level breadcrumb segments from the pathname
   const breadcrumbSegments: { label: string; href?: string }[] = [];
@@ -140,7 +137,7 @@ export function TopBar() {
           variant="ghost"
           size="icon"
           className="relative h-10 w-10 md:h-8 md:w-8"
-          aria-label={t("notifications")}
+          aria-label="{count} notifications"
         >
           <Bell className="h-4 w-4" />
         </Button>
@@ -152,7 +149,7 @@ export function TopBar() {
               variant="ghost"
               size="icon"
               className="h-10 w-10 md:h-8 md:w-8"
-              aria-label={t("userMenu")}
+              aria-label="User menu"
             >
               <Avatar className="h-7 w-7">
                 <AvatarFallback className="bg-primary text-primary-foreground text-[10px]">
@@ -173,12 +170,12 @@ export function TopBar() {
             <DropdownMenuItem asChild>
               <Link href="/settings">
                 <Settings className="mr-2 h-4 w-4" />
-                {tNav("settings")}
+                Settings
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={handleSignOut}>
               <LogOut className="mr-2 h-4 w-4" />
-              {t("signOut")}
+              Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

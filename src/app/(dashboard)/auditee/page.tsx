@@ -1,4 +1,3 @@
-import { getTranslations } from "@/lib/strings";
 import { requirePermission } from "@/lib/guards";
 import { getObservationsForAuditee } from "@/data-access/auditee";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +7,6 @@ import { ObservationList } from "@/components/auditee/observation-list";
 
 export default async function AuditeePage() {
   const session = await requirePermission("observation:read");
-  const t = await getTranslations("Auditee");
 
   const { observations, nextCursor } = await getObservationsForAuditee(session);
 
@@ -31,14 +29,14 @@ export default async function AuditeePage() {
 
   const summaryCards = [
     {
-      label: t("pendingYourResponse"),
+      label: "Pending Your Response",
       count: pendingResponse,
       icon: AlertTriangle,
       color: "text-amber-600",
       bg: "bg-amber-50",
     },
     {
-      label: t("awaitingReview"),
+      label: "Awaiting Review",
       count: awaitingReview,
       icon: Clock,
       color: "text-blue-600",
@@ -52,7 +50,7 @@ export default async function AuditeePage() {
       bg: "bg-red-50",
     },
     {
-      label: t("totalFindings"),
+      label: "Total Findings",
       count: total,
       icon: FileText,
       color: "text-emerald-600",
@@ -64,10 +62,10 @@ export default async function AuditeePage() {
     <div className="space-y-4 md:space-y-6">
       <div>
         <h1 className="text-lg font-semibold tracking-tight md:text-2xl">
-          {t("title")}
+          Auditee Portal
         </h1>
         <p className="text-muted-foreground text-sm md:text-base">
-          {t("subtitle")}
+          Respond to audit findings and track remediation
         </p>
       </div>
 

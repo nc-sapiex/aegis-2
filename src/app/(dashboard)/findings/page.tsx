@@ -1,4 +1,3 @@
-import { getTranslations } from "@/lib/strings";
 import {
   getObservationSummary,
   getObservations,
@@ -20,7 +19,6 @@ import { isBranchScopedObservationReader } from "@/lib/access-scope";
 import { redirect } from "next/navigation";
 
 export default async function FindingsPage() {
-  const t = await getTranslations("Findings");
   const session = await requirePermission("observation:read");
   if (isBranchScopedObservationReader(session.user.roles)) {
     redirect("/auditee");
@@ -34,28 +32,28 @@ export default async function FindingsPage() {
 
   const severityCards = [
     {
-      label: t("critical"),
+      label: "Critical",
       count: summary.bySeverity.CRITICAL ?? summary.bySeverity.critical ?? 0,
       icon: CircleAlert,
       color: "text-red-600",
       bg: "bg-red-50",
     },
     {
-      label: t("high"),
+      label: "High",
       count: summary.bySeverity.HIGH ?? summary.bySeverity.high ?? 0,
       icon: AlertTriangle,
       color: "text-orange-600",
       bg: "bg-orange-50",
     },
     {
-      label: t("medium"),
+      label: "Medium",
       count: summary.bySeverity.MEDIUM ?? summary.bySeverity.medium ?? 0,
       icon: Clock,
       color: "text-yellow-600",
       bg: "bg-yellow-50",
     },
     {
-      label: t("low"),
+      label: "Low",
       count: summary.bySeverity.LOW ?? summary.bySeverity.low ?? 0,
       icon: CheckCircle2,
       color: "text-green-600",
@@ -68,10 +66,10 @@ export default async function FindingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {t("title")}
+            Audit Findings
           </h1>
           <p className="text-muted-foreground text-sm md:text-base">
-            {t("subtitle", { count: summary.total })}
+            {`${summary.total} findings across all audits`}
           </p>
         </div>
         <div className="flex items-center gap-2">

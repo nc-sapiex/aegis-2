@@ -1,6 +1,6 @@
 import "server-only";
 import { renderEmailTemplate } from "@/emails/render";
-import { sendEmail } from "@/lib/ses-client";
+import { getMailer } from "@/lib/mail/mailer";
 import { logger } from "@/lib/logger";
 import { env } from "@/env";
 
@@ -34,7 +34,7 @@ export async function sendInvitationEmail(
       expiresOn: params.expiresAt.toISOString().slice(0, 10),
     });
 
-    const result = await sendEmail({
+    const result = await getMailer().send({
       to: params.to,
       subject,
       htmlBody: html,

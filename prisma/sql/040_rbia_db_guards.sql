@@ -6,7 +6,7 @@
 --   2. ExaminationNode path/code consistency CHECK constraint
 --
 -- Apply manually after schema push:
---   psql $DATABASE_URL -f prisma/migrations/20260222_rbia_db_guards.sql
+--   psql $DATABASE_URL -f prisma/sql/040_rbia_db_guards.sql
 --
 -- This script is IDEMPOTENT — safe to run multiple times.
 -- =============================================================================
