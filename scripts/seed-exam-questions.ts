@@ -31,6 +31,7 @@
 import { PrismaClient } from "../src/generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
+import { fileURLToPath } from "node:url";
 
 /* ------------------------------------------------------------------ */
 /*  Bootstrap Prisma with pg.Pool for proper cleanup                  */
@@ -525,12 +526,19 @@ async function main() {
 /* ------------------------------------------------------------------ */
 /*  Execute with proper cleanup                                       */
 /* ------------------------------------------------------------------ */
-main()
-  .catch((err) => {
-    console.error("Seed failed:", err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-    await pool.end();
-  });
+// Only run when executed directly (`pnpm seed:exam-questions`), not when
+// build-core-pack.ts imports HOUSING_LOAN_QUESTIONS to assemble the core
+// pack's source data.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main()
+    .catch((err) => {
+      console.error("Seed failed:", err);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+      await pool.end();
+    });
+}
+
+export { HOUSING_LOAN_QUESTIONS };

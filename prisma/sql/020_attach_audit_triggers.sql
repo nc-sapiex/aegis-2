@@ -26,7 +26,8 @@ DECLARE
     -- cleanly. Kept in step with AUDITED_TABLES and AUDIT_TRIGGER_TABLES.
     'ActionPoint', 'RamAssessment', 'RamAssessmentScore', 'BranchRbiaScore',
     -- Remaining scoring tables; their write paths now set session context.
-    'ExaminationResponse', 'EngagementSectionNa', 'AccountExamResponse', 'PopulationRecord'
+    'ExaminationResponse', 'EngagementSectionNa', 'AccountExamResponse', 'PopulationRecord',
+    'ContentPackInstall'
   ];
 BEGIN
   FOREACH t IN ARRAY audited LOOP

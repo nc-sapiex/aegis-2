@@ -1,0 +1,7 @@
+# packs/example-forex/modules.yaml
+- code: FX
+  name: Forex Business
+  domain: FOREX
+  kinds: [CHECKLIST]
+  applicability: { hasForex: true }
+  weight: 1.5

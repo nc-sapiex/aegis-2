@@ -58,6 +58,7 @@ const AUDIT_TRIGGER_TABLES = [
   "EngagementSectionNa",
   "AccountExamResponse",
   "PopulationRecord",
+  "ContentPackInstall",
 ] as const;
 
 export interface RequiredObjects {

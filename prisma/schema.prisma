@@ -326,6 +326,7 @@ model Tenant {
   auditEngagements       AuditEngagement[]
   // v6.0 RBIA relations
   auditModules           AuditModule[]
+  contentPackInstalls    ContentPackInstall[]
   examinationNodes       ExaminationNode[]
   // v7.0 Sample-Based Examination relations
   examinationQuestions    ExaminationQuestion[]
@@ -387,6 +388,7 @@ model User {
   notifications        NotificationQueue[]   @relation("NotificationRecipient")
   notificationPreference NotificationPreference? @relation("NotificationPreference")
   generatedReports     BoardReport[]         @relation("ReportGeneratedBy")
+  installedPacks       ContentPackInstall[]
   auditTeamMemberships AuditTeamMember[]
   committeeMemberships CommitteeMember[]
   verifiedActionPlans  ActionPlan[]      @relation("ActionPlanVerifier")
@@ -2001,8 +2003,9 @@ model AuditModule {
 
   weight Decimal @default(1.0) @db.Decimal(5, 4) // bank-editable, used in the composite
 
-  packId      String? @db.Uuid // null for bank-authored modules
-  packVersion String?
+  packId      String?             @db.Uuid // null for bank-authored modules
+  packInstall ContentPackInstall? @relation(fields: [packId], references: [id])
+  packVersion String? // denormalized copy of packInstall.version at the time this module was installed/upgraded
 
   isActive Boolean @default(true)
 
@@ -2022,6 +2025,27 @@ model AuditModule {
   @@unique([tenantId, code])
   @@index([tenantId])
   @@index([tenantId, isActive])
+}
+
+model ContentPackInstall {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  packCode String // the manifest's `id`, e.g. "core", "example-forex"
+  version  String // semver, e.g. "1.0.0"
+
+  contentHash String // sha256 hex, from the installed manifest
+
+  installedAt   DateTime  @default(now())
+  installedById String    @db.Uuid
+  installedBy   User      @relation(fields: [installedById], references: [id])
+  uninstalledAt DateTime? // set on uninstall (§7.3: deactivates, never deletes)
+
+  modules AuditModule[]
+
+  @@unique([tenantId, packCode])
+  @@index([tenantId])
 }
 
 // ─── Examination Node (v6.0 — hierarchical examination framework) ──────────

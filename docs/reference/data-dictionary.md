@@ -4,10 +4,10 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `53c9f74` (module-framework/foundation)
+> Source commit: `c4483ea` (content-packs/foundation)
 
 Every table AEGIS maintains, with its columns, types and relationships.
-**74 models** and **25 enumerations**.
+**75 models** and **25 enumerations**.
 
 Conventions used throughout the schema:
 
@@ -77,6 +77,7 @@ Conventions used throughout the schema:
 - [RbiChecklistItem](#rbichecklistitem)
 - [OnboardingProgress](#onboardingprogress)
 - [AuditModule](#auditmodule)
+- [ContentPackInstall](#contentpackinstall)
 - [ExaminationNode](#examinationnode)
 - [ExaminationResponse](#examinationresponse)
 - [BranchRbiaScore](#branchrbiascore)
@@ -173,6 +174,7 @@ Conventions used throughout the schema:
 | `auditPlans` | AuditPlan[] | no | FK→AuditPlan |  |  |
 | `auditEngagements` | AuditEngagement[] | no | FK→AuditEngagement |  |  |
 | `auditModules` | AuditModule[] | no | FK→AuditModule |  | v6.0 RBIA relations |
+| `contentPackInstalls` | ContentPackInstall[] | no | FK→ContentPackInstall |  |  |
 | `examinationNodes` | ExaminationNode[] | no | FK→ExaminationNode |  |  |
 | `examinationQuestions` | ExaminationQuestion[] | no | FK→ExaminationQuestion |  | v7.0 Sample-Based Examination relations |
 | `populationRecords` | PopulationRecord[] | no | FK→PopulationRecord |  |  |
@@ -221,6 +223,7 @@ Conventions used throughout the schema:
 | `notifications` | NotificationQueue[] | no | FK→NotificationQueue |  | relation |
 | `notificationPreference` | NotificationPreference | yes | FK→NotificationPreference |  | relation |
 | `generatedReports` | BoardReport[] | no | FK→BoardReport |  | relation |
+| `installedPacks` | ContentPackInstall[] | no | FK→ContentPackInstall |  |  |
 | `auditTeamMemberships` | AuditTeamMember[] | no | FK→AuditTeamMember |  |  |
 | `committeeMemberships` | CommitteeMember[] | no | FK→CommitteeMember |  |  |
 | `verifiedActionPlans` | ActionPlan[] | no | FK→ActionPlan |  | relation |
@@ -1700,7 +1703,7 @@ Indexes and constraints:
 | `applicability` | Json | no |  | `"{}"` | JSON predicate over the branch profile, e.g. {"hasForex": true} or {"loanProducts": {"contains": "GOLD"}}; {} means always applicable. |
 | `weight` | Decimal `@db.Decimal` | no |  | `1.0` |  |
 | `packId` | String `@db.Uuid` | yes |  |  |  |
-| `packVersion` | String | yes |  |  |  |
+| `packInstall` | ContentPackInstall | yes | FK→ContentPackInstall |  | relation |
 | `isActive` | Boolean | no |  | `true` |  |
 | `createdAt` | DateTime | no |  | `now()` |  |
 | `updatedAt` | DateTime | no |  |  |  |
@@ -1719,6 +1722,25 @@ Indexes and constraints:
 - `@@unique([tenantId, code])`
 - `@@index([tenantId])`
 - `@@index([tenantId, isActive])`
+
+## ContentPackInstall
+
+*Tenant-scoped:* **yes** — always filter by `tenantId`
+
+| Column | Type | Null | Key | Default | Notes |
+|---|---|---|---|---|---|
+| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
+| `tenantId` | String `@db.Uuid` | no |  |  |  |
+| `tenant` | Tenant | no | FK→Tenant |  | relation |
+| `installedAt` | DateTime | no |  | `now()` |  |
+| `installedById` | String `@db.Uuid` | no |  |  |  |
+| `installedBy` | User | no | FK→User |  | relation |
+| `modules` | AuditModule[] | no | FK→AuditModule |  |  |
+
+Indexes and constraints:
+
+- `@@unique([tenantId, packCode])`
+- `@@index([tenantId])`
 
 ## ExaminationNode
 
