@@ -17,9 +17,6 @@ beforeAll(async () => {
   await withFixtures(async () => {
     tenantId = (await createTenant("Module Admin Bank")).id;
     await createUser(tenantId, ["CAE"]);
-    // weight is Decimal(5,4) (schema.prisma) — max absolute value < 10, so
-    // the brief's literal weights of 30/20 overflow that column. Scaled
-    // down to 3/2 here; the 0.4 share assertion below is unaffected.
     await integrationOwner.auditModule.create({
       data: {
         tenantId,
@@ -28,7 +25,7 @@ beforeAll(async () => {
         domain: "CREDIT",
         kinds: ["CHECKLIST"],
         applicability: {},
-        weight: 3,
+        weight: 30,
         isActive: true,
       },
     });
@@ -40,7 +37,7 @@ beforeAll(async () => {
         domain: "ADMIN",
         kinds: ["CHECKLIST"],
         applicability: {},
-        weight: 2,
+        weight: 20,
         isActive: true,
       },
     });
@@ -183,14 +180,11 @@ describe("saveModuleWeights", () => {
     const crd = await integrationOwner.auditModule.findFirstOrThrow({
       where: { tenantId, code: "CRD" },
     });
-    // weight is Decimal(5,4) (schema.prisma) — same overflow constraint noted
-    // in the beforeAll fixture above; the brief's literal 45 exceeds it, so
-    // 5 stands in as a valid, in-range 1-100 value here.
-    const result = await saveModuleWeights([{ moduleId: crd.id, weight: 5 }]);
+    const result = await saveModuleWeights([{ moduleId: crd.id, weight: 45 }]);
     expect(result.success).toBe(true);
     const updated = await integrationOwner.auditModule.findUniqueOrThrow({
       where: { id: crd.id },
     });
-    expect(Number(updated.weight)).toBe(5);
+    expect(Number(updated.weight)).toBe(45);
   });
 });

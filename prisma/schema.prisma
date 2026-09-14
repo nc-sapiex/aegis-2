@@ -2001,7 +2001,7 @@ model AuditModule {
   // {"loanProducts": {"contains": "GOLD"}}; {} means always applicable.
   applicability Json @default("{}")
 
-  weight Decimal @default(1.0) @db.Decimal(5, 4) // bank-editable, used in the composite
+  weight Int @default(1) // bank-editable 1-100, used in the composite (Global Constraints: core modules never 0)
 
   packId      String?             @db.Uuid // null for bank-authored modules
   packInstall ContentPackInstall? @relation(fields: [packId], references: [id])
