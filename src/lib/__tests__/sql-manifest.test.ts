@@ -14,7 +14,7 @@ describe("SQL manifest", () => {
 
   it("applies the audit trigger function before attaching triggers", () => {
     const fn = SQL_MANIFEST.findIndex((p) =>
-      p.includes("audit_trigger_null_safe"),
+      p.includes("audit_trigger_function"),
     );
     const attach = SQL_MANIFEST.findIndex((p) =>
       p.includes("attach_audit_triggers"),

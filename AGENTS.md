@@ -30,9 +30,9 @@ prettier --write .    # Format files
 
 ```bash
 pnpm db:generate      # Generate Prisma client
-pnpm db:push          # Sync schema to local database
-pnpm db:migrate       # Create/apply local Prisma migration
-pnpm db:apply <path>  # Apply one loose .sql from prisma/migrations/ (CI rehearses this)
+pnpm db:push          # Sync schema to local database (fast local iteration)
+pnpm db:migrate       # prisma migrate deploy && db:bootstrap && db:verify (production/CI)
+pnpm db:apply <path>  # Apply one prisma/sql/*.sql file by hand
 pnpm db:bootstrap     # Apply prisma/sql/manifest.ts: triggers, views, functions, composite FKs
 pnpm db:verify        # Assert every bootstrap object landed
 pnpm db:seed          # Seed database via prisma/seed.ts
