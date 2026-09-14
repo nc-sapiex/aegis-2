@@ -13,9 +13,7 @@ export function ResponseHistoryPanel({
   revisions: RevisionEntry[];
 }) {
   return (
-    <div
-      className="fixed right-0 top-0 h-full w-[440px] border-l border-[color:var(--border)] bg-[color:var(--background)] p-4"
-    >
+    <div className="fixed top-0 right-0 h-full w-[440px] border-l border-[color:var(--border)] bg-[color:var(--background)] p-4">
       <h2 className="text-[16px] font-medium">Score history</h2>
       <div className="mt-4 border-b border-[color:var(--border)] py-2 text-sm">
         <div>

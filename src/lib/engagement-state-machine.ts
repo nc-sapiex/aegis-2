@@ -24,8 +24,7 @@ export type { EngagementStatus, Role };
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export type TransitionResult =
-  | { allowed: true }
-  | { allowed: false; reason: string };
+  { allowed: true } | { allowed: false; reason: string };
 
 /**
  * Context required to evaluate prerequisites for state transitions.

@@ -16,8 +16,7 @@ export default async function OnboardingPage() {
   const session = await requireOnboardingPermission("admin:manage_settings");
 
   const tenantId = (session.user as Record<string, unknown>).tenantId as
-    | string
-    | undefined;
+    string | undefined;
 
   // Check if tenant is already onboarded
   if (tenantId) {

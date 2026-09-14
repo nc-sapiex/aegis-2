@@ -78,5 +78,4 @@ export type UpdateQuestionInput = z.infer<typeof UpdateQuestionSchema>;
 export type DeactivateQuestionInput = z.infer<typeof DeactivateQuestionSchema>;
 
 export type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string };
+  { success: true; data: T } | { success: false; error: string };

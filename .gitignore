@@ -51,6 +51,7 @@ blob-report/
 .auto-claude-status
 .claude_settings.json
 .worktrees/
+.worktree-*/
 .security-key
 logs/security/
 

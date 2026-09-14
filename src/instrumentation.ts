@@ -35,5 +35,4 @@ export async function register() {
       process.once("SIGINT", () => void shutdown("SIGINT"));
     }
   }
-
 }

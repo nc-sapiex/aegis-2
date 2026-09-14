@@ -4,11 +4,19 @@ import reactPlugin from "eslint-plugin-react";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 
 const eslintConfig = [
-  // `.claude/` and `.worktrees/` hold git worktrees, which live inside the
-  // working directory — without these, `pnpm lint` walks another branch's
-  // checkout and reports thousands of problems from code not in this tree.
-  // Same reason `.prettierignore` lists them.
-  { ignores: [".claude/", ".worktrees/", ".next/", "playwright-report/"] },
+  // `.claude/`, `.worktrees/` and `.worktree-*` hold git worktrees, which
+  // live inside the working directory — without these, `pnpm lint` walks
+  // another branch's checkout and reports thousands of problems from code
+  // not in this tree. Same reason `.prettierignore` lists them.
+  {
+    ignores: [
+      ".claude/",
+      ".worktrees/",
+      ".worktree-*/",
+      ".next/",
+      "playwright-report/",
+    ],
+  },
   ...coreWebVitals,
   ...typescript,
   {
