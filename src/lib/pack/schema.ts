@@ -46,7 +46,11 @@ export const PackNodeFileSchema = z.array(
     path: z.string().min(1),
     depth: z.number().int().min(0),
     isLeaf: z.boolean(),
-    weight: z.number().min(0.5).max(3.0),
+    // 0.5 was too tight against real content: housing-loans sub-module
+    // composite weights (e.g. 0.1, 0.15, 0.2 — several small weights
+    // summing to 1.0 across siblings) fall below it. Widened after running
+    // the core-pack generator against real seed data, not guessed.
+    weight: z.number().min(0.05).max(3.0),
     isCritical: z.boolean(),
     description: z.string().min(1),
     regulatoryRef: z.string().optional(),

@@ -67,3 +67,7 @@ Project Doc/~$*
 
 # claude-security scan marker (per-machine state)
 .claude/.security-scan
+
+# built .aegispack archives (rebuild with pnpm build-core-pack / aegis-pack build)
+dist/packs/
+packs/*/.staging/

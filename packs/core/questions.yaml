@@ -1,0 +1,188 @@
+- code: CRD-HLN-Q1
+  moduleCode: CRD-HLN
+  text: Is the loan application complete with all required KYC documents (Aadhaar,
+    PAN, address proof), income proof, and property documents on file?
+  rbiReference: Master Direction on KYC
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q2
+  moduleCode: CRD-HLN
+  text: Has the sanction letter been issued to the borrower with all mandatory
+    terms including loan amount, tenure, interest rate, repayment schedule,
+    security details, pre-payment charges, and conditions precedent?
+  rbiReference: Master Direction on Housing Finance
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q3
+  moduleCode: CRD-HLN
+  text: Is CERSAI registration completed within 30 days of mortgage creation for
+    the housing loan?
+  rbiReference: Master Direction on Housing Finance
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q4
+  moduleCode: CRD-HLN
+  text: Has a title search and legal opinion covering at least 30 years of
+    ownership chain been obtained before sanction, confirming clear and
+    marketable title free from encumbrances and litigation?
+  rbiReference: Master Direction on Housing Finance
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q5
+  moduleCode: CRD-HLN
+  text: Has the loan agreement been executed on proper stamp paper before or at
+    the time of first disbursement, with all original title deeds in the bank's
+    custody and acknowledged in the document checklist?
+  rbiReference: Master Direction on Housing Finance
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q1
+  moduleCode: CRD-HLN
+  text: Was the property valuation conducted by a bank-empanelled valuer, and is
+    the valuation report within the policy-prescribed validity period?
+  rbiReference: Master Direction on Housing Finance
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q2
+  moduleCode: CRD-HLN
+  text: Is the loan-to-value (LTV) ratio within RBI-prescribed limits — up to 90%
+    for loans up to Rs. 30 lakh, 80% for Rs. 30-75 lakh, and 75% for loans above
+    Rs. 75 lakh — using the lower of market value and guideline value?
+  rbiReference: Master Direction on Housing Finance
+  weight: 1.5
+  isCritical: false
+- code: CRD-HLN-Q3
+  moduleCode: CRD-HLN
+  text: Is property insurance coverage (covering full reinstatement value with the
+    bank as loss-payee) in place and current, along with life insurance or
+    PMJJBY coverage for the borrower as per policy?
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q4
+  moduleCode: CRD-HLN
+  text: Has periodic re-valuation of the mortgaged property been conducted at the
+    frequency prescribed by policy (at least once in three years)?
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q1
+  moduleCode: CRD-HLN
+  text: Has the borrower's repayment capacity been assessed with EMI/NMI ratio
+    within policy limits, based on audited financials, ITR, and banking
+    statements for the last 12 months?
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q2
+  moduleCode: CRD-HLN
+  text: Has a credit bureau report (CIBIL/Equifax) been obtained and evaluated for
+    all applicants, co-applicants, and guarantors, with credit score meeting
+    policy threshold and no undisclosed overdue accounts?
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q3
+  moduleCode: CRD-HLN
+  text: Was the loan sanctioned by the competent authority within the
+    Board-approved delegation of powers, with committee-level approval (with
+    signed minutes) for loans at or above the applicable threshold?
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q4
+  moduleCode: CRD-HLN
+  text: Was a pre-sanction site visit/inspection of the property conducted and
+    documented before sanction?
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q1
+  moduleCode: CRD-HLN
+  text: For under-construction properties, are disbursements released in stages
+    linked to certified construction progress, with physical verification by a
+    bank official or empanelled engineer before each tranche?
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q2
+  moduleCode: CRD-HLN
+  text: Has end-use verification been completed within the prescribed timeframe
+    after final disbursement, with end-use certificate on file?
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q3
+  moduleCode: CRD-HLN
+  text: Was no disbursement released before mortgage creation, and are all
+    conditions precedent in the sanction letter (insurance, PDC/ECS/NACH
+    mandate, guarantees) fulfilled before first disbursement?
+  rbiReference: Master Direction on Housing Finance
+  weight: 1.5
+  isCritical: false
+- code: CRD-HLN-Q1
+  moduleCode: CRD-HLN
+  text: Is the housing loan correctly classified under Priority Sector Lending per
+    RBI guidelines — loans up to Rs. 35 lakh (metropolitan) / Rs. 25 lakh
+    (non-metropolitan) for dwellings valued up to Rs. 45 lakh / Rs. 30 lakh?
+  rbiReference: Master Direction on PSL
+  weight: 2
+  isCritical: true
+- code: CRD-HLN-Q2
+  moduleCode: CRD-HLN
+  text: If classified under PSL for EWS/LIG/MIG categories (PMAY), is the
+    borrower's income category correctly identified and documented, with CLSS
+    subsidy claims submitted to NHB/HUDCO within prescribed timelines?
+  rbiReference: Master Direction on PSL
+  weight: 1.5
+  isCritical: true
+- code: CRD-HLN-Q3
+  moduleCode: CRD-HLN
+  text: Is the interest rate applied linked to the Board-approved benchmark
+    (EBLR/MCLR/PLR) and within the approved pricing grid based on credit score,
+    LTV, and loan amount, with rate reset methodology disclosed in the loan
+    agreement?
+  rbiReference: Master Direction on Interest Rate on Advances
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q4
+  moduleCode: CRD-HLN
+  text: Are all statutory returns related to housing loans filed within prescribed
+    timelines — CRILC reporting for SMA-2/NPA accounts, NHB quarterly returns,
+    RBI DSB returns on PSL compliance, and CERSAI registration within 30 days?
+  rbiReference: Master Direction on Housing Finance
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q1
+  moduleCode: CRD-HLN
+  text: Is NPA classification timely per RBI IRAC norms — accounts classified as
+    NPA after 90 days past due without manual override — and is the CBS-driven
+    NPA flag not suppressed without authorized approval?
+  rbiReference: Master Circular on Income Recognition and Asset Classification
+  weight: 2
+  isCritical: true
+- code: CRD-HLN-Q2
+  moduleCode: CRD-HLN
+  text: Is provisioning held as per RBI IRAC norms — 15% for sub-standard, 25-40%
+    for doubtful (age-based), and 100% for loss assets — with correct asset
+    classification applied?
+  rbiReference: Master Circular on Income Recognition and Asset Classification
+  weight: 1.5
+  isCritical: true
+- code: CRD-HLN-Q3
+  moduleCode: CRD-HLN
+  text: Is any restructuring or rescheduling of housing loan properly documented,
+    classified as per the applicable restructuring framework, and recovery
+    efforts documented with timeline and escalation history?
+  rbiReference: Master Circular on Income Recognition and Asset Classification
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q1
+  moduleCode: CRD-HLN
+  text: Is SMA (Special Mention Account) classification generated by CBS
+    automatically based on DPD — SMA-0 (1-30 days), SMA-1 (31-60 days), SMA-2
+    (61-90 days) — with SMA-2 accounts reported to CRILC within prescribed
+    timelines?
+  rbiReference: RBI Prudential Framework for Resolution of Stressed Assets
+  weight: 1
+  isCritical: false
+- code: CRD-HLN-Q2
+  moduleCode: CRD-HLN
+  text: Is the borrower's account reviewed at least annually with updated income
+    assessment, EMI collection tracked through NACH/ECS with bounce instances
+    documented, and early warning signals (job loss, CIBIL drop, frequent EMI
+    bounces) monitored and escalated?
+  weight: 1
+  isCritical: false
