@@ -45,7 +45,9 @@ export function AssignmentEmail({
         </Text>
       </Section>
 
-      {descriptionExcerpt && <Text style={excerptStyle}>{descriptionExcerpt}</Text>}
+      {descriptionExcerpt && (
+        <Text style={excerptStyle}>{descriptionExcerpt}</Text>
+      )}
 
       <CtaButton href={observationUrl} text="View Observation" />
 

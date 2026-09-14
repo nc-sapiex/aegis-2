@@ -592,8 +592,17 @@ async function seedLifecycle() {
       "CRD-HLN examination node not found. Run seed-rbia-housing first.",
     );
 
+  const housingModule = await prisma.auditModule.findUnique({
+    where: { tenantId_code: { tenantId, code: "CRD-HLN" } },
+    select: { id: true },
+  });
+  if (!housingModule)
+    throw new Error(
+      "CRD-HLN AuditModule not found. Run seed-rbia-housing first.",
+    );
+
   const examQuestions = await prisma.examinationQuestion.findMany({
-    where: { tenantId, moduleCode: "CRD-HLN", isActive: true },
+    where: { tenantId, moduleId: housingModule.id, isActive: true },
     select: { id: true, text: true, category: true },
     orderBy: { displayOrder: "asc" },
   });
@@ -771,12 +780,12 @@ async function seedLifecycle() {
   });
 
   // Module selection
-  await prisma.engagementModuleSelection.create({
+  await prisma.engagementModule.create({
     data: {
       id: ID.modSel,
       tenantId,
       engagementId: ID.eng1,
-      moduleNodeId: moduleNode.id,
+      moduleId: housingModule.id,
       isAutoSelected: true,
       selectionReason: "Branch type: BRANCH — Housing Loans module applicable",
     },
@@ -802,7 +811,7 @@ async function seedLifecycle() {
         nodeId: node.id,
         score: s.score,
         scoreLabel: s.label as any,
-        workingNotes: s.notes || null,
+        remarks: s.notes || null,
         flagForObservation: s.flag?.includes("obs") ?? false,
         flagForActionPoint: s.flag?.includes("ap") ?? false,
         respondedById:
@@ -817,7 +826,7 @@ async function seedLifecycle() {
   }
   console.log(`    ✓ ${SCORES.length} examination responses`);
 
-  // 3b. Loan Accounts (50)
+  // 3b. Population records (50 housing-loan accounts)
   console.log("  Creating loan accounts...");
   const loanIds: string[] = [];
   const sampledIndices = [0, 5, 10, 15, 20, 25, 35, 40, 47, 49]; // mix of asset classes
@@ -827,26 +836,27 @@ async function seedLifecycle() {
     const outstanding = Math.round(sanction * (0.6 + (i % 4) * 0.1));
     const isSampled = sampledIndices.includes(i);
     const acctNo = `HL-KTH-2025-${String(i + 1).padStart(4, "0")}`;
-    await prisma.loanAccount.create({
+    const sanctionDate = d(
+      `${2020 + (i % 5)}-${String((i % 12) + 1).padStart(2, "0")}-15`,
+    );
+    await prisma.populationRecord.create({
       data: {
         id: ID.loan[i],
         tenantId,
         engagementId: ID.eng1,
         branchId: kothrudId,
-        moduleCode: "CRD-HLN",
-        accountNo: acctNo,
-        borrowerName: `${FIRST_NAMES[i]} ${LAST_NAMES[i]}`,
-        productType: PRODUCTS[i % PRODUCTS.length],
-        sanctionAmount: sanction,
-        sanctionDate: d(
-          `${2020 + (i % 5)}-${String((i % 12) + 1).padStart(2, "0")}-15`,
-        ),
-        outstandingAmount: outstanding,
-        assetClass,
-        dpd,
+        moduleId: housingModule.id,
+        recordKey: acctNo,
+        displayName: `${FIRST_NAMES[i]} ${LAST_NAMES[i]}`,
+        amount: outstanding,
+        date: sanctionDate,
+        classification: assetClass,
         isSampled,
         sampledAt: isSampled ? d("2025-11-05T10:00:00Z") : null,
         metadata: {
+          productType: PRODUCTS[i % PRODUCTS.length],
+          sanctionAmount: sanction,
+          dpd,
           ltvRatio: 70 + (i % 20),
           interestRate: 8.5 + (i % 10) * 0.1,
           tenure: 120 + (i % 12) * 12,
@@ -857,13 +867,29 @@ async function seedLifecycle() {
   }
   console.log("    ✓ 50 loan accounts (10 sampled)");
 
+  await prisma.populationSchema.upsert({
+    where: { moduleId: housingModule.id },
+    create: {
+      tenantId,
+      moduleId: housingModule.id,
+      columnMapping: {
+        recordKey: "Account No",
+        displayName: "Borrower Name",
+        amount: "Outstanding",
+        date: "Sanction Date",
+        classification: "Asset Class",
+      },
+    },
+    update: {},
+  });
+
   // 3c. Sampling Config
   await prisma.samplingConfig.create({
     data: {
       id: ID.sampling,
       tenantId,
       engagementId: ID.eng1,
-      moduleCode: "CRD-HLN",
+      moduleId: housingModule.id,
       sampleSizePct: 20.0,
       criteriaBuckets: [
         {
@@ -923,7 +949,7 @@ async function seedLifecycle() {
           id: uid(`aer:${ai}-${qi}`),
           tenantId,
           engagementId: ID.eng1,
-          loanAccountId: loanId,
+          recordId: loanId,
           questionId: q.id,
           status: status as any,
           note,
@@ -953,7 +979,8 @@ async function seedLifecycle() {
         title: ap.title,
         description: ap.description,
         severity: ap.severity as any,
-        moduleCode: ap.moduleCode,
+        kind: "FINDING",
+        moduleId: housingModule.id,
         sourceResponseId: sourceNode ? uid(`er:${sourceNode.code}`) : null,
         status: "ISSUED",
         bmResponseText: ap.hasBmResponse
@@ -1328,13 +1355,11 @@ async function seedLifecycle() {
         title: obs.title,
         severity: obs.severity as any,
         status: obs.status as any,
-        criteria: obs.criteria,
-        condition: obs.condition,
-        cause: obs.cause,
-        effect: obs.effect,
+        description: `${obs.condition}\n\nCriteria: ${obs.criteria}\n\nRoot cause: ${obs.cause}\n\nEffect: ${obs.effect}`,
         recommendation: obs.recommendation,
         riskCategory: obs.riskCategory,
-        observationType: "FORMAL",
+        pertainsTo: obs.riskCategory === "COMPLIANCE" ? "OPERATIONS" : "FINANCE",
+        moduleId: housingModule.id,
         branchId: kothrudId,
         auditAreaId: creditArea.id,
         engagementId: ID.eng1,
@@ -1345,7 +1370,7 @@ async function seedLifecycle() {
       },
     });
   }
-  console.log("  ✓ 6 formal observations (5C format)");
+  console.log("  ✓ 6 formal observations");
 
   // A LOW-severity observation parked in COMPLIANCE, so the E2E suite can
   // exercise the COMPLIANCE → CLOSED transition deterministically. The title is
@@ -1362,13 +1387,13 @@ async function seedLifecycle() {
     data: {
       tenantId,
       title: "E2E fixture: low severity awaiting closure",
-      condition: "Register not initialled for two days",
-      criteria: "Branch operations manual, clause 4.2",
-      cause: "Officer on leave without a delegate",
-      effect: "Minor control lapse",
+      description:
+        "Register not initialled for two days. Criteria: Branch operations manual, clause 4.2. Root cause: Officer on leave without a delegate. Effect: Minor control lapse.",
       recommendation: "Nominate a standing delegate",
       severity: "LOW",
       status: "COMPLIANCE",
+      pertainsTo: "OPERATIONS",
+      moduleId: housingModule.id,
       branchId: kothrudId,
       auditAreaId: creditArea.id,
       createdById: sureshId,
