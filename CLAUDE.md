@@ -43,7 +43,7 @@ releases nothing.
 ## Commands
 
 ```bash
-pnpm db:generate && pnpm db:push && pnpm db:bootstrap && pnpm db:verify && pnpm db:seed
+pnpm db:generate && pnpm db:migrate && pnpm db:seed
 pnpm dev
 pnpm tsc --noEmit          # typecheck; CI runs exactly this
 pnpm lint                  # eslint (docs:check runs in CI's lint job)
