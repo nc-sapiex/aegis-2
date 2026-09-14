@@ -899,7 +899,7 @@ model AuditEngagement {
   // v6.0 RBIA relations
   examinationResponsesV2  ExaminationResponse[]
   branchRbiaScore         BranchRbiaScore?
-  moduleSelections        EngagementModuleSelection[]
+  engagementModules       EngagementModule[]
   sectionNaMarks          EngagementSectionNa[]
   meetings                EngagementMeeting[]
   actionPointsV2          ActionPoint[]
@@ -2194,7 +2194,7 @@ model AuditModule {
   sectionNaMarks    EngagementSectionNa[]
   populationRecords PopulationRecord[]
   populationSchema  PopulationSchema?
-  // engagementModules EngagementModule[] — added in Task 5, when EngagementModule lands
+  engagementModules EngagementModule[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -2246,7 +2246,6 @@ model ExaminationNode {
 
   // Relations
   responses            ExaminationResponse[]
-  moduleSelections     EngagementModuleSelection[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
@@ -2330,25 +2329,27 @@ model BranchRbiaScore {
   @@index([branchId, frozenAt])
 }
 
-// ─── Engagement Module Selection (v6.0 — dynamic module selection per engagement) ─
+// ─── Engagement Module (v6.0 — dynamic module selection per engagement) ─
 
-model EngagementModuleSelection {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId       String @db.Uuid
+model EngagementModule {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId String @db.Uuid
 
-  engagementId   String          @db.Uuid
-  engagement     AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  engagementId String          @db.Uuid
+  engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
 
-  moduleNodeId   String          @db.Uuid
-  moduleNode     ExaminationNode @relation(fields: [moduleNodeId], references: [id])
+  moduleId String      @db.Uuid
+  module   AuditModule @relation(fields: [moduleId], references: [id])
+
+  packVersion String? // the module's packVersion in force when added to this engagement
 
   isAutoSelected  Boolean @default(false)
-  selectionReason String?  // e.g., "Branch type: LARGE", "Manual addition by Lead Auditor"
-  removalReason   String? @db.Text  // Documented reason for manual removal (ENGG-06 audit trail)
+  selectionReason String? // e.g., "Branch type: LARGE", "Manual addition by Lead Auditor"
+  removalReason   String? @db.Text // Documented reason for manual removal (ENGG-06 audit trail)
 
   createdAt DateTime @default(now())
 
-  @@unique([engagementId, moduleNodeId])
+  @@unique([engagementId, moduleId])
   @@index([tenantId])
   @@index([engagementId])
 }

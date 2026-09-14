@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `31407d7` (module-framework/foundation)
+> Source commit: `8a77ac7` (module-framework/foundation)
 
 AEGIS has two callable surfaces.
 
@@ -179,9 +179,9 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 | Module | Audited | Exported functions | Tables touched |
 |---|---|---|---|
 | `rbia/bm-evidence.ts` | — | `requestBmEvidenceUpload`, `confirmBmEvidenceUpload` | ActionPoint, Evidence |
-| `rbia/examination.ts` | yes | `saveExaminationResponse`, `autoSelectModulesAction`, `addModuleSelectionAction`, `removeModuleSelectionAction` | ActionPoint, AuditEngagement, EngagementModuleSelection, ExaminationNode, ExaminationResponse |
+| `rbia/examination.ts` | yes | `saveExaminationResponse`, `autoSelectModulesAction`, `addModuleSelectionAction`, `removeModuleSelectionAction` | ActionPoint, AuditEngagement, AuditModule, EngagementModule, ExaminationNode, ExaminationResponse |
 | `rbia/findings.ts` | yes | `createActionPoint`, `updateActionPoint`, `deleteActionPoint`, `promoteToObservation`, `submitBmResponse` | ActionPoint, AuditEngagement, BmResponseBatch, Observation |
-| `rbia/freeze.ts` | yes | `freezeRbiaScore` | ActionPoint, AuditEngagement, BmResponseBatch, BranchRbiaScore, EngagementModuleSelection, ExaminationNode, ExaminationResponse |
+| `rbia/freeze.ts` | yes | `freezeRbiaScore` | ActionPoint, AuditEngagement, BmResponseBatch, BranchRbiaScore, EngagementModule, ExaminationNode, ExaminationResponse |
 | `rbia/meetings.ts` | — | `recordMeeting`, `signOffMeeting` | AuditEngagement, EngagementMeeting |
 | `rbia/revise-score.ts` | yes | `reviseScore` | ExaminationResponse |
 | `rbia/section-not-applicable.ts` | yes | `setSectionNotApplicable` | EngagementSectionNa, ExaminationNode, ExaminationResponse |

@@ -139,7 +139,7 @@ export type SaveExaminationResponseInput = z.infer<
 
 export const AddModuleSelectionSchema = z.object({
   engagementId: z.string().uuid(),
-  moduleNodeId: z.string().uuid(),
+  moduleId: z.string().uuid(),
   reason: z.string().min(1, "Selection reason is required").max(500),
 });
 
@@ -147,7 +147,7 @@ export type AddModuleSelectionInput = z.infer<typeof AddModuleSelectionSchema>;
 
 export const RemoveModuleSelectionSchema = z.object({
   engagementId: z.string().uuid(),
-  moduleNodeId: z.string().uuid(),
+  moduleId: z.string().uuid(),
   reason: z.string().min(1, "Removal reason is required").max(500),
 });
 
@@ -157,7 +157,6 @@ export type RemoveModuleSelectionInput = z.infer<
 
 export const AutoSelectModulesSchema = z.object({
   engagementId: z.string().uuid(),
-  branchCategory: z.string().nullable(),
 });
 
 export type AutoSelectModulesInput = z.infer<typeof AutoSelectModulesSchema>;

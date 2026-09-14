@@ -2,6 +2,10 @@ import "server-only";
 import { prismaForTenant } from "./prisma";
 import type { AuthSession as Session } from "@/lib/auth";
 import type { ScoreLabel } from "@/generated/prisma/enums";
+import {
+  evaluateApplicability,
+  type BranchProfile,
+} from "@/lib/module-applicability";
 
 /**
  * Data Access Layer for RBIA Examination tree and module selection.
@@ -194,65 +198,92 @@ export async function getExaminationTree(
   return buildTree(flatNodes);
 }
 
+// ─── branch profile lookup ───────────────────────────────────────────────────
+
+const EMPTY_BRANCH_PROFILE: BranchProfile = {
+  hasForex: false,
+  hasCurrencyChest: false,
+  hasGovtBusiness: false,
+  hasLockers: false,
+  hasAtm: false,
+  loanProducts: [],
+};
+
+/**
+ * The engagement's branch profile, for applicability evaluation. `branchId`
+ * is nullable until Task 10 makes a branch mandatory for RBIA engagements;
+ * an engagement with no branch yet gets the empty profile, so only
+ * always-applicable ({}) modules match.
+ */
+async function getEngagementBranchProfile(
+  db: ReturnType<typeof prismaForTenant>,
+  tenantId: string,
+  engagementId: string,
+): Promise<BranchProfile> {
+  const engagement = await db.auditEngagement.findFirst({
+    where: { id: engagementId, tenantId },
+    select: {
+      branch: {
+        select: {
+          hasForex: true,
+          hasCurrencyChest: true,
+          hasGovtBusiness: true,
+          hasLockers: true,
+          hasAtm: true,
+          loanProducts: true,
+        },
+      },
+    },
+  });
+  return engagement?.branch ?? EMPTY_BRANCH_PROFILE;
+}
+
 // ─── getApplicableModules ────────────────────────────────────────────────────
 
 /**
- * Return all depth=1 modules applicable to a given branch category.
- * A module is applicable if applicableBranchTypes is empty OR includes the branch category.
+ * Return all active AuditModules whose applicability predicate matches the
+ * engagement's branch profile.
  */
 export async function getApplicableModules(
   session: Session,
-  branchCategory: string | null,
-): Promise<
-  { id: string; code: string; name: string; applicableBranchTypes: string[] }[]
-> {
+  engagementId: string,
+): Promise<{ id: string; code: string; name: string }[]> {
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
 
-  const modules = await db.examinationNode.findMany({
-    where: { tenantId, isActive: true, depth: 1 },
-    select: {
-      id: true,
-      code: true,
-      name: true,
-      applicableBranchTypes: true,
-    },
-    orderBy: { displayOrder: "asc" },
+  const branch = await getEngagementBranchProfile(db, tenantId, engagementId);
+
+  const modules = await db.auditModule.findMany({
+    where: { tenantId, isActive: true },
+    select: { id: true, code: true, name: true, applicability: true },
+    orderBy: { code: "asc" },
   });
 
-  return modules.filter(
-    (m) =>
-      m.applicableBranchTypes.length === 0 ||
-      (branchCategory !== null &&
-        m.applicableBranchTypes.includes(branchCategory)),
-  );
+  return modules.filter((m) => evaluateApplicability(m.applicability, branch));
 }
 
 // ─── autoSelectModules ───────────────────────────────────────────────────────
 
 /**
- * Create EngagementModuleSelection rows for all applicable modules.
- * Uses createMany with skipDuplicates to be idempotent.
+ * Create EngagementModule rows for every module applicable to the
+ * engagement's branch. Uses createMany with skipDuplicates to be idempotent.
  */
 export async function autoSelectModules(
   session: Session,
   engagementId: string,
-  branchCategory: string | null,
 ): Promise<void> {
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
 
-  const applicableModules = await getApplicableModules(session, branchCategory);
+  const applicableModules = await getApplicableModules(session, engagementId);
 
-  await db.engagementModuleSelection.createMany({
+  await db.engagementModule.createMany({
     data: applicableModules.map((m) => ({
       tenantId,
       engagementId,
-      moduleNodeId: m.id,
+      moduleId: m.id,
       isAutoSelected: true,
-      selectionReason: branchCategory
-        ? `Auto-selected for branch type: ${branchCategory}`
-        : "Applies to all branch types",
+      selectionReason: "Auto-selected based on branch profile",
     })),
     skipDuplicates: true,
   });
@@ -270,10 +301,10 @@ export async function getModuleSelections(
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
 
-  return db.engagementModuleSelection.findMany({
+  return db.engagementModule.findMany({
     where: { tenantId, engagementId },
     include: {
-      moduleNode: {
+      module: {
         select: { id: true, code: true, name: true },
       },
     },
@@ -289,17 +320,17 @@ export async function getModuleSelections(
 export async function addModuleSelection(
   session: Session,
   engagementId: string,
-  moduleNodeId: string,
+  moduleId: string,
   reason: string,
 ) {
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
 
-  return db.engagementModuleSelection.create({
+  return db.engagementModule.create({
     data: {
       tenantId,
       engagementId,
-      moduleNodeId,
+      moduleId,
       isAutoSelected: false,
       selectionReason: reason,
     },
@@ -316,15 +347,15 @@ export async function addModuleSelection(
 export async function removeModuleSelection(
   session: Session,
   engagementId: string,
-  moduleNodeId: string,
+  moduleId: string,
   _reason: string, // Passed for API contract; audit context set by server action
 ): Promise<void> {
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
 
-  await db.engagementModuleSelection.delete({
+  await db.engagementModule.delete({
     where: {
-      engagementId_moduleNodeId: { engagementId, moduleNodeId },
+      engagementId_moduleId: { engagementId, moduleId },
     },
   });
 }
@@ -332,7 +363,7 @@ export async function removeModuleSelection(
 // ─── getAllModules ────────────────────────────────────────────────────────────
 
 /**
- * Return ALL active depth-1 ExaminationNode modules regardless of branch type.
+ * Return ALL active AuditModules regardless of branch applicability.
  * Used to populate the Add Module checklist dialog — shows all possible modules
  * so an auditor can manually select any module for inclusion.
  */
@@ -342,9 +373,9 @@ export async function getAllModules(
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
 
-  return db.examinationNode.findMany({
-    where: { tenantId, isActive: true, depth: 1 },
+  return db.auditModule.findMany({
+    where: { tenantId, isActive: true },
     select: { id: true, code: true, name: true },
-    orderBy: { displayOrder: "asc" },
+    orderBy: { code: "asc" },
   });
 }

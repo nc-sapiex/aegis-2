@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `31407d7` (module-framework/foundation)
+> Source commit: `8a77ac7` (module-framework/foundation)
 
 Every table AEGIS maintains, with its columns, types and relationships.
 **79 models** and **25 enumerations**.
@@ -86,7 +86,7 @@ Conventions used throughout the schema:
 - [ExaminationNode](#examinationnode)
 - [ExaminationResponse](#examinationresponse)
 - [BranchRbiaScore](#branchrbiascore)
-- [EngagementModuleSelection](#engagementmoduleselection)
+- [EngagementModule](#engagementmodule)
 - [EngagementSectionNa](#engagementsectionna)
 - [EngagementMeeting](#engagementmeeting)
 - [ActionPoint](#actionpoint)
@@ -686,7 +686,7 @@ Indexes and constraints:
 | `isAuditChecklists` | IsAuditChecklist[] | no | FK→IsAuditChecklist |  |  |
 | `examinationResponsesV2` | ExaminationResponse[] | no | FK→ExaminationResponse |  | v6.0 RBIA relations |
 | `branchRbiaScore` | BranchRbiaScore | yes | FK→BranchRbiaScore |  |  |
-| `moduleSelections` | EngagementModuleSelection[] | no | FK→EngagementModuleSelection |  |  |
+| `engagementModules` | EngagementModule[] | no | FK→EngagementModule |  |  |
 | `sectionNaMarks` | EngagementSectionNa[] | no | FK→EngagementSectionNa |  |  |
 | `meetings` | EngagementMeeting[] | no | FK→EngagementMeeting |  |  |
 | `actionPointsV2` | ActionPoint[] | no | FK→ActionPoint |  |  |
@@ -1873,6 +1873,7 @@ Indexes and constraints:
 | `sectionNaMarks` | EngagementSectionNa[] | no | FK→EngagementSectionNa |  |  |
 | `populationRecords` | PopulationRecord[] | no | FK→PopulationRecord |  |  |
 | `populationSchema` | PopulationSchema | yes | FK→PopulationSchema |  |  |
+| `engagementModules` | EngagementModule[] | no | FK→EngagementModule |  |  |
 
 Indexes and constraints:
 
@@ -1904,7 +1905,6 @@ Indexes and constraints:
 | `createdAt` | DateTime | no |  | `now()` |  |
 | `updatedAt` | DateTime | no |  |  |  |
 | `responses` | ExaminationResponse[] | no | FK→ExaminationResponse |  | Relations |
-| `moduleSelections` | EngagementModuleSelection[] | no | FK→EngagementModuleSelection |  |  |
 
 Indexes and constraints:
 
@@ -1972,7 +1972,7 @@ Indexes and constraints:
 - `@@index([branchId])`
 - `@@index([branchId, frozenAt])`
 
-## EngagementModuleSelection
+## EngagementModule
 
 *Tenant-scoped:* **yes** — always filter by `tenantId`
 
@@ -1982,15 +1982,15 @@ Indexes and constraints:
 | `tenantId` | String `@db.Uuid` | no |  |  |  |
 | `engagementId` | String `@db.Uuid` | no |  |  |  |
 | `engagement` | AuditEngagement | no | FK→AuditEngagement |  | relation |
-| `moduleNodeId` | String `@db.Uuid` | no |  |  |  |
-| `moduleNode` | ExaminationNode | no | FK→ExaminationNode |  | relation |
+| `moduleId` | String `@db.Uuid` | no |  |  |  |
+| `module` | AuditModule | no | FK→AuditModule |  | relation |
 | `isAutoSelected` | Boolean | no |  | `false` |  |
 | `removalReason` | String `@db.Text` | yes |  |  |  |
 | `createdAt` | DateTime | no |  | `now()` |  |
 
 Indexes and constraints:
 
-- `@@unique([engagementId, moduleNodeId])`
+- `@@unique([engagementId, moduleId])`
 - `@@index([tenantId])`
 - `@@index([engagementId])`
 

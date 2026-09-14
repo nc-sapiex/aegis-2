@@ -12,12 +12,23 @@ import {
 /**
  * One module, two leaves, plus a second module that is NOT selected for this
  * engagement. The unselected module exists to prove the freeze scopes to
- * EngagementModuleSelection rather than the whole tenant catalogue.
+ * EngagementModule rather than the whole tenant catalogue.
  */
 async function seedExamination(tenantId: string, userId: string) {
   return withFixtures(async () => {
     const plan = await integrationOwner.auditPlan.create({
       data: { tenantId, year: 2026, quarter: "Q1_APR_JUN", status: "PLANNED" },
+      select: { id: true },
+    });
+    const opsModule = await integrationOwner.auditModule.create({
+      data: {
+        tenantId,
+        code: "OPS",
+        name: "OPS",
+        domain: "OTHER",
+        kinds: ["CHECKLIST"],
+        applicability: {},
+      },
       select: { id: true },
     });
     const branch = await integrationOwner.branch.create({
@@ -49,6 +60,7 @@ async function seedExamination(tenantId: string, userId: string) {
       depth: number,
       isLeaf: boolean,
       parentId: string | null,
+      moduleId: string | null = null,
     ) =>
       integrationOwner.examinationNode.create({
         data: {
@@ -59,6 +71,7 @@ async function seedExamination(tenantId: string, userId: string) {
           depth,
           isLeaf,
           parentId,
+          moduleId,
           weight: 1,
           isActive: true,
         },
@@ -66,15 +79,29 @@ async function seedExamination(tenantId: string, userId: string) {
       });
 
     const root = await node("ROOT", "ROOT", 0, false, null);
-    const ops = await node("OPS", "ROOT/OPS", 1, false, root.id);
-    const opsA = await node("OPS-001", "ROOT/OPS/OPS-001", 2, true, ops.id);
-    const opsB = await node("OPS-002", "ROOT/OPS/OPS-002", 2, true, ops.id);
+    const ops = await node("OPS", "ROOT/OPS", 1, false, root.id, opsModule.id);
+    const opsA = await node(
+      "OPS-001",
+      "ROOT/OPS/OPS-001",
+      2,
+      true,
+      ops.id,
+      opsModule.id,
+    );
+    const opsB = await node(
+      "OPS-002",
+      "ROOT/OPS/OPS-002",
+      2,
+      true,
+      ops.id,
+      opsModule.id,
+    );
     const credit = await node("CREDIT", "ROOT/CREDIT", 1, false, root.id);
     await node("CREDIT-001", "ROOT/CREDIT/CREDIT-001", 2, true, credit.id);
 
     // Only OPS is in scope for this engagement.
-    await integrationOwner.engagementModuleSelection.create({
-      data: { tenantId, engagementId: engagement.id, moduleNodeId: ops.id },
+    await integrationOwner.engagementModule.create({
+      data: { tenantId, engagementId: engagement.id, moduleId: opsModule.id },
     });
 
     return { engagementId: engagement.id, opsA, opsB, userId };
@@ -182,7 +209,7 @@ describe("freezeRbiaScore completeness", () => {
     const cae = await createUser(tenant.id, ["CAE"]);
     const seed = await seedExamination(tenant.id, cae.id);
     await withFixtures(() =>
-      integrationOwner.engagementModuleSelection.deleteMany({
+      integrationOwner.engagementModule.deleteMany({
         where: { engagementId: seed.engagementId },
       }),
     );

@@ -27,7 +27,7 @@ type AllModuleRow = { id: string; code: string; name: string };
 interface AddModuleDialogProps {
   engagementId: string;
   allModules: AllModuleRow[];
-  currentSelectionNodeIds: Set<string>; // Set of moduleNodeId already selected
+  currentSelectionModuleIds: Set<string>; // Set of AuditModule ids already selected
   disabled?: boolean; // When status-gated or frozen
 }
 
@@ -36,7 +36,7 @@ interface AddModuleDialogProps {
 export function AddModuleDialog({
   engagementId,
   allModules,
-  currentSelectionNodeIds,
+  currentSelectionModuleIds,
   disabled,
 }: AddModuleDialogProps) {
   const router = useRouter();
@@ -50,7 +50,7 @@ export function AddModuleDialog({
         allModules.map((m) => [
           m.id,
           {
-            checked: currentSelectionNodeIds.has(m.id),
+            checked: currentSelectionModuleIds.has(m.id),
             reason: "",
           },
         ]),
@@ -68,9 +68,9 @@ export function AddModuleDialog({
   const newlyCheckedModules = useMemo(
     () =>
       allModules.filter(
-        (m) => checkState[m.id]?.checked && !currentSelectionNodeIds.has(m.id),
+        (m) => checkState[m.id]?.checked && !currentSelectionModuleIds.has(m.id),
       ),
-    [allModules, checkState, currentSelectionNodeIds],
+    [allModules, checkState, currentSelectionModuleIds],
   );
 
   // Save is enabled when there's at least one newly checked module with a reason
@@ -108,7 +108,7 @@ export function AddModuleDialog({
         newlyCheckedModules.map((m) =>
           addModuleSelectionAction({
             engagementId,
-            moduleNodeId: m.id,
+            moduleId: m.id,
             reason: (checkState[m.id]?.reason ?? "").trim(),
           }),
         ),
@@ -167,7 +167,7 @@ export function AddModuleDialog({
         <ScrollArea className="max-h-[400px] pr-4">
           <div className="space-y-4 py-2">
             {allModules.map((m) => {
-              const isAlreadySelected = currentSelectionNodeIds.has(m.id);
+              const isAlreadySelected = currentSelectionModuleIds.has(m.id);
               const isChecked = checkState[m.id]?.checked ?? false;
               const isNewlyChecked = isChecked && !isAlreadySelected;
               const reason = checkState[m.id]?.reason ?? "";

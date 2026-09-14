@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `31407d7` (module-framework/foundation)
+> Source commit: `8a77ac7` (module-framework/foundation)
 
 Which processes read and write which tables.
 
@@ -28,7 +28,7 @@ reachability graph.
 | `loan-portfolio` | 3 | `AuditEngagement`, `AuditModule`, `PopulationRecord` |
 | `observations` | 3 | `ComplianceItem`, `Observation`, `ObservationTimeline` |
 | `ram` | 4 | `Branch`, `RamAssessment`, `RamAssessmentScore` |
-| `rbia` | 7 | `ActionPoint`, `AuditEngagement`, `BmResponseBatch`, `BranchRbiaScore`, `EngagementMeeting`, `EngagementModuleSelection`, `EngagementSectionNa`, `Evidence`, `ExaminationNode`, `ExaminationResponse`, `Observation` |
+| `rbia` | 7 | `ActionPoint`, `AuditEngagement`, `AuditModule`, `BmResponseBatch`, `BranchRbiaScore`, `EngagementMeeting`, `EngagementModule`, `EngagementSectionNa`, `Evidence`, `ExaminationNode`, `ExaminationResponse`, `Observation` |
 | `repeat-findings` | 2 | `Observation`, `ObservationTimeline` |
 | `reports` | 3 | `AuditEngagement`, `BoardReport`, `ReportTemplate` |
 | `sampling` | 2 | `PopulationRecord`, `SamplingConfig` |
@@ -63,9 +63,9 @@ Tables reached from the greatest number of domains — the ones where a schema c
 | `BoardReport` | 2 | `compliance`, `reports` |
 | `ComplianceItem` | 2 | `compliance`, `observations` |
 | `NotificationQueue` | 2 | `compliance`, `jobs` |
+| `AuditModule` | 2 | `loan-portfolio`, `rbia` |
 | `BmResponseBatch` | 2 | `jobs`, `rbia` |
 | `Tenant` | 2 | `(root)`, `jobs` |
-| `AccountExamResponse` | 1 | `account-examination` |
 
 ### Domain access graph
 
