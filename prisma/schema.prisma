@@ -900,6 +900,7 @@ model AuditEngagement {
   examinationResponsesV2  ExaminationResponse[]
   branchRbiaScore         BranchRbiaScore?
   engagementModules       EngagementModule[]
+  engagementStatements    EngagementStatement[]
   sectionNaMarks          EngagementSectionNa[]
   meetings                EngagementMeeting[]
   actionPointsV2          ActionPoint[]
@@ -2350,6 +2351,31 @@ model EngagementModule {
   createdAt DateTime @default(now())
 
   @@unique([engagementId, moduleId])
+  @@index([tenantId])
+  @@index([engagementId])
+}
+
+model EngagementStatement {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId String @db.Uuid
+
+  engagementId String          @db.Uuid
+  engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+
+  // Exactly one of nodeId/questionId is set, matching the module's kind.
+  nodeId     String? @db.Uuid
+  questionId String? @db.Uuid
+
+  text      String  @db.Text
+  reference String?
+  weight    Decimal @db.Decimal(5, 4)
+  isCritical Boolean
+  origin    ContentOrigin
+
+  createdAt DateTime @default(now())
+
+  @@unique([engagementId, nodeId])
+  @@unique([engagementId, questionId])
   @@index([tenantId])
   @@index([engagementId])
 }

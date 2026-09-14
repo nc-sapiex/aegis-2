@@ -4,10 +4,10 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `8a77ac7` (module-framework/foundation)
+> Source commit: `f060328` (module-framework/foundation)
 
 Every table AEGIS maintains, with its columns, types and relationships.
-**79 models** and **25 enumerations**.
+**80 models** and **25 enumerations**.
 
 Conventions used throughout the schema:
 
@@ -87,6 +87,7 @@ Conventions used throughout the schema:
 - [ExaminationResponse](#examinationresponse)
 - [BranchRbiaScore](#branchrbiascore)
 - [EngagementModule](#engagementmodule)
+- [EngagementStatement](#engagementstatement)
 - [EngagementSectionNa](#engagementsectionna)
 - [EngagementMeeting](#engagementmeeting)
 - [ActionPoint](#actionpoint)
@@ -687,6 +688,7 @@ Indexes and constraints:
 | `examinationResponsesV2` | ExaminationResponse[] | no | FK→ExaminationResponse |  | v6.0 RBIA relations |
 | `branchRbiaScore` | BranchRbiaScore | yes | FK→BranchRbiaScore |  |  |
 | `engagementModules` | EngagementModule[] | no | FK→EngagementModule |  |  |
+| `engagementStatements` | EngagementStatement[] | no | FK→EngagementStatement |  |  |
 | `sectionNaMarks` | EngagementSectionNa[] | no | FK→EngagementSectionNa |  |  |
 | `meetings` | EngagementMeeting[] | no | FK→EngagementMeeting |  |  |
 | `actionPointsV2` | ActionPoint[] | no | FK→ActionPoint |  |  |
@@ -1991,6 +1993,32 @@ Indexes and constraints:
 Indexes and constraints:
 
 - `@@unique([engagementId, moduleId])`
+- `@@index([tenantId])`
+- `@@index([engagementId])`
+
+## EngagementStatement
+
+*Tenant-scoped:* **yes** — always filter by `tenantId`
+
+| Column | Type | Null | Key | Default | Notes |
+|---|---|---|---|---|---|
+| `id` | String `@db.Uuid` | no | PK | `dbgenerated("gen_random_uuid()")` |  |
+| `tenantId` | String `@db.Uuid` | no |  |  |  |
+| `engagementId` | String `@db.Uuid` | no |  |  |  |
+| `engagement` | AuditEngagement | no | FK→AuditEngagement |  | relation |
+| `nodeId` | String `@db.Uuid` | yes |  |  | Exactly one of nodeId/questionId is set, matching the module's kind. |
+| `questionId` | String `@db.Uuid` | yes |  |  |  |
+| `text` | String `@db.Text` | no |  |  |  |
+| `reference` | String | yes |  |  |  |
+| `weight` | Decimal `@db.Decimal` | no |  |  |  |
+| `isCritical` | Boolean | no |  |  |  |
+| `origin` | ContentOrigin | no |  |  |  |
+| `createdAt` | DateTime | no |  | `now()` |  |
+
+Indexes and constraints:
+
+- `@@unique([engagementId, nodeId])`
+- `@@unique([engagementId, questionId])`
 - `@@index([tenantId])`
 - `@@index([engagementId])`
 

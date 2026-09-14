@@ -7,6 +7,9 @@ import { setAuditContext } from "@/data-access/audit-context";
 import { hasPermission, type Role } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { requireTenantRefs, TenantRefError } from "@/data-access/tenant-refs";
+import type { AuditModule } from "@/generated/prisma/client";
+import { evaluateApplicability } from "@/lib/module-applicability";
+import { materializeEngagementStatements } from "@/data-access/engagement-statements";
 import { CreateEngagementSchema, type CreateEngagementInput } from "./schemas";
 
 /**
@@ -102,6 +105,33 @@ export async function createEngagement(input: CreateEngagementInput) {
           ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
         },
       });
+
+      // Evaluate module applicability against the branch profile and select
+      // every module that matches (spec §6.6); the lead auditor can add or
+      // remove afterward via the module rail.
+      const branch = await tx.branch.findUniqueOrThrow({
+        where: { id: validated.branchId },
+      });
+      const activeModules = await tx.auditModule.findMany({
+        where: { tenantId, isActive: true },
+      });
+      const applicable = activeModules.filter((m: AuditModule) =>
+        evaluateApplicability(m.applicability, branch),
+      );
+
+      if (applicable.length > 0) {
+        await tx.engagementModule.createMany({
+          data: applicable.map((m: AuditModule) => ({
+            tenantId,
+            engagementId: engagement.id,
+            moduleId: m.id,
+            packVersion: m.packVersion,
+            isAutoSelected: true,
+            selectionReason: "Matched branch profile",
+          })),
+        });
+        await materializeEngagementStatements(tx, engagement.id, tenantId);
+      }
 
       return engagement;
     });

@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `8a77ac7` (module-framework/foundation)
+> Source commit: `f060328` (module-framework/foundation)
 
 AEGIS has two callable surfaces.
 
@@ -120,7 +120,7 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 | `audit-execution/assign-team.ts` | — | `assignTeamMember`, `removeTeamMember` | AuditTeamMember |
 | `audit-execution/bh-certificate.ts` | — | `signBhCertificate`, `countersignBhCertificate`, `getBhCertificateStatus` | AuditEngagement |
 | `audit-execution/cash-verification.ts` | — | `saveCashVerification`, `getCashVerificationAction` | AuditEngagement, CashCheck |
-| `audit-execution/create-engagement.ts` | — | `createEngagement` | AuditEngagement |
+| `audit-execution/create-engagement.ts` | — | `createEngagement` | AuditEngagement, AuditModule, Branch, EngagementModule |
 | `audit-execution/import-loan-csv.ts` | — | `importLoanReviewCsv` | AuditEngagement, LoanReview |
 | `audit-execution/transition-engagement-status.ts` | — | `transitionEngagementStatus` | AuditEngagement |
 | `audit-execution/upload-examination-evidence.ts` | — | `requestExaminationEvidenceUpload`, `confirmExaminationEvidenceUpload`, `getExaminationEvidenceDownloadUrl` | AuditEngagement, AuditExaminationResponse, Evidence |
