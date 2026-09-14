@@ -6,9 +6,10 @@ cross-cutting rules (audit triggers, tenant scoping) stay in the root `CLAUDE.md
 ## Applying migrations
 
 - `prisma/migrations/` is a real Prisma migrations directory: `pnpm db:migrate`
-  (`prisma migrate deploy`) is the production/CI path. Local iteration still
-  uses `pnpm db:push` for speed; the integration harness resets with
-  `prisma db push --force-reset`.
+  (`prisma migrate deploy`) is the production/CI path. `pnpm db:migrate:dev`
+  (`prisma migrate dev`) creates a new migration from a `schema.prisma`
+  change. Local iteration still uses `pnpm db:push` for speed; the
+  integration harness resets with `prisma db push --force-reset`.
 - Everything Prisma can't express from `schema.prisma` — functions, views,
   triggers, composite FKs, RLS policies — lives in `prisma/sql/*.sql`, applied
   in the numbered order in `prisma/sql/manifest.ts` by `pnpm db:bootstrap`.

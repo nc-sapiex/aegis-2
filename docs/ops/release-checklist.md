@@ -39,7 +39,13 @@ pg-boss row count.
       against a live database. A database that already has the current schema
       from `db:push` needs the baseline marked resolved once —
       `npx prisma migrate resolve --applied 0_baseline` — before its first
-      `db:migrate` run; see `prisma/CLAUDE.md`.
+      `db:migrate` run; see `prisma/CLAUDE.md`. **If that database predates
+      2026-09-05** and may hold duplicate `(accountId, providerId)` rows on
+      `Account`, dedup them by hand first — the baseline only creates the
+      unique index (`@@unique([accountId, providerId])` in `schema.prisma`),
+      not the row cleanup the retired `20260905_account_unique_*.sql` did;
+      `migrate deploy` fails on the index if duplicates remain. See that
+      file's `DELETE` step in git history if needed.
 - [ ] Run the pre-check queries in the header of
       `prisma/sql/060_tenant_composite_fks.sql` — each must return zero rows. If
       any returns rows there is cross-tenant data: **stop and repair it.** Do not
