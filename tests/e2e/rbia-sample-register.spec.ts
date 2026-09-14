@@ -32,20 +32,13 @@ test.describe("RBIA sample-account register", () => {
       page.getByRole("heading", { name: /sample-account register/i }),
     ).toBeVisible();
     await expect(page.getByText(/sample · \d+ accounts/i)).toBeVisible();
-    await expect(
-      page.getByRole("columnheader", { name: "Compliant" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("columnheader", { name: "Violation" }),
-    ).toBeVisible();
-    await expect(page.getByRole("columnheader", { name: "N/A" })).toBeVisible();
 
-    const registerRows = page.locator("tbody tr");
-    await expect(registerRows.first()).toBeVisible();
-    const firstRow = registerRows.first();
+    const firstTickGroup = page.locator('[role="radiogroup"]').first();
+    await expect(firstTickGroup).toBeVisible();
+    await expect(firstTickGroup.getByRole("radio")).toHaveCount(3);
 
-    await firstRow.getByRole("radio", { name: "compliant" }).click();
-    await expect(firstRow.getByText("Compliant")).toBeVisible();
+    await firstTickGroup.getByRole("radio", { name: "Compliant" }).click();
+    await expect(page.getByText("Compliant").first()).toBeVisible();
 
     const accountButtons = page.locator(
       'nav[aria-label="Sampled accounts"] button',
