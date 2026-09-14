@@ -1,5 +1,6 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
+import type { ContentOrigin, ScoreLabel } from "@/generated/prisma/enums";
 import { prismaForTenant } from "@/lib/prisma";
 
 /**
@@ -74,4 +75,110 @@ export async function getEngagementStatements(
     where: { tenantId, engagementId },
     orderBy: { createdAt: "asc" },
   });
+}
+
+export type RegisterRow = {
+  id: string;
+  code: string;
+  text: string;
+  isCritical: boolean;
+  origin: ContentOrigin;
+  scoreLabel: ScoreLabel | null;
+  remarks: string | null;
+  isNotApplicable: boolean;
+  notApplicableReason: string | null;
+  version: number;
+  respondedByName: string | null;
+};
+
+/**
+ * The flat register for one module's leaf statements: frozen text/weight/
+ * criticality from EngagementStatement (Task 6 ground truth), joined to the
+ * live ExaminationResponse. A leaf with no response row yet (not examined)
+ * gets version 1 — matching ExaminationResponse.version's DB default, so
+ * scoreStatement's first save for that row can upsert on it.
+ */
+export async function getModuleRegister(
+  tenantId: string,
+  engagementId: string,
+  moduleCode: string,
+): Promise<RegisterRow[]> {
+  const db = prismaForTenant(tenantId);
+  const auditModule = await db.auditModule.findFirst({
+    where: { tenantId, code: moduleCode },
+    select: { id: true },
+  });
+  if (!auditModule) return [];
+
+  const nodes = await db.examinationNode.findMany({
+    where: {
+      tenantId,
+      moduleId: auditModule.id,
+      isLeaf: true,
+      isActive: true,
+    },
+    orderBy: [{ path: "asc" }, { displayOrder: "asc" }],
+    select: { id: true, code: true },
+  });
+  if (nodes.length === 0) return [];
+  const nodeIds = nodes.map((n) => n.id);
+
+  const [statements, responses] = await Promise.all([
+    db.engagementStatement.findMany({
+      where: { tenantId, engagementId, nodeId: { in: nodeIds } },
+      select: { nodeId: true, text: true, isCritical: true, origin: true },
+    }),
+    db.examinationResponse.findMany({
+      where: { tenantId, engagementId, nodeId: { in: nodeIds } },
+      select: {
+        nodeId: true,
+        scoreLabel: true,
+        remarks: true,
+        isNotApplicable: true,
+        notApplicableReason: true,
+        version: true,
+        respondedById: true,
+      },
+    }),
+  ]);
+
+  const userIds = [
+    ...new Set(
+      responses
+        .map((r) => r.respondedById)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const users = userIds.length
+    ? await db.user.findMany({
+        where: { tenantId, id: { in: userIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const nameById = new Map(users.map((u) => [u.id, u.name]));
+
+  const statementByNode = new Map(statements.map((s) => [s.nodeId, s]));
+  const responseByNode = new Map(responses.map((r) => [r.nodeId, r]));
+
+  return nodes
+    .filter((n) => statementByNode.has(n.id))
+    .map((n) => {
+      const statement = statementByNode.get(n.id)!;
+      const response = responseByNode.get(n.id);
+      return {
+        id: n.id,
+        code: n.code,
+        text: statement.text,
+        isCritical: statement.isCritical,
+        origin: statement.origin,
+        scoreLabel: response?.scoreLabel ?? null,
+        remarks: response?.remarks ?? null,
+        isNotApplicable: response?.isNotApplicable ?? false,
+        notApplicableReason: response?.notApplicableReason ?? null,
+        version: response?.version ?? 1,
+        respondedByName: response?.respondedById
+          ? (nameById.get(response.respondedById) ?? null)
+          : null,
+      };
+    });
 }

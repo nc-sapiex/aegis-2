@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `d82fb9f` (module-framework/foundation)
+> Source commit: `1cfd049` (module-framework/foundation)
 
 Which processes read and write which tables.
 
@@ -28,7 +28,7 @@ reachability graph.
 | `loan-portfolio` | 3 | `AuditEngagement`, `AuditModule`, `PopulationRecord` |
 | `observations` | 3 | `ComplianceItem`, `Observation`, `ObservationTimeline` |
 | `ram` | 4 | `Branch`, `RamAssessment`, `RamAssessmentScore` |
-| `rbia` | 7 | `ActionPoint`, `AuditEngagement`, `AuditModule`, `BmResponseBatch`, `BranchRbiaScore`, `EngagementMeeting`, `EngagementModule`, `EngagementSectionNa`, `Evidence`, `ExaminationNode`, `ExaminationResponse`, `Observation` |
+| `rbia` | 8 | `ActionPoint`, `AuditEngagement`, `AuditModule`, `BmResponseBatch`, `BranchRbiaScore`, `EngagementMeeting`, `EngagementModule`, `EngagementSectionNa`, `Evidence`, `ExaminationNode`, `ExaminationResponse`, `Observation` |
 | `repeat-findings` | 2 | `Observation`, `ObservationTimeline` |
 | `reports` | 3 | `AuditEngagement`, `BoardReport`, `ReportTemplate` |
 | `sampling` | 2 | `PopulationRecord`, `SamplingConfig` |

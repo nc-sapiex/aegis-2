@@ -78,7 +78,33 @@ export async function scoreStatement(input: ScoreStatementInput) {
           },
         });
         if (result.count === 0) {
-          throw new Error("VERSION_CONFLICT");
+          // No row matched. If the caller expected the DB default (version 1),
+          // this statement may simply never have been scored yet — the
+          // register only synthesizes that default, it never seeds the row
+          // (see getModuleRegister). Create it; a unique-constraint failure
+          // means a row now exists after all, a real conflict.
+          if (expectedVersion !== 1) {
+            throw new Error("VERSION_CONFLICT");
+          }
+          try {
+            await tx.examinationResponse.create({
+              data: {
+                tenantId,
+                engagementId,
+                nodeId,
+                score: SCORE_VALUES[scoreLabel as ScoreLabel],
+                scoreLabel: scoreLabel as ScoreLabel,
+                isNotApplicable: false,
+                notApplicableReason: null,
+                remarks,
+                respondedById: session.user.id,
+                respondedAt: new Date(),
+                version: 2,
+              },
+            });
+          } catch {
+            throw new Error("VERSION_CONFLICT");
+          }
         }
         const updated = await tx.examinationResponse.findUniqueOrThrow({
           where: { engagementId_nodeId: { engagementId, nodeId } },

@@ -21,6 +21,7 @@ let tenantId: string;
 let branchId: string;
 let engagementId: string;
 let nodeId: string;
+let unscoredNodeId: string;
 let userId: string;
 
 beforeAll(async () => {
@@ -79,6 +80,22 @@ beforeAll(async () => {
     await integrationPrisma.examinationResponse.create({
       data: { tenantId, engagementId, nodeId },
     });
+
+    const unscoredNode = await integrationPrisma.examinationNode.create({
+      data: {
+        tenantId,
+        moduleId: auditModule.id,
+        code: "CRD-02",
+        name: "Doc2",
+        path: "CRD/CRD-02",
+        depth: 1,
+        isLeaf: true,
+        weight: 1,
+        isCritical: false,
+        description: "Loan file has a valuation report",
+      },
+    });
+    unscoredNodeId = unscoredNode.id;
   });
 });
 
@@ -129,6 +146,19 @@ describe("scoreStatement", () => {
     });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.version).toBe(3);
+  });
+
+  it("creates a response on first score when no row exists yet", async () => {
+    const { scoreStatement } = await import("@/actions/rbia/score-statement");
+    const result = await scoreStatement({
+      engagementId,
+      nodeId: unscoredNodeId,
+      scoreLabel: "FULLY_COMPLIANT",
+      remarks: null,
+      expectedVersion: 1,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.version).toBe(2);
   });
 
   it("refuses to score once the engagement's score is frozen", async () => {

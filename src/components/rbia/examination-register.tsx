@@ -1,56 +1,54 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import * as React from "react";
+import { cn } from "@/lib/utils";
+import { ScaleTick } from "./scale-tick";
+import { StateWord } from "./state-word";
+import { RemarksBand } from "./remarks-band";
+import { deriveStatementState } from "@/lib/statement-state";
+import { scoreStatement } from "@/actions/rbia/score-statement";
 import { saveAccountExamResponse } from "@/actions/account-examination/save-response";
+import type { ScoreLabel, ContentOrigin } from "@/generated/prisma/enums";
 
-type ScaleStatus =
-  | "FULLY_COMPLIANT"
-  | "LARGELY_COMPLIANT"
-  | "PARTIALLY_COMPLIANT"
-  | "NON_COMPLIANT"
-  | "NOT_APPLICABLE";
-
-type BinaryStatus = "COMPLIANT" | "VIOLATION" | "NOT_APPLICABLE";
-
-type RegisterStatus = ScaleStatus | BinaryStatus | null;
+export type BinaryStatus = "COMPLIANT" | "VIOLATION" | "NOT_APPLICABLE";
 
 export type RegisterStatement = {
   id: string;
   code: string;
   text: string;
+  isCritical?: boolean;
+  origin?: ContentOrigin;
 };
 
 export type RegisterResponse = {
-  status: RegisterStatus;
+  value: ScoreLabel | BinaryStatus | null;
   remarks: string | null;
+  isNotApplicable?: boolean;
+  notApplicableReason?: string | null;
+  version?: number;
+  respondedByName?: string | null;
 };
 
-function StateWord({ status }: { status: RegisterStatus }) {
-  if (!status) {
-    return (
-      <span className="text-[color:var(--muted-foreground)]">Untouched</span>
-    );
-  }
+const SCALE_KEYS: Record<string, ScoreLabel> = {
+  "1": "FULLY_COMPLIANT",
+  "2": "LARGELY_COMPLIANT",
+  "3": "PARTIALLY_COMPLIANT",
+  "4": "MARGINALLY_COMPLIANT",
+  "5": "NON_COMPLIANT",
+};
 
-  const labels: Record<Exclude<RegisterStatus, null>, string> = {
-    FULLY_COMPLIANT: "Fully compliant",
-    LARGELY_COMPLIANT: "Largely compliant",
-    PARTIALLY_COMPLIANT: "Partially compliant",
-    NON_COMPLIANT: "Non-compliant",
-    COMPLIANT: "Compliant",
-    VIOLATION: "Violation",
-    NOT_APPLICABLE: "N/A",
-  };
-
-  return <span>{labels[status]}</span>;
-}
+const BINARY_LABEL: Record<BinaryStatus, string> = {
+  COMPLIANT: "Compliant",
+  VIOLATION: "Violation",
+  NOT_APPLICABLE: "Not applicable",
+};
 
 function BinaryTick({
-  status,
+  value,
   disabled,
   onSet,
 }: {
-  status: BinaryStatus | null;
+  value: BinaryStatus | null;
   disabled: boolean;
   onSet: (status: BinaryStatus) => void;
 }) {
@@ -61,305 +59,317 @@ function BinaryTick({
           key={option}
           type="button"
           role="radio"
-          aria-checked={status === option}
+          aria-checked={value === option}
+          aria-label={BINARY_LABEL[option]}
           disabled={disabled}
           onClick={() => onSet(option)}
-          className="h-[22px] min-h-11 w-[22px] min-w-11 rounded-full border border-[color:var(--border-strong)] data-[selected=true]:bg-[color:var(--primary)]"
-          data-selected={status === option}
-          aria-label={option.replaceAll("_", " ").toLowerCase()}
-        >
-          {status === option ? "✓" : ""}
-        </button>
+          className={cn(
+            "h-[22px] min-h-11 w-[22px] min-w-11 rounded-full border border-[color:var(--border-strong)]",
+            value === option &&
+              option === "VIOLATION" &&
+              "bg-[color:var(--destructive)]",
+            value === option &&
+              option !== "VIOLATION" &&
+              "bg-[color:var(--primary)]",
+          )}
+        />
       ))}
     </div>
   );
 }
 
-function ScaleTick({
-  status,
-  disabled,
-  onSet,
+function BinaryStateWord({
+  value,
+  saveFailed,
 }: {
-  status: ScaleStatus | null;
-  disabled: boolean;
-  onSet: (status: ScaleStatus) => void;
+  value: BinaryStatus | null;
+  saveFailed: boolean;
 }) {
-  const options: ScaleStatus[] = [
-    "FULLY_COMPLIANT",
-    "LARGELY_COMPLIANT",
-    "PARTIALLY_COMPLIANT",
-    "NON_COMPLIANT",
-    "NOT_APPLICABLE",
-  ];
-
+  if (saveFailed) {
+    return (
+      <span className="text-[11px] tracking-wide text-[color:var(--destructive)] uppercase">
+        Not saved · Retry
+      </span>
+    );
+  }
+  if (!value) {
+    return (
+      <span className="text-[11px] tracking-wide text-[color:var(--muted-foreground)] uppercase">
+        Untouched
+      </span>
+    );
+  }
   return (
-    <div role="radiogroup" className="flex items-center gap-2">
-      {options.map((option) => (
-        <button
-          key={option}
-          type="button"
-          role="radio"
-          aria-checked={status === option}
-          disabled={disabled}
-          onClick={() => onSet(option)}
-          className="h-[22px] min-h-11 w-[22px] min-w-11 rounded border border-[color:var(--border-strong)] data-[selected=true]:bg-[color:var(--primary)]"
-          data-selected={status === option}
-          aria-label={option.replaceAll("_", " ").toLowerCase()}
-        >
-          {status === option ? "✓" : ""}
-        </button>
-      ))}
-    </div>
+    <span
+      className={cn(
+        "text-[11px] tracking-wide uppercase",
+        value === "VIOLATION"
+          ? "text-[color:var(--destructive)]"
+          : "text-[color:var(--muted-foreground)]",
+      )}
+    >
+      {BINARY_LABEL[value]}
+    </span>
   );
 }
 
 export function ExaminationRegister({
+  engagementId,
   statements,
-  responses,
+  initialResponses,
   mode = "scale",
   disabled = false,
   binaryContext,
 }: {
+  engagementId: string;
   statements: RegisterStatement[];
-  responses: Record<string, RegisterResponse>;
+  initialResponses: Record<string, RegisterResponse>;
   mode?: "scale" | "binary";
   disabled?: boolean;
-  binaryContext?: {
-    engagementId: string;
-    recordId: string;
-    canRespond: boolean;
-  };
+  binaryContext?: { recordId: string; canRespond: boolean };
 }) {
-  const initialRows = useMemo(
-    () =>
-      Object.fromEntries(
-        statements.map((statement) => [
-          statement.id,
-          responses[statement.id] ?? { status: null, remarks: null },
-        ]),
-      ) as Record<string, RegisterResponse>,
-    [responses, statements],
+  const [responses, setResponses] = React.useState(initialResponses);
+  const [saveFailed, setSaveFailed] = React.useState<Record<string, boolean>>(
+    {},
   );
+  const [drafts, setDrafts] = React.useState<
+    Record<string, { remarks: string; naReason: string }>
+  >({});
 
-  const [rows, setRows] =
-    useState<Record<string, RegisterResponse>>(initialRows);
-  const [savedRows, setSavedRows] =
-    useState<Record<string, RegisterResponse>>(initialRows);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  React.useEffect(() => {
+    setResponses(initialResponses);
+  }, [initialResponses]);
 
-  useEffect(() => {
-    setRows(initialRows);
-    setSavedRows(initialRows);
-  }, [initialRows]);
+  const rowDisabled =
+    disabled || (mode === "binary" && !binaryContext?.canRespond);
 
-  const saveBinary = (
-    statementId: string,
-    status: BinaryStatus,
-    remarks: string | null,
-    rollback: RegisterResponse,
-    attempted: RegisterResponse,
-  ) => {
-    if (!binaryContext?.canRespond || disabled) {
+  async function handleScoreScale(nodeId: string, label: ScoreLabel) {
+    const current = responses[nodeId] ?? { value: null, remarks: null };
+    const draft = drafts[nodeId]?.remarks ?? current.remarks ?? "";
+    setResponses((r) => ({
+      ...r,
+      [nodeId]: { ...current, value: label, isNotApplicable: false },
+    }));
+    const result = await scoreStatement({
+      engagementId,
+      nodeId,
+      scoreLabel: label,
+      remarks: draft || null,
+      expectedVersion: current.version ?? 1,
+    });
+    if (!result.success) {
+      setSaveFailed((f) => ({ ...f, [nodeId]: true }));
+      setResponses((r) => ({ ...r, [nodeId]: current }));
       return;
     }
+    setSaveFailed((f) => ({ ...f, [nodeId]: false }));
+    setResponses((r) => ({
+      ...r,
+      [nodeId]: { ...r[nodeId], version: result.data.version },
+    }));
+  }
 
-    startTransition(async () => {
-      const result = await saveAccountExamResponse({
-        engagementId: binaryContext.engagementId,
-        recordId: binaryContext.recordId,
-        questionId: statementId,
-        status,
-        note: remarks,
-      });
-
+  function handleScoreBinary(questionId: string, status: BinaryStatus) {
+    if (!binaryContext?.canRespond || disabled) return;
+    const current = responses[questionId] ?? { value: null, remarks: null };
+    const draft = drafts[questionId]?.remarks ?? current.remarks ?? null;
+    const attempted: RegisterResponse = { value: status, remarks: draft };
+    setResponses((r) => ({ ...r, [questionId]: attempted }));
+    void saveAccountExamResponse({
+      engagementId,
+      recordId: binaryContext.recordId,
+      questionId,
+      status,
+      note: draft,
+    }).then((result) => {
       if (!result.success) {
-        setSaveError(result.error);
-        setRows((current) => {
-          const live = current[statementId];
+        setSaveFailed((f) => ({ ...f, [questionId]: true }));
+        setResponses((r) => {
+          const live = r[questionId];
           if (
-            live?.status === attempted.status &&
-            live?.remarks === attempted.remarks
+            live?.value === attempted.value &&
+            live.remarks === attempted.remarks
           ) {
-            return { ...current, [statementId]: rollback };
+            return { ...r, [questionId]: current };
           }
-          return current;
+          return r;
         });
       } else {
-        setSaveError(null);
-        setSavedRows((current) => ({
-          ...current,
-          [statementId]: attempted,
-        }));
+        setSaveFailed((f) => ({ ...f, [questionId]: false }));
       }
     });
-  };
+  }
 
-  const setStatus = (statementId: string, nextStatus: RegisterStatus) => {
-    const previous = rows[statementId] ?? { status: null, remarks: null };
-    const previousSaved = savedRows[statementId] ?? {
-      status: null,
-      remarks: null,
-    };
-    const next = { ...previous, status: nextStatus };
-    setRows((current) => ({ ...current, [statementId]: next }));
+  function handleToggleNa(nodeId: string, na: boolean) {
+    // ponytail: local only, no persistence yet — Task 17 wires N/A saving.
+    setResponses((r) => ({
+      ...r,
+      [nodeId]: {
+        ...(r[nodeId] ?? { value: null, remarks: null }),
+        isNotApplicable: na,
+        value: na ? null : (r[nodeId]?.value ?? null),
+      },
+    }));
+  }
 
-    if (mode === "binary") {
-      saveBinary(
-        statementId,
-        nextStatus as BinaryStatus,
-        next.remarks,
-        previousSaved,
-        next,
-      );
+  function handleKeyDown(
+    e: React.KeyboardEvent<HTMLDivElement>,
+    statement: RegisterStatement,
+    response: RegisterResponse,
+  ) {
+    if (mode !== "scale" || rowDisabled) return;
+    if (e.key === "0") {
+      handleToggleNa(statement.id, !response.isNotApplicable);
+      return;
     }
-  };
-
-  const setRemarks = (statementId: string, nextRemarks: string) => {
-    const next = {
-      ...(rows[statementId] ?? { status: null, remarks: null }),
-      remarks: nextRemarks || null,
-    };
-    setRows((current) => ({ ...current, [statementId]: next }));
-  };
-
-  const renderTick = (statementId: string, status: RegisterStatus) => {
-    if (mode === "binary") {
-      return (
-        <BinaryTick
-          status={(status as BinaryStatus | null) ?? null}
-          disabled={disabled || !binaryContext?.canRespond || isPending}
-          onSet={(next) => setStatus(statementId, next)}
-        />
-      );
-    }
-
-    return (
-      <ScaleTick
-        status={(status as ScaleStatus | null) ?? null}
-        disabled={disabled || isPending}
-        onSet={(next) => setStatus(statementId, next)}
-      />
-    );
-  };
-
-  const statusHeadings =
-    mode === "binary"
-      ? ["Compliant", "Violation", "N/A"]
-      : ["Fully", "Largely", "Partially", "Non", "N/A"];
+    if (response.isNotApplicable) return;
+    const label = SCALE_KEYS[e.key];
+    if (label) void handleScoreScale(statement.id, label);
+  }
 
   return (
-    <div className="space-y-3">
-      {saveError ? (
-        <p role="alert" aria-live="polite" className="text-sm text-red-600">
-          {saveError}
-        </p>
-      ) : null}
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full min-w-[900px] border-collapse text-sm">
-          <thead>
-            <tr className="bg-muted/40 border-b text-left">
-              <th className="px-3 py-2 font-medium">Statement</th>
-              <th className="px-3 py-2 font-medium">Score</th>
-              {statusHeadings.map((heading) => (
-                <th key={heading} className="px-1 py-2 text-center font-medium">
-                  {heading}
-                </th>
-              ))}
-              <th className="px-3 py-2 font-medium">State</th>
-              <th className="px-3 py-2 font-medium">Remarks</th>
-            </tr>
-          </thead>
-          <tbody>
-            {statements.map((statement) => {
-              const row = rows[statement.id] ?? { status: null, remarks: null };
-              return (
-                <tr
-                  key={statement.id}
-                  id={statement.code}
-                  className="border-b align-top"
-                >
-                  <td className="px-3 py-3">
-                    <p className="font-medium">{statement.code}</p>
-                    <p>{statement.text}</p>
-                  </td>
-                  <td className="px-3 py-3">
-                    {renderTick(statement.id, row.status)}
-                  </td>
-                  {statusHeadings.map((heading, index) => (
-                    <td
-                      key={`${statement.id}-${heading}`}
-                      className="px-1 py-3 text-center"
-                    >
-                      {mode === "binary"
-                        ? ["COMPLIANT", "VIOLATION", "NOT_APPLICABLE"][
-                            index
-                          ] === row.status
-                          ? "●"
-                          : ""
-                        : [
-                              "FULLY_COMPLIANT",
-                              "LARGELY_COMPLIANT",
-                              "PARTIALLY_COMPLIANT",
-                              "NON_COMPLIANT",
-                              "NOT_APPLICABLE",
-                            ][index] === row.status
-                          ? "●"
-                          : ""}
-                    </td>
-                  ))}
-                  <td className="px-3 py-3">
-                    <StateWord status={row.status} />
-                  </td>
-                  <td className="px-3 py-3">
-                    <textarea
-                      value={row.remarks ?? ""}
-                      onChange={(event) =>
-                        setRemarks(statement.id, event.target.value)
-                      }
-                      onBlur={() => {
-                        if (mode !== "binary" || !row.status) {
-                          return;
-                        }
+    <div>
+      {statements.map((statement) => {
+        const response = responses[statement.id] ?? {
+          value: null,
+          remarks: null,
+        };
+        const failed = Boolean(saveFailed[statement.id]);
+        const draftRemarks =
+          drafts[statement.id]?.remarks ?? response.remarks ?? "";
+        const draftNaReason =
+          drafts[statement.id]?.naReason ?? response.notApplicableReason ?? "";
 
-                        const current = rows[statement.id] ?? {
-                          status: null,
-                          remarks: null,
-                        };
-                        const lastSaved = savedRows[statement.id] ?? {
-                          status: null,
-                          remarks: null,
-                        };
+        const scaleState =
+          mode === "scale"
+            ? deriveStatementState({
+                scoreLabel: (response.value as ScoreLabel | null) ?? null,
+                remarks: draftRemarks,
+                isNotApplicable: Boolean(response.isNotApplicable),
+                saveFailed: failed,
+              })
+            : null;
 
-                        if (
-                          current.status === lastSaved.status &&
-                          current.remarks === lastSaved.remarks
-                        ) {
-                          return;
-                        }
-
-                        saveBinary(
-                          statement.id,
-                          current.status as BinaryStatus,
-                          current.remarks,
-                          lastSaved,
-                          current,
-                        );
-                      }}
-                      placeholder="Add remarks"
-                      className="min-h-16 w-full rounded border border-[color:var(--border)] p-2 text-sm"
-                      disabled={
-                        disabled ||
-                        (mode === "binary" && !binaryContext?.canRespond)
-                      }
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+        return (
+          <div
+            key={statement.id}
+            id={statement.code}
+            className="border-b border-[color:var(--border)] py-2"
+            onKeyDown={(e) => handleKeyDown(e, statement, response)}
+          >
+            <div className="grid grid-cols-[auto_1fr_auto] gap-4">
+              <div>
+                <div className="text-[13px] font-medium tabular-nums">
+                  {statement.code}
+                </div>
+                {statement.isCritical && (
+                  <span className="text-[11px] tracking-wide text-[color:var(--destructive)] uppercase">
+                    Critical
+                  </span>
+                )}
+                {statement.origin === "BANK" && (
+                  <span className="text-[11px] tracking-wide text-[color:var(--primary)] uppercase">
+                    Bank
+                  </span>
+                )}
+                {mode === "scale" && scaleState ? (
+                  <StateWord
+                    state={scaleState}
+                    scoredBy={response.respondedByName ?? undefined}
+                  />
+                ) : (
+                  <BinaryStateWord
+                    value={response.value as BinaryStatus | null}
+                    saveFailed={failed}
+                  />
+                )}
+                {mode === "scale" &&
+                  statement.isCritical &&
+                  scaleState === "non_compliant" && (
+                    <div className="text-[12.5px] text-[color:var(--destructive)]">
+                      Below Partly caps the module at 0.50
+                    </div>
+                  )}
+              </div>
+              <div className="text-[16px]">{statement.text}</div>
+              {mode === "scale" ? (
+                <ScaleTick
+                  statementCode={statement.code}
+                  statementText={statement.text}
+                  value={response.value as ScoreLabel | null}
+                  isNotApplicable={Boolean(response.isNotApplicable)}
+                  disabled={rowDisabled}
+                  onScore={(label) =>
+                    void handleScoreScale(statement.id, label)
+                  }
+                  onToggleNa={(na) => handleToggleNa(statement.id, na)}
+                />
+              ) : (
+                <BinaryTick
+                  value={response.value as BinaryStatus | null}
+                  disabled={rowDisabled}
+                  onSet={(status) => handleScoreBinary(statement.id, status)}
+                />
+              )}
+            </div>
+            {mode === "scale" && scaleState && (
+              <RemarksBand
+                state={scaleState}
+                isNotApplicable={Boolean(response.isNotApplicable)}
+                remarks={draftRemarks}
+                naReason={draftNaReason}
+                scoreEffect={null}
+                onChangeRemarks={(v) =>
+                  setDrafts((d) => ({
+                    ...d,
+                    [statement.id]: {
+                      remarks: v,
+                      naReason: d[statement.id]?.naReason ?? "",
+                    },
+                  }))
+                }
+                onChangeNaReason={(v) =>
+                  setDrafts((d) => ({
+                    ...d,
+                    [statement.id]: {
+                      remarks: d[statement.id]?.remarks ?? "",
+                      naReason: v,
+                    },
+                  }))
+                }
+              />
+            )}
+            {mode === "binary" && (
+              <div className="border-t border-[color:var(--border)] py-2">
+                <textarea
+                  value={draftRemarks}
+                  disabled={rowDisabled}
+                  onChange={(e) =>
+                    setDrafts((d) => ({
+                      ...d,
+                      [statement.id]: {
+                        remarks: e.target.value,
+                        naReason: d[statement.id]?.naReason ?? "",
+                      },
+                    }))
+                  }
+                  onBlur={() => {
+                    if (!response.value) return;
+                    if (draftRemarks === (response.remarks ?? "")) return;
+                    handleScoreBinary(
+                      statement.id,
+                      response.value as BinaryStatus,
+                    );
+                  }}
+                  placeholder="Add remarks"
+                  aria-label="Remarks"
+                  className="min-h-16 w-full rounded border border-[color:var(--border)] p-2 text-sm"
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
