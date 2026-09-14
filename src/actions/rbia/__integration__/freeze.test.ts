@@ -70,14 +70,29 @@ async function seedExamination(tenantId: string, userId: string) {
     const opsA = await node("OPS-001", "ROOT/OPS/OPS-001", 2, true, ops.id);
     const opsB = await node("OPS-002", "ROOT/OPS/OPS-002", 2, true, ops.id);
     const credit = await node("CREDIT", "ROOT/CREDIT", 1, false, root.id);
-    await node("CREDIT-001", "ROOT/CREDIT/CREDIT-001", 2, true, credit.id);
+    const creditLeaf = await node(
+      "CREDIT-001",
+      "ROOT/CREDIT/CREDIT-001",
+      2,
+      true,
+      credit.id,
+    );
 
     // Only OPS is in scope for this engagement.
     await integrationOwner.engagementModuleSelection.create({
       data: { tenantId, engagementId: engagement.id, moduleNodeId: ops.id },
     });
 
-    return { engagementId: engagement.id, opsA, opsB, userId };
+    return {
+      engagementId: engagement.id,
+      branchId: branch.id,
+      ops,
+      opsA,
+      opsB,
+      credit,
+      creditLeaf,
+      userId,
+    };
   });
 }
 
@@ -195,5 +210,81 @@ describe("freezeRbiaScore completeness", () => {
     const result = await freezeRbiaScore({ engagementId: seed.engagementId });
     expect(result.success).toBe(false);
     if (!result.success) expect(result.code).toBe("INCOMPLETE_EXAMINATION");
+  });
+
+  it("freezes when a selected credit module is fully examined as N/A", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    await withFixtures(async () => {
+      await integrationOwner.engagementModuleSelection.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleNodeId: seed.credit.id,
+        },
+      });
+      const account = await integrationOwner.loanAccount.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          branchId: seed.branchId,
+          moduleCode: "CREDIT",
+          accountNo: "LN-NA-001",
+          borrowerName: "N/A Borrower",
+          productType: "Housing Loan",
+          sanctionAmount: 1_000_000,
+          sanctionDate: new Date("2025-01-15"),
+          outstandingAmount: 750_000,
+          assetClass: "STANDARD",
+          isSampled: true,
+        },
+        select: { id: true },
+      });
+      const question = await integrationOwner.examinationQuestion.create({
+        data: {
+          tenantId: tenant.id,
+          moduleCode: "CREDIT",
+          text: "Does this product feature apply?",
+        },
+        select: { id: true },
+      });
+      await integrationOwner.accountExamResponse.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          loanAccountId: account.id,
+          questionId: question.id,
+          status: null,
+          isNotApplicable: true,
+          respondedById: cae.id,
+        },
+      });
+    });
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.compositeScore).toBe(1);
+
+    const creditResponse =
+      await integrationOwner.examinationResponse.findUniqueOrThrow({
+        where: {
+          engagementId_nodeId: {
+            engagementId: seed.engagementId,
+            nodeId: seed.creditLeaf.id,
+          },
+        },
+        select: { isNotApplicable: true, scoreLabel: true },
+      });
+    expect(creditResponse.isNotApplicable).toBe(true);
+    expect(creditResponse.scoreLabel).toBeNull();
   });
 });
