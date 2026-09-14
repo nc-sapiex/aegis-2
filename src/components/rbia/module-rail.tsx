@@ -33,7 +33,7 @@ function RailList({
 }) {
   const groups: RailModule["group"][] = ["CORE", "PACKS", "KERNEL"];
   return (
-    <nav aria-label="Modules">
+    <nav aria-label="Modules" data-rail>
       {groups.map((group) => {
         const inGroup = modules.filter((m) => m.group === group);
         if (inGroup.length === 0) return null;

@@ -26,7 +26,10 @@ export function RemarksBand({
     state === "remarks_due" ||
     (isNotApplicable && naReason.trim().length === 0);
   return (
-    <div className="grid grid-cols-[1fr_auto] gap-2 border-t border-[color:var(--border)] py-2">
+    <div
+      data-remarks-band
+      className="grid grid-cols-[1fr_auto] gap-2 border-t border-[color:var(--border)] py-2"
+    >
       <div
         className={
           required ? "border-l-2 border-[color:var(--warning)] pl-2" : "pl-2"

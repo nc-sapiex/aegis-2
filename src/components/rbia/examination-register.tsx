@@ -228,7 +228,7 @@ export function ExaminationRegister({
   }
 
   return (
-    <div>
+    <div className="examination-register">
       {statements.map((statement) => {
         const response = responses[statement.id] ?? {
           value: null,
@@ -254,6 +254,7 @@ export function ExaminationRegister({
           <div
             key={statement.id}
             id={statement.code}
+            data-section
             className="border-b border-[color:var(--border)] py-2"
             onKeyDown={(e) => handleKeyDown(e, statement, response)}
           >
@@ -340,7 +341,10 @@ export function ExaminationRegister({
               />
             )}
             {mode === "binary" && (
-              <div className="border-t border-[color:var(--border)] py-2">
+              <div
+                data-remarks-band
+                className="border-t border-[color:var(--border)] py-2"
+              >
                 <textarea
                   value={draftRemarks}
                   disabled={rowDisabled}
@@ -370,6 +374,15 @@ export function ExaminationRegister({
           </div>
         );
       })}
+      <div data-register-controls className="py-2">
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="text-[12.5px] text-[color:var(--primary)] underline"
+        >
+          Print section
+        </button>
+      </div>
     </div>
   );
 }

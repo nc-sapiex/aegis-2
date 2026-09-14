@@ -218,3 +218,16 @@ html[lang="gu"] h1 {
     animation-delay: 300ms;
   }
 }
+
+@media print {
+  [data-rail],
+  [data-register-controls] {
+    display: none;
+  }
+  .examination-register [data-remarks-band] {
+    display: block !important;
+  }
+  .examination-register [data-section] {
+    break-after: page;
+  }
+}
