@@ -17,7 +17,9 @@ function row(overrides: Partial<ChainableRow> = {}): ChainableRow {
     actorUserId: "33333333-3333-4333-8333-333333333333",
     changedAt: new Date("2026-09-13T10:15:30.123Z"),
     oldData: null,
-    newData: { code: "A001", name: "A Branch" },
+    // Postgres's jsonb::text format: a space after every ":" and ",", not
+    // JSON.stringify's compact form — see audit-chain.ts's doc comment.
+    newData: '{"code": "A001", "name": "A Branch"}',
     ...overrides,
   };
 }
@@ -28,8 +30,7 @@ describe("hashRow", () => {
       "0000000000000000000000000000000000000000000000000000000000000000" +
       "|11111111-1111-4111-8111-111111111111|1|Branch|22222222-2222-4222-8222-222222222222|INSERT" +
       "|33333333-3333-4333-8333-333333333333|2026-09-13T10:15:30.123Z" +
-      "|null|" +
-      JSON.stringify({ code: "A001", name: "A Branch" });
+      '|null|{"code": "A001", "name": "A Branch"}';
     const expected = createHash("sha256").update(expectedCanonical).digest();
 
     const result = hashRow(row(), GENESIS_HASH);
@@ -45,7 +46,7 @@ describe("hashRow", () => {
       GENESIS_HASH,
     );
     const changedNewData = hashRow(
-      row({ newData: { code: "A001", name: "Tampered" } }),
+      row({ newData: '{"code": "A001", "name": "Tampered"}' }),
       GENESIS_HASH,
     );
     const changedPrevHash = hashRow(row(), Buffer.alloc(32, 1));
@@ -92,7 +93,7 @@ describe("verifyChain", () => {
     ]);
     rows[1] = {
       ...rows[1],
-      newData: { code: "A001", name: "Edited by a superuser" },
+      newData: '{"code": "A001", "name": "Edited by a superuser"}',
     };
     expect(verifyChain(rows)).toEqual({ ok: false, firstBadSequence: 2n });
   });

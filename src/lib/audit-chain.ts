@@ -9,7 +9,19 @@ import { createHash } from "node:crypto";
  *
  *   hex(prevHash) | tenantId | sequenceNumber | tableName | recordId
  *     | operation | actorUserId-or-empty | changedAt.toISOString()
- *     | JSON.stringify(oldData)-or-"null" | JSON.stringify(newData)-or-"null"
+ *     | oldData-or-"null" | newData-or-"null"
+ *
+ * oldData/newData are pre-serialized JSON text, not JS values, and must be
+ * the exact string Postgres's `jsonb::text` cast produces — e.g.
+ * `{"a": 1, "b": 2}` (a space after every `:` and `,`), not
+ * `JSON.stringify`'s compact `{"a":1,"b":2}`. The trigger hashes
+ * `p_old_data::TEXT`/`p_new_data::TEXT` straight off the jsonb value it also
+ * stores; re-deriving that text by `JSON.parse`-ing the stored value and
+ * `JSON.stringify`-ing it back loses that exact form two ways: the spacing
+ * differs, and a NUMERIC column (e.g. Branch.ramScore) round-trips through a
+ * JS `Number` and loses trailing-zero precision ("5.00" becomes "5"). So the
+ * verify job must read `"oldData"::text`/`"newData"::text` off the row
+ * directly, not go through Prisma's parsed `Json` scalar.
  *
  * A null actorUserId (systemActor, spec's "the platform acting under policy")
  * canonicalizes to the empty string, matching how setSessionContext leaves
@@ -29,8 +41,8 @@ export type ChainableRow = {
   operation: string;
   actorUserId: string | null;
   changedAt: Date;
-  oldData: unknown;
-  newData: unknown;
+  oldData: string | null;
+  newData: string | null;
 };
 
 function canonicalString(row: ChainableRow, prevHash: Buffer): string {
@@ -43,12 +55,8 @@ function canonicalString(row: ChainableRow, prevHash: Buffer): string {
     row.operation,
     row.actorUserId ?? "",
     row.changedAt.toISOString(),
-    row.oldData === null || row.oldData === undefined
-      ? "null"
-      : JSON.stringify(row.oldData),
-    row.newData === null || row.newData === undefined
-      ? "null"
-      : JSON.stringify(row.newData),
+    row.oldData ?? "null",
+    row.newData ?? "null",
   ].join("|");
 }
 
