@@ -3,7 +3,7 @@ import {
   resetDatabase,
   createTenant,
   createUser,
-  integrationPrisma,
+  integrationOwner,
   withFixtures,
 } from "../../../../tests/integration/harness";
 
@@ -12,7 +12,7 @@ async function seedOverdueComplianceItem(
   daysOverdue: number,
 ) {
   return withFixtures(async () => {
-    const branch = await integrationPrisma.branch.create({
+    const branch = await integrationOwner.branch.create({
       data: {
         tenantId,
         code: "BR-001",
@@ -23,7 +23,7 @@ async function seedOverdueComplianceItem(
       select: { id: true },
     });
     const user = await createUser(tenantId, ["AUDITOR"]);
-    const observation = await integrationPrisma.observation.create({
+    const observation = await integrationOwner.observation.create({
       data: {
         tenantId,
         title: "Overdue item",
@@ -42,7 +42,7 @@ async function seedOverdueComplianceItem(
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() - daysOverdue);
 
-    return integrationPrisma.complianceItem.create({
+    return integrationOwner.complianceItem.create({
       data: {
         tenantId,
         observationId: observation.id,
@@ -71,7 +71,7 @@ describe("runEscalationJobInternal", () => {
     const result = await runEscalationJobInternal(tenant.id);
 
     expect(result.success).toBe(true);
-    const after = await integrationPrisma.complianceItem.findUniqueOrThrow({
+    const after = await integrationOwner.complianceItem.findUniqueOrThrow({
       where: { id: item.id },
       select: { escalationLevel: true },
     });
@@ -87,7 +87,7 @@ describe("runEscalationJobInternal", () => {
     const { runEscalationJobInternal } = await import("../run-escalation-job");
     await runEscalationJobInternal(one.id);
 
-    const after = await integrationPrisma.complianceItem.findUniqueOrThrow({
+    const after = await integrationOwner.complianceItem.findUniqueOrThrow({
       where: { id: untouched.id },
       select: { escalationLevel: true },
     });

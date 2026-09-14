@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prismaSystem } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 
 /**
@@ -18,7 +18,7 @@ export async function processComplianceEscalation(): Promise<void> {
   const { runEscalationJobInternal } =
     await import("@/actions/compliance/run-escalation-job");
 
-  const tenants = await prisma.tenant.findMany({
+  const tenants = await prismaSystem.tenant.findMany({
     select: { id: true, shortName: true },
   });
 

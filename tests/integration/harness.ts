@@ -1,18 +1,31 @@
 import { randomUUID } from "crypto";
 import { vi } from "vitest";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@/generated/prisma/client";
 import type { Role } from "@/generated/prisma/enums";
 import { withTriggersDetached } from "@/lib/audit-triggers";
 import { prisma } from "@/lib/prisma";
 
 /**
- * The application's own client, not a second one.
+ * Two clients on purpose.
  *
- * This project runs Prisma 7 with the `@prisma/adapter-pg` driver adapter
- * (see `src/lib/prisma.ts`), so a bare `new PrismaClient()` throws. Reusing the
- * singleton also keeps assertions on the same pool as the code under test, so
- * a test cannot read a snapshot the action has not committed yet.
+ * integrationPrisma is the application's own singleton, connected as aegis_app
+ * (DATABASE_URL). The code under test runs on it, so RLS applies to it exactly
+ * as in production.
+ *
+ * integrationOwner connects as the owner (DATABASE_OWNER_URL). It is used only
+ * for DDL (withTriggersDetached), TRUNCATE, and fixture rows, which RLS would
+ * otherwise block for aegis_app because FORCE ROW LEVEL SECURITY has no GUC
+ * outside a session context.
  */
 export const integrationPrisma = prisma;
+
+const ownerUrl = process.env.DATABASE_OWNER_URL;
+if (!ownerUrl)
+  throw new Error("DATABASE_OWNER_URL is required by the integration harness");
+export const integrationOwner = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: ownerUrl, max: 5 }),
+});
 
 /**
  * Build fixtures with the audit triggers suspended.
@@ -36,7 +49,7 @@ export async function withFixtures<T>(fn: () => Promise<T>): Promise<T> {
   if (fixtureDepth > 0) return fn();
   fixtureDepth++;
   try {
-    return await withTriggersDetached(integrationPrisma, fn);
+    return await withTriggersDetached(integrationOwner, fn);
   } finally {
     fixtureDepth--;
   }
@@ -52,20 +65,20 @@ export interface AuthSessionLike {
  * constraints from global setup must survive between tests.
  */
 export async function resetDatabase(): Promise<void> {
-  const tables = await integrationPrisma.$queryRaw<{ tablename: string }[]>`
+  const tables = await integrationOwner.$queryRaw<{ tablename: string }[]>`
     SELECT tablename FROM pg_tables
      WHERE schemaname = 'public' AND tablename NOT LIKE '_prisma%'
   `;
   const quoted = tables.map((t) => `"${t.tablename}"`).join(", ");
   // AuditLog carries no delete rule in this project, so a plain TRUNCATE works.
-  await integrationPrisma.$executeRawUnsafe(
+  await integrationOwner.$executeRawUnsafe(
     `TRUNCATE TABLE ${quoted} RESTART IDENTITY CASCADE`,
   );
 }
 
 export async function createTenant(name = "Test Cooperative Bank") {
   return withFixtures(() =>
-    integrationPrisma.tenant.create({
+    integrationOwner.tenant.create({
       data: {
         name,
         shortName: name.slice(0, 12),
@@ -82,7 +95,7 @@ export async function createTenant(name = "Test Cooperative Bank") {
 export async function createUser(tenantId: string, roles: string[]) {
   const email = `user-${randomUUID()}@example.test`;
   return withFixtures(() =>
-    integrationPrisma.user.create({
+    integrationOwner.user.create({
       data: {
         email,
         name: "Test User",
@@ -117,7 +130,7 @@ export async function addTeamMember(
   roleInEngagement = "FIELD_AUDITOR",
 ) {
   return withFixtures(() =>
-    integrationPrisma.auditTeamMember.create({
+    integrationOwner.auditTeamMember.create({
       data: {
         tenantId,
         engagementId,

@@ -22,6 +22,9 @@ vi.mock("@/lib/prisma", () => ({
     auditLog: { create: vi.fn(async () => ({})) },
   },
   prismaForTenant: vi.fn(),
+  prismaSystem: {
+    user: { findFirst: vi.fn() },
+  },
 }));
 vi.mock("@/data-access/session", () => ({ getRequiredSession: vi.fn() }));
 vi.mock("@/data-access/audited-mutation", () => ({
@@ -31,7 +34,7 @@ vi.mock("@/data-access/audited-mutation", () => ({
 vi.mock("@/lib/invitation-mailer", () => ({ sendInvitationEmail: vi.fn() }));
 
 import { acceptInvitation } from "../user-invitations";
-import { prisma } from "@/lib/prisma";
+import { prismaSystem } from "@/lib/prisma";
 import { withAuditedMutation } from "@/data-access/audited-mutation";
 import { TENANT_A, USER_A, fakeDb } from "@/test/factories";
 
@@ -62,7 +65,9 @@ function stubAuditedMutation(activatedCount: number) {
 describe("acceptInvitation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(prisma.user.findFirst).mockResolvedValue(INVITED_USER as never);
+    vi.mocked(prismaSystem.user.findFirst).mockResolvedValue(
+      INVITED_USER as never,
+    );
   });
 
   it("writes a Better Auth credential account alongside activation", async () => {
@@ -118,6 +123,6 @@ describe("acceptInvitation", () => {
       success: false,
       error: "Password must be at least 8 characters.",
     });
-    expect(prisma.user.findFirst).not.toHaveBeenCalled();
+    expect(prismaSystem.user.findFirst).not.toHaveBeenCalled();
   });
 });

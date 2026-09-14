@@ -1,6 +1,6 @@
 "use server";
 
-import { prisma, prismaForTenant } from "@/lib/prisma";
+import { prismaForTenant, prismaSystem } from "@/lib/prisma";
 import { getRequiredSession } from "@/data-access/session";
 import { hasPermission } from "@/lib/permissions";
 import { headers } from "next/headers";
@@ -133,8 +133,9 @@ export async function acceptInvitation(
       return { success: false, error: passwordError };
     }
 
-    // Find user by email with INVITED status
-    const user = await prisma.user.findFirst({
+    // Pre-auth: no tenant is known yet, so this is the one lookup in this
+    // file that must bypass RLS rather than route through prismaForTenant.
+    const user = await prismaSystem.user.findFirst({
       where: {
         email,
         status: "INVITED",

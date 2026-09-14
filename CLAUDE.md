@@ -52,16 +52,17 @@ pnpm test:integration      # resets the DATABASE_URL database — never aim it a
 pnpm test:e2e:smoke
 pnpm docs:reference        # regenerate docs/reference/ after schema or action changes
 SKIP_ENV_VALIDATION=1 pnpm build
+SESSION_COOKIE='...' ENGAGEMENT_ID=<uuid> pnpm spike:rls  # load check before each release, spec §10
 ```
 
 ## Invariants (enforced by tests that fail the build)
 
 - **Tenant id comes from the session only** — `getRequiredSession()`. Never
   from params, body, headers or query. Every query carries `where: { tenantId }`.
-  `prismaForTenant(tenantId)` returns a per-tenant client that sets
-  `app.current_tenant_id` once per transaction, so the RLS policies arriving in
-  Task 4 will see the tenant; it adds no filtering of its own.
-  `src/data-access/__tests__/tenant-isolation.test.ts`.
+  `prismaForTenant(tenantId)` returns a client that sets `app.current_tenant_id`
+  per operation; RLS policies enforce it (ADR 0001).
+  `src/data-access/__tests__/tenant-isolation.test.ts`,
+  `src/data-access/__tests__/bare-prisma-import.test.ts`.
 - **Every write to an audited table goes through
   `withAuditedMutation(actor, "domain.event_past", fn)`** from
   `src/data-access/audited-mutation.ts`. A bare transaction on an audited table
@@ -103,8 +104,6 @@ SKIP_ENV_VALIDATION=1 pnpm build
 - Inside `withAuditedMutation`, use the `tx` argument. Calling
   `prismaForTenant` from that callback opens a second transaction on another
   pooled connection and drops the actor GUCs the audit trigger needs.
-  `TENANT_CLIENT=singleton` is a spike-only escape hatch and is ignored when
-  `NODE_ENV=production`.
 - `pnpm db:seed` wipes tenants. Re-run `pnpm seed:rbia-housing`,
   `pnpm seed:exam-questions`, then `pnpm seed:lifecycle` afterwards. The
   lifecycle script no longer seeds GRC (risk register / controls / work

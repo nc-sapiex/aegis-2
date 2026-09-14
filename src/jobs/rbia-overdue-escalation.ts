@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prismaSystem } from "@/lib/prisma";
 import { prismaForTenant } from "@/data-access/prisma";
 import {
   withAuditedMutation,
@@ -22,7 +22,7 @@ import {
 export async function processRbiaOverdueEscalation(): Promise<void> {
   console.log("[rbia-overdue] Starting BM response batch overdue check");
 
-  const tenants = await prisma.tenant.findMany({
+  const tenants = await prismaSystem.tenant.findMany({
     select: { id: true, name: true },
   });
 

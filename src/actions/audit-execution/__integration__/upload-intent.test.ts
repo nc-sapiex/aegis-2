@@ -5,7 +5,7 @@ import {
   createUser,
   fakeSession,
   mockSessionModule,
-  integrationPrisma,
+  integrationOwner,
   withFixtures,
 } from "../../../../tests/integration/harness";
 
@@ -33,11 +33,11 @@ function mockS3(
 
 async function seedResponse(tenantId: string) {
   return withFixtures(async () => {
-    const plan = await integrationPrisma.auditPlan.create({
+    const plan = await integrationOwner.auditPlan.create({
       data: { tenantId, year: 2026, quarter: "Q1_APR_JUN", status: "PLANNED" },
       select: { id: true },
     });
-    const engagement = await integrationPrisma.auditEngagement.create({
+    const engagement = await integrationOwner.auditEngagement.create({
       data: {
         tenantId,
         auditPlanId: plan.id,
@@ -50,7 +50,7 @@ async function seedResponse(tenantId: string) {
     });
     // ExaminationItem requires an area, itemNumber, particulars, displayOrder
     // (brief seed used code/description — adjusted to the live schema).
-    const area = await integrationPrisma.examinationArea.create({
+    const area = await integrationOwner.examinationArea.create({
       data: {
         tenantId,
         code: "CASH",
@@ -59,7 +59,7 @@ async function seedResponse(tenantId: string) {
       },
       select: { id: true },
     });
-    const item = await integrationPrisma.examinationItem.create({
+    const item = await integrationOwner.examinationItem.create({
       data: {
         tenantId,
         areaId: area.id,
@@ -69,7 +69,7 @@ async function seedResponse(tenantId: string) {
       },
       select: { id: true },
     });
-    const response = await integrationPrisma.auditExaminationResponse.create({
+    const response = await integrationOwner.auditExaminationResponse.create({
       data: {
         tenantId,
         engagementId: engagement.id,
@@ -118,7 +118,7 @@ describe("evidence confirmation binds to an upload intent", () => {
     // examination:respond this test passed on the permission gate and never
     // reached the intent lookup it exists to cover.
     expect(result.success === false && result.error).toMatch(/not recognised/i);
-    expect(await integrationPrisma.evidence.count()).toBe(0);
+    expect(await integrationOwner.evidence.count()).toBe(0);
   });
 
   it("persists S3's metadata, not the caller's claims", async () => {
@@ -158,7 +158,7 @@ describe("evidence confirmation binds to an upload intent", () => {
     });
 
     expect(result.success).toBe(true);
-    const evidence = await integrationPrisma.evidence.findFirstOrThrow({
+    const evidence = await integrationOwner.evidence.findFirstOrThrow({
       select: { fileSize: true, contentType: true, s3Key: true },
     });
     expect(evidence.fileSize).toBe(2048);
@@ -206,6 +206,6 @@ describe("evidence confirmation binds to an upload intent", () => {
     expect((await mod.confirmExaminationEvidenceUpload(input)).success).toBe(
       false,
     );
-    expect(await integrationPrisma.evidence.count()).toBe(1);
+    expect(await integrationOwner.evidence.count()).toBe(1);
   });
 });

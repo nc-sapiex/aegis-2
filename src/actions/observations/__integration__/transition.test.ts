@@ -5,13 +5,13 @@ import {
   createUser,
   fakeSession,
   mockSessionModule,
-  integrationPrisma,
+  integrationOwner,
   withFixtures,
 } from "../../../../tests/integration/harness";
 
 async function seedObservation(tenantId: string, createdById: string) {
   return withFixtures(async () => {
-    const branch = await integrationPrisma.branch.create({
+    const branch = await integrationOwner.branch.create({
       data: {
         tenantId,
         code: "BR-001",
@@ -21,7 +21,7 @@ async function seedObservation(tenantId: string, createdById: string) {
       },
       select: { id: true },
     });
-    return integrationPrisma.observation.create({
+    return integrationOwner.observation.create({
       data: {
         tenantId,
         title: "Concurrency probe",
@@ -72,12 +72,12 @@ describe("transitionObservation concurrency", () => {
     const winners = [a, b].filter((r) => r.success);
     expect(winners).toHaveLength(1);
 
-    const timeline = await integrationPrisma.observationTimeline.count({
+    const timeline = await integrationOwner.observationTimeline.count({
       where: { observationId: observation.id, event: "status_changed" },
     });
     expect(timeline).toBe(1);
 
-    const after = await integrationPrisma.observation.findUniqueOrThrow({
+    const after = await integrationOwner.observation.findUniqueOrThrow({
       where: { id: observation.id },
       select: { version: true, status: true },
     });

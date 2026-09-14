@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `548076d` (HEAD)
+> Source commit: `28b1e1e` (tenant-isolation-rls-rebased)
 
 Every addressable path in the application: **46 pages** and
 **10 HTTP endpoints**.

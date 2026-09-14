@@ -17,7 +17,8 @@ import { withTriggersDetached } from "../src/lib/audit-triggers";
 
 /* ─── Bootstrap ──────────────────────────────────────────────────────────── */
 
-const connectionString = process.env.DATABASE_URL!;
+const connectionString = (process.env.DATABASE_OWNER_URL ??
+  process.env.DATABASE_URL)!;
 const adapter = new PrismaPg({ connectionString, max: 25 });
 const prisma = new PrismaClient({ adapter } as any);
 

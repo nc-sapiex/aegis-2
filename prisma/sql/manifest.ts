@@ -9,6 +9,9 @@
  * Order matters: the audit trigger function must exist before any trigger
  * references it.
  */
+import { RLS_TABLES } from "./rls-tables";
+export { RLS_TABLES };
+
 export const SQL_MANIFEST = [
   "prisma/migrations/20260826_audit_trigger_null_safe.sql",
   "prisma/sql/020_attach_audit_triggers.sql",
@@ -16,6 +19,7 @@ export const SQL_MANIFEST = [
   "prisma/migrations/20260222_rbia_db_guards.sql",
   "prisma/sql/050_observation_indexes.sql",
   "prisma/sql/060_tenant_composite_fks.sql",
+  "prisma/sql/070_rls_policies.sql",
 ] as const;
 
 /**
@@ -61,6 +65,7 @@ export interface RequiredObjects {
   views: readonly string[];
   triggers: readonly string[];
   constraints: readonly string[];
+  policies: readonly string[]; // tables that must have policy tenant_isolation
 }
 
 export const REQUIRED_OBJECTS: RequiredObjects = {
@@ -85,4 +90,5 @@ export const REQUIRED_OBJECTS: RequiredObjects = {
     "engagement_area_same_tenant",
     "team_member_engagement_same_tenant",
   ],
+  policies: RLS_TABLES,
 };

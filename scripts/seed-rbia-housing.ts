@@ -25,7 +25,8 @@ import pg from "pg";
 /* ------------------------------------------------------------------ */
 /*  Bootstrap Prisma with pg.Pool for proper cleanup                  */
 /* ------------------------------------------------------------------ */
-const connectionString = process.env.DATABASE_URL!;
+const connectionString = (process.env.DATABASE_OWNER_URL ??
+  process.env.DATABASE_URL)!;
 const pool = new pg.Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter } as any);

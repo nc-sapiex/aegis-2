@@ -3,7 +3,7 @@ import {
   resetDatabase,
   createTenant,
   createUser,
-  integrationPrisma,
+  integrationOwner,
   withFixtures,
 } from "../../../tests/integration/harness";
 
@@ -32,7 +32,7 @@ async function queue(
   batchKey: string | null,
 ) {
   return withFixtures(async () => {
-    return integrationPrisma.notificationQueue.create({
+    return integrationOwner.notificationQueue.create({
       data: {
         tenantId,
         recipientId,
@@ -63,7 +63,7 @@ describe("processNotifications", () => {
     await Promise.all([processNotifications(), processNotifications()]);
 
     expect(sent).toHaveLength(5);
-    const states = await integrationPrisma.notificationQueue.groupBy({
+    const states = await integrationOwner.notificationQueue.groupBy({
       by: ["status"],
       _count: true,
     });
@@ -83,7 +83,7 @@ describe("processNotifications", () => {
 
     // One digest per recipient, never one digest to the wrong person.
     expect(sent).toHaveLength(2);
-    const recipients = await integrationPrisma.user.findMany({
+    const recipients = await integrationOwner.user.findMany({
       where: { id: { in: [alice.id, bob.id] } },
       select: { email: true },
     });
@@ -104,7 +104,7 @@ describe("processNotifications", () => {
     await processNotifications();
 
     expect(sent).toHaveLength(2);
-    const logs = await integrationPrisma.emailLog.findMany({
+    const logs = await integrationOwner.emailLog.findMany({
       select: { tenantId: true },
     });
     expect(new Set(logs.map((l) => l.tenantId))).toEqual(

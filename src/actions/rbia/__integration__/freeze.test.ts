@@ -5,7 +5,7 @@ import {
   createUser,
   fakeSession,
   mockSessionModule,
-  integrationPrisma,
+  integrationOwner,
   withFixtures,
 } from "../../../../tests/integration/harness";
 
@@ -16,11 +16,11 @@ import {
  */
 async function seedExamination(tenantId: string, userId: string) {
   return withFixtures(async () => {
-    const plan = await integrationPrisma.auditPlan.create({
+    const plan = await integrationOwner.auditPlan.create({
       data: { tenantId, year: 2026, quarter: "Q1_APR_JUN", status: "PLANNED" },
       select: { id: true },
     });
-    const branch = await integrationPrisma.branch.create({
+    const branch = await integrationOwner.branch.create({
       data: {
         tenantId,
         code: "BR-001",
@@ -30,7 +30,7 @@ async function seedExamination(tenantId: string, userId: string) {
       },
       select: { id: true },
     });
-    const engagement = await integrationPrisma.auditEngagement.create({
+    const engagement = await integrationOwner.auditEngagement.create({
       data: {
         tenantId,
         auditPlanId: plan.id,
@@ -50,7 +50,7 @@ async function seedExamination(tenantId: string, userId: string) {
       isLeaf: boolean,
       parentId: string | null,
     ) =>
-      integrationPrisma.examinationNode.create({
+      integrationOwner.examinationNode.create({
         data: {
           tenantId,
           code,
@@ -73,7 +73,7 @@ async function seedExamination(tenantId: string, userId: string) {
     await node("CREDIT-001", "ROOT/CREDIT/CREDIT-001", 2, true, credit.id);
 
     // Only OPS is in scope for this engagement.
-    await integrationPrisma.engagementModuleSelection.create({
+    await integrationOwner.engagementModuleSelection.create({
       data: { tenantId, engagementId: engagement.id, moduleNodeId: ops.id },
     });
 
@@ -92,7 +92,7 @@ async function score(
   // must suspend it — the row is a precondition, not the audited action under
   // test (freezeRbiaScore is).
   await withFixtures(() =>
-    integrationPrisma.examinationResponse.create({
+    integrationOwner.examinationResponse.create({
       data: {
         tenantId,
         engagementId,
@@ -130,7 +130,7 @@ describe("freezeRbiaScore completeness", () => {
       expect(result.error).toContain("OPS-002");
     }
 
-    const frozen = await integrationPrisma.branchRbiaScore.count({
+    const frozen = await integrationOwner.branchRbiaScore.count({
       where: { engagementId: seed.engagementId },
     });
     expect(frozen).toBe(0);
@@ -170,7 +170,7 @@ describe("freezeRbiaScore completeness", () => {
     const result = await freezeRbiaScore({ engagementId: seed.engagementId });
     expect(result.success).toBe(true);
 
-    const snapshot = await integrationPrisma.branchRbiaScore.findUniqueOrThrow({
+    const snapshot = await integrationOwner.branchRbiaScore.findUniqueOrThrow({
       where: { engagementId: seed.engagementId },
       select: { moduleScores: true },
     });
@@ -181,9 +181,11 @@ describe("freezeRbiaScore completeness", () => {
     const tenant = await createTenant();
     const cae = await createUser(tenant.id, ["CAE"]);
     const seed = await seedExamination(tenant.id, cae.id);
-    await integrationPrisma.engagementModuleSelection.deleteMany({
-      where: { engagementId: seed.engagementId },
-    });
+    await withFixtures(() =>
+      integrationOwner.engagementModuleSelection.deleteMany({
+        where: { engagementId: seed.engagementId },
+      }),
+    );
 
     mockSessionModule(
       fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),

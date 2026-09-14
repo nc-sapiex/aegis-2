@@ -4,7 +4,7 @@ import {
   createTenant,
   createUser,
   fakeSession,
-  integrationPrisma,
+  integrationOwner,
   resetDatabase,
 } from "../../../tests/integration/harness";
 
@@ -89,7 +89,7 @@ describe("onboarding invitation flow", () => {
     expect(sentInvites).toHaveLength(1);
 
     const invite = sentInvites[0];
-    const invitedBeforeAccept = await integrationPrisma.user.findUniqueOrThrow({
+    const invitedBeforeAccept = await integrationOwner.user.findUniqueOrThrow({
       where: { email: invite.to },
       select: { status: true, inviteTokenHash: true, inviteExpiry: true },
     });
@@ -108,7 +108,7 @@ describe("onboarding invitation flow", () => {
 
     expect(accepted).toEqual({ success: true, error: null });
 
-    const activated = await integrationPrisma.user.findUniqueOrThrow({
+    const activated = await integrationOwner.user.findUniqueOrThrow({
       where: { email: invite.to },
       select: {
         id: true,
@@ -123,7 +123,7 @@ describe("onboarding invitation flow", () => {
     expect(activated.inviteExpiry).toBeNull();
     expect(activated.emailVerified).toBe(true);
 
-    const credential = await integrationPrisma.account.findFirstOrThrow({
+    const credential = await integrationOwner.account.findFirstOrThrow({
       where: { userId: activated.id, providerId: "credential" },
       select: { password: true },
     });

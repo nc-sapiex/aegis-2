@@ -35,7 +35,11 @@ jobs:
         ports:
           - 5432:5432
     env:
-      DATABASE_URL: postgresql://test:testpassword@localhost:5432/aegis_test
+      DATABASE_URL: postgresql://aegis_app:e2e-app-password-0123456789@localhost:5432/aegis_test
+      DATABASE_OWNER_URL: postgresql://test:testpassword@localhost:5432/aegis_test
+      DATABASE_APP_PASSWORD: e2e-app-password-0123456789
+      DATABASE_SYSTEM_URL: postgresql://aegis_system:e2e-system-password-0123456789@localhost:5432/aegis_test
+      DATABASE_SYSTEM_PASSWORD: e2e-system-password-0123456789
       BETTER_AUTH_SECRET: e2e-test-secret-0123456789abcdef0123456789abcdef
       BETTER_AUTH_URL: http://localhost:3000
       NEXT_PUBLIC_APP_URL: http://localhost:3000

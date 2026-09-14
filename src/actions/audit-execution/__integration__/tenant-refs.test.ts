@@ -5,17 +5,17 @@ import {
   createUser,
   fakeSession,
   mockSessionModule,
-  integrationPrisma,
+  integrationOwner,
   withFixtures,
 } from "../../../../tests/integration/harness";
 
 async function seedPlanAndBranch(tenantId: string) {
   return withFixtures(async () => {
-    const plan = await integrationPrisma.auditPlan.create({
+    const plan = await integrationOwner.auditPlan.create({
       data: { tenantId, year: 2026, quarter: "Q1_APR_JUN", status: "PLANNED" },
       select: { id: true },
     });
-    const branch = await integrationPrisma.branch.create({
+    const branch = await integrationOwner.branch.create({
       data: {
         tenantId,
         code: "BR-001",
@@ -64,7 +64,7 @@ describe("cross-tenant relation IDs", () => {
     });
 
     expect(result.success).toBe(false);
-    const leaked = await integrationPrisma.auditEngagement.count({
+    const leaked = await integrationOwner.auditEngagement.count({
       where: { auditPlanId: victimRefs.planId },
     });
     expect(leaked).toBe(0);
@@ -78,7 +78,7 @@ describe("cross-tenant relation IDs", () => {
     const refs = await seedPlanAndBranch(attacker.id);
 
     const engagement = await withFixtures(() =>
-      integrationPrisma.auditEngagement.create({
+      integrationOwner.auditEngagement.create({
         data: {
           tenantId: attacker.id,
           auditPlanId: refs.planId,
@@ -109,7 +109,7 @@ describe("cross-tenant relation IDs", () => {
     });
 
     expect(result.success).toBe(false);
-    const leaked = await integrationPrisma.auditTeamMember.count({
+    const leaked = await integrationOwner.auditTeamMember.count({
       where: { userId: victimUser.id },
     });
     expect(leaked).toBe(0);

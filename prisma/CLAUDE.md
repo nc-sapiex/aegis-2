@@ -12,25 +12,27 @@ cross-cutting rules (audit triggers, tenant scoping) stay in the root `CLAUDE.md
 - A fresh database needs `pnpm db:bootstrap` after `db:push`; `db:push` alone
   leaves it with no audit triggers, dashboard views, or composite FKs
 
-## Row Level Security is not enabled — do not apply the superseded file
+## Row Level Security is live
 
-`prisma/migrations/superseded/add_rls_policies.sql` is history. Read it; do not
-apply it. It would create an `aegis_app` role and `FORCE ROW LEVEL SECURITY` on
-11 tables against a hand-written policy set that is not the Task 4 generator
-in `docs/superpowers/plans/2026-09-13-tenant-isolation-rls.md`.
+Every model with a `tenantId` column has `FORCE ROW LEVEL SECURITY` and one
+policy `tenant_isolation` keyed to `app.current_tenant_id`
+(`prisma/sql/070_rls_policies.sql`, generated from the schema by
+`pnpm docs:reference`; `db:verify` asserts every policy). The app connects as
+`aegis_app` (no SUPERUSER, no BYPASSRLS); `DATABASE_OWNER_URL` is for
+`db:push`, `db:bootstrap`, `db:verify`, `db:seed` and the integration harness.
 
-Reads via `prismaForTenant` now set `app.current_tenant_id` once per
-transaction (`src/lib/tenant-client.ts`). Audited writes still set the same
-GUC through `setSessionContext`. Policies themselves are not in this repo
-yet — they arrive in Task 4, gated by the load spike. Until then, `WHERE
-tenantId` is the isolation control.
+Reads set the GUC through `prismaForTenant(tenantId)` (a Prisma client
+extension that wraps each operation in `$transaction([set_config, op])`).
+Writes set it through `withAuditedMutation` → `setSessionContext`. A query on
+the bare singleton returns zero rows, by design; the bare import allowlist in
+`src/data-access/__tests__/bare-prisma-import.test.ts` is shrink-only. A
+narrow third role, `aegis_system` (BYPASSRLS, otherwise the same grants as
+`aegis_app`), exists only for reads that must cross tenants or run before any
+tenant context exists (job tenant enumeration, the pre-auth invite-token
+lookup) — see `prismaSystem` in `src/lib/prisma.ts`; it is on the same
+shrink-only allowlist.
 
-Do not revive the superseded file to "turn RLS on early". A database built
-from current `main` already has the dated schema additions in
-`20260904_f07_f15_schema_additions.sql` and
-`20260905_account_unique_accountid_providerid.sql`; those matter only for
-databases pushed before they landed. Apply them with `pnpm db:apply`, oldest
-first — see [`docs/ops/release-checklist.md`](../docs/ops/release-checklist.md).
+`WHERE tenantId` stays on every query (spec §4.3). RLS is the second wall.
 
 ## Session GUCs read back as `''`, not NULL
 

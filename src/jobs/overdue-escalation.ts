@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prismaSystem } from "@/lib/prisma";
 import { prismaForTenant } from "@/data-access/prisma";
 import {
   withAuditedMutation,
@@ -23,7 +23,7 @@ const ACTIVE_STATUSES = ["ISSUED", "RESPONSE"];
 export async function processOverdueEscalation(): Promise<void> {
   console.log("[overdue-escalation] Starting overdue check");
 
-  const tenants = await prisma.tenant.findMany({
+  const tenants = await prismaSystem.tenant.findMany({
     select: { id: true, name: true },
   });
 
@@ -149,7 +149,7 @@ async function checkDuplicateEscalation(
     today.getDate(),
   );
 
-  const existing = await prisma.notificationQueue.findFirst({
+  const existing = await prismaForTenant(tenantId).notificationQueue.findFirst({
     where: {
       tenantId,
       type: "OVERDUE_ESCALATION" as any,

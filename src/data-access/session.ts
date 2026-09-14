@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { auth } from "@/lib/auth";
 import type { AuthSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { prisma, prismaSystem } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { decideSessionAccess } from "@/lib/session-guard";
 import type { Role } from "@/generated/prisma/enums";
@@ -30,7 +30,10 @@ const loadSession = cache(async () => {
     redirect("/login");
   }
 
-  const user = await prisma.user.findUnique({
+  // aegis_system (BYPASSRLS): the User row is RLS-protected and this read
+  // is what establishes tenant context in the first place — it cannot
+  // itself run with app.current_tenant_id already set.
+  const user = await prismaSystem.user.findUnique({
     where: { id: session.user.id },
     select: ACCESS_COLUMNS,
   });

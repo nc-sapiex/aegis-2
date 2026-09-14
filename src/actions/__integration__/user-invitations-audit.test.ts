@@ -8,7 +8,7 @@ import {
   createUser,
   fakeSession,
   mockSessionModule,
-  integrationPrisma,
+  integrationOwner,
   withFixtures,
 } from "../../../tests/integration/harness";
 
@@ -40,7 +40,7 @@ async function seedInvitedUser(tenantId: string) {
   const rawToken = randomUUID();
   const inviteTokenHash = await bcrypt.hash(rawToken, 10);
   const user = await withFixtures(() =>
-    integrationPrisma.user.create({
+    integrationOwner.user.create({
       data: {
         email: `invitee-${randomUUID()}@example.test`,
         name: "Invited User",
@@ -85,7 +85,7 @@ describe("user-invitations audit rows", () => {
     );
     expect(result).toEqual({ success: true, error: null });
 
-    const rows = await integrationPrisma.auditLog.findMany({
+    const rows = await integrationOwner.auditLog.findMany({
       where: { tableName: "User", recordId: invited.id },
     });
     expect(rows).toHaveLength(1);
@@ -98,18 +98,18 @@ describe("user-invitations audit rows", () => {
     });
 
     // Nothing else wrote an audit row either: Account carries no trigger.
-    expect(await integrationPrisma.auditLog.count()).toBe(1);
+    expect(await integrationOwner.auditLog.count()).toBe(1);
 
     // The pairing that used to come apart: the success it reported is backed
     // by a committed activation, never a failure reported over one.
-    const activated = await integrationPrisma.user.findUniqueOrThrow({
+    const activated = await integrationOwner.user.findUniqueOrThrow({
       where: { id: invited.id },
       select: { status: true, inviteTokenHash: true },
     });
     expect(activated.status).toBe("ACTIVE");
     expect(activated.inviteTokenHash).toBeNull();
     expect(
-      await integrationPrisma.account.count({
+      await integrationOwner.account.count({
         where: { userId: invited.id, providerId: "credential" },
       }),
     ).toBe(1);
@@ -140,7 +140,7 @@ describe("user-invitations audit rows", () => {
     expect(result.data).toHaveLength(2);
 
     for (const invitee of result.data) {
-      const rows = await integrationPrisma.auditLog.findMany({
+      const rows = await integrationOwner.auditLog.findMany({
         where: { tableName: "User", recordId: invitee.id },
       });
       expect(rows).toHaveLength(1);
@@ -154,7 +154,7 @@ describe("user-invitations audit rows", () => {
 
     // No hand-written summary row alongside the two per-user trigger rows —
     // exactly the bug #93 already fixed for accept and revoke.
-    expect(await integrationPrisma.auditLog.count()).toBe(2);
+    expect(await integrationOwner.auditLog.count()).toBe(2);
   });
 
   it("writes exactly one audit row for a revocation, carrying IP and session", async () => {
@@ -174,7 +174,7 @@ describe("user-invitations audit rows", () => {
     const result = await revokeInvitation(invited.id);
     expect(result).toEqual({ success: true, error: null });
 
-    const rows = await integrationPrisma.auditLog.findMany({
+    const rows = await integrationOwner.auditLog.findMany({
       where: { tableName: "User", recordId: invited.id },
     });
     expect(rows).toHaveLength(1);

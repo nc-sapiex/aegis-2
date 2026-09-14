@@ -15,8 +15,10 @@ import { resolve } from "path";
 import { Client } from "pg";
 
 async function main() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) throw new Error("DATABASE_URL is required");
+  const connectionString =
+    process.env.DATABASE_OWNER_URL ?? process.env.DATABASE_URL;
+  if (!connectionString)
+    throw new Error("DATABASE_OWNER_URL or DATABASE_URL is required");
 
   const paths = process.argv.slice(2);
   if (paths.length === 0)

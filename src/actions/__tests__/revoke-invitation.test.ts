@@ -8,6 +8,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 vi.mock("@/lib/prisma", () => ({
   prisma: { user: { findFirst: vi.fn() } },
+  prismaSystem: { user: { findUnique: vi.fn() } },
   prismaForTenant: vi.fn(),
 }));
 vi.mock("@/data-access/session", () => ({ getRequiredSession: vi.fn() }));

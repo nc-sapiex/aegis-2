@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma, prismaForTenant } from "@/lib/prisma";
+import { prismaForTenant, prismaSystem } from "@/lib/prisma";
 import {
   getHealthScore,
   getComplianceSummary,
@@ -15,7 +15,7 @@ import {
 export async function captureMetricsSnapshot(): Promise<void> {
   console.log("[snapshot-metrics] Starting daily capture");
 
-  const tenants = await prisma.tenant.findMany({
+  const tenants = await prismaSystem.tenant.findMany({
     where: { onboardingCompleted: true },
     select: { id: true, name: true },
   });

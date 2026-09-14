@@ -68,9 +68,7 @@ describe("Tenant Data Isolation (DSEC-05)", () => {
       join(process.cwd(), "src/lib/prisma.ts"),
       "utf-8",
     );
-    // Function must exist
     expect(libPrismaContent).toContain("prismaForTenant");
-    // UUID validation is a security requirement — prevents injection via invalid IDs
     expect(libPrismaContent).toContain("UUID_REGEX");
     // Returns the tenant-bound extended client, never the bare singleton
     expect(libPrismaContent).toContain("createTenantClient(prisma, tenantId)");
@@ -259,6 +257,73 @@ the table).`,
     }
 
     expect(rawOffenders).toEqual([]);
+  });
+
+  /** Same brace-balanced extraction as findManyArgs, for any query verb. */
+  function findQueryArgs(content: string, marker: string): string[] {
+    const out: string[] = [];
+    let idx = 0;
+    while ((idx = content.indexOf(marker, idx)) !== -1) {
+      let depth = 0;
+      let j = idx + marker.length - 1;
+      for (; j < content.length; j++) {
+        const c = content[j];
+        if (c === "(" || c === "{" || c === "[") depth++;
+        else if (c === ")" || c === "}" || c === "]") {
+          depth--;
+          if (depth === 0) break;
+        }
+      }
+      out.push(content.slice(idx + marker.length, j));
+      idx = j;
+    }
+    return out;
+  }
+
+  it("src/actions: every findFirst/count/aggregate/groupBy names a where clause", () => {
+    // Reads that go through prismaForTenant/prismaSystem/withAuditedMutation's
+    // tx are RLS-enforced at the DB regardless of this app-level WHERE; this
+    // is belt-and-suspenders coverage extended from findMany to the DAL's
+    // other query verbs, over actions as well as data-access.
+    const offenders: string[] = [];
+    for (const file of queryFiles) {
+      const rel = relative(process.cwd(), file);
+      const content = readFileSync(file, "utf8");
+      for (const marker of [
+        ".findFirst(",
+        ".count(",
+        ".aggregate(",
+        ".groupBy(",
+      ]) {
+        for (const args of findQueryArgs(content, marker)) {
+          if (!/\bwhere\b/.test(args)) offenders.push(`${rel}: ${marker}`);
+        }
+      }
+    }
+    expect(
+      offenders,
+      `Query with no where clause — returns every tenant's rows:\n${offenders.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("$queryRaw/$queryRawUnsafe template literals reference tenantId", () => {
+    const RAW_CALL = /\$queryRaw(?:Unsafe)?\s*(?:<[^>]*>)?\s*`([\s\S]*?)`/g;
+    const offenders: string[] = [];
+    for (const file of queryFiles) {
+      const rel = relative(process.cwd(), file);
+      const content = readFileSync(file, "utf8");
+      let m: RegExpExecArray | null;
+      RAW_CALL.lastIndex = 0;
+      while ((m = RAW_CALL.exec(content))) {
+        if (!/tenantId/i.test(m[1])) {
+          offenders.push(`${rel}: ${m[1].slice(0, 60).replace(/\s+/g, " ")}`);
+        }
+      }
+    }
+    expect(
+      offenders,
+      `Raw SQL with no tenantId predicate:\n${offenders.join("\n")}`,
+    ).toEqual([]);
   });
 
   it("every DAL module imports server-only", () => {

@@ -163,9 +163,9 @@ export async function updateNotificationPreferences(
  * Cross-tenant: runs in pg-boss worker context (no session).
  */
 export async function getPendingNotifications(limit = 100) {
-  const { prisma } = await import("@/lib/prisma");
+  const { prismaSystem } = await import("@/lib/prisma");
 
-  return prisma.notificationQueue.findMany({
+  return prismaSystem.notificationQueue.findMany({
     where: {
       status: "PENDING",
       sendAfter: { lte: new Date() },
@@ -266,9 +266,9 @@ export async function markNotificationFailed(
   notificationId: string,
   error: string,
 ) {
-  const { prisma } = await import("@/lib/prisma");
+  const { prismaSystem } = await import("@/lib/prisma");
 
-  const notification = await prisma.notificationQueue.findUniqueOrThrow({
+  const notification = await prismaSystem.notificationQueue.findUniqueOrThrow({
     where: { id: notificationId },
   });
 

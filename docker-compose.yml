@@ -41,7 +41,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-aegis}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aegis}
+      DATABASE_OWNER_URL: postgresql://${POSTGRES_USER:-aegis}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aegis}
+      DATABASE_APP_PASSWORD: ${DATABASE_APP_PASSWORD:?DATABASE_APP_PASSWORD is required}
+      DATABASE_URL: postgresql://aegis_app:${DATABASE_APP_PASSWORD}@postgres:5432/${POSTGRES_DB:-aegis}
       NODE_ENV: production
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}

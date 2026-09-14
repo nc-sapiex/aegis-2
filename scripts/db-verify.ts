@@ -10,8 +10,10 @@ import { Client } from "pg";
 import { REQUIRED_OBJECTS } from "../prisma/sql/manifest";
 
 async function main() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) throw new Error("DATABASE_URL is required");
+  const connectionString =
+    process.env.DATABASE_OWNER_URL ?? process.env.DATABASE_URL;
+  if (!connectionString)
+    throw new Error("DATABASE_OWNER_URL or DATABASE_URL is required");
 
   const client = new Client({ connectionString });
   await client.connect();
@@ -61,6 +63,49 @@ async function main() {
     const haveConstraints = new Set(constraints.rows.map((r) => r.conname));
     for (const c of REQUIRED_OBJECTS.constraints) {
       if (!haveConstraints.has(c)) missing.push(`constraint ${c}`);
+    }
+
+    const role = await client.query<{
+      rolname: string;
+      rolsuper: boolean;
+      rolbypassrls: boolean;
+    }>(
+      `SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = 'aegis_app'`,
+    );
+    if (role.rows.length === 0) missing.push("role aegis_app");
+    else if (role.rows[0].rolsuper || role.rows[0].rolbypassrls) {
+      missing.push("role aegis_app must not be SUPERUSER or BYPASSRLS");
+    }
+
+    const systemRole = await client.query<{
+      rolname: string;
+      rolsuper: boolean;
+      rolbypassrls: boolean;
+    }>(
+      `SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = 'aegis_system'`,
+    );
+    if (systemRole.rows.length === 0) missing.push("role aegis_system");
+    else if (systemRole.rows[0].rolsuper) {
+      missing.push("role aegis_system must not be SUPERUSER");
+    } else if (!systemRole.rows[0].rolbypassrls) {
+      missing.push("role aegis_system must be BYPASSRLS");
+    }
+
+    const policies = await client.query<{ tablename: string }>(
+      `SELECT tablename FROM pg_policies WHERE schemaname = 'public' AND policyname = 'tenant_isolation'`,
+    );
+    const havePolicies = new Set(policies.rows.map((r) => r.tablename));
+    for (const table of REQUIRED_OBJECTS.policies) {
+      if (!havePolicies.has(table))
+        missing.push(`policy tenant_isolation on ${table}`);
+    }
+    const forced = await client.query<{ relname: string }>(
+      `SELECT relname FROM pg_class WHERE relrowsecurity AND relforcerowsecurity`,
+    );
+    const haveForced = new Set(forced.rows.map((r) => r.relname));
+    for (const table of REQUIRED_OBJECTS.policies) {
+      if (!haveForced.has(table))
+        missing.push(`FORCE ROW LEVEL SECURITY on ${table}`);
     }
   } finally {
     await client.end();
