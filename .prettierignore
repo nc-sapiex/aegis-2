@@ -17,3 +17,4 @@ docs/reference/
 # into them and reformats another branch's checkout. Never format them.
 .claude/worktrees/
 .worktrees/
+.worktree-*/

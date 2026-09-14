@@ -64,10 +64,7 @@ export function NotificationPreferencesForm({
       const result = await updatePreferences({
         emailEnabled,
         digestPreference: digestPreference as
-          | "immediate"
-          | "daily"
-          | "weekly"
-          | "none",
+          "immediate" | "daily" | "weekly" | "none",
       });
 
       if (result.success) {

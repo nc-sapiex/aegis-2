@@ -266,9 +266,7 @@ export async function aggregateReportData(
     const hasCritical = obs.some((o: any) => o.severity === "CRITICAL");
     return {
       priority: (hasCritical ? "critical" : "high") as
-        | "critical"
-        | "high"
-        | "medium",
+        "critical" | "high" | "medium",
       title: `Address ${cat.replace(/_/g, " ").toLowerCase()} deficiencies`,
       description: `${obs.length} finding(s) require remediation. Immediate action needed to mitigate regulatory and operational risk.`,
       relatedFindingIds: obs.map((o: any) => o.id),

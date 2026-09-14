@@ -40,6 +40,9 @@ jobs:
         env:
           SKIP_ENV_VALIDATION: "1"
 
+      - name: Check formatting
+        run: pnpm exec prettier --check src
+
   typecheck:
     runs-on: ubuntu-latest
     timeout-minutes: 10
