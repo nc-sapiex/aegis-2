@@ -1,7 +1,7 @@
 # Issue tracker: GitHub
 
 Issues and specs for this repo live as GitHub issues in
-[`nc-sapiex/AEGIS`](https://github.com/nc-sapiex/AEGIS) (private). Use the `gh` CLI for all operations.
+[`nc-sapiex/aegis-2`](https://github.com/nc-sapiex/aegis-2) (private). Use the `gh` CLI for all operations.
 
 ## Conventions
 

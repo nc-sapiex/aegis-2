@@ -188,7 +188,7 @@ export async function computeAndApplyInstanceScores(
       db,
       tenantId,
       engagementId,
-      moduleCode,
+      moduleId,
       [...tallies.keys()],
     );
     if (!fullyNotApplicable) {
@@ -205,7 +205,7 @@ export async function computeAndApplyInstanceScores(
         isNotApplicable: true,
         notApplicableReason:
           "Every sampled account-examination response for this module is not applicable",
-        workingNotes:
+        remarks:
           "Auto-marked not applicable: the binary register is complete with only N/A answers",
       },
     );
@@ -236,7 +236,7 @@ export async function computeAndApplyInstanceScores(
       // the leaf would carry a score and the N/A flag at once.
       isNotApplicable: false,
       notApplicableReason: null,
-      workingNotes: `Auto-scored from instance-based examination: ${modulePercentage}% compliance across ${complianceResults.length} question(s)`,
+      remarks: `Auto-scored from instance-based examination: ${modulePercentage}% compliance across ${complianceResults.length} question(s)`,
     },
   );
 
@@ -247,13 +247,10 @@ async function registerIsCompleteExclusiveNotApplicable(
   db: TenantClient,
   tenantId: string,
   engagementId: string,
-  moduleCode: string,
+  moduleId: string | null,
   questionIds: string[],
 ): Promise<boolean> {
-  if (questionIds.length === 0) return false;
-
-  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
-  if (!moduleId) return false;
+  if (!moduleId || questionIds.length === 0) return false;
 
   const sampledRecords = await db.populationRecord.findMany({
     where: { engagementId, moduleId, isSampled: true, tenantId },
@@ -301,7 +298,7 @@ async function upsertModuleLeafResponses(
     scoreLabel: ScoreLabel | null;
     isNotApplicable: boolean;
     notApplicableReason: string | null;
-    workingNotes: string;
+    remarks: string;
   },
 ): Promise<number> {
   const db = prismaForTenant(tenantId);
@@ -344,7 +341,7 @@ async function upsertModuleLeafResponses(
             scoreLabel: data.scoreLabel,
             isNotApplicable: data.isNotApplicable,
             notApplicableReason: data.notApplicableReason,
-            remarks: data.workingNotes,
+            remarks: data.remarks,
             flagForObservation: false,
             flagForActionPoint: false,
             respondedAt: new Date(),
@@ -354,7 +351,7 @@ async function upsertModuleLeafResponses(
             scoreLabel: data.scoreLabel,
             isNotApplicable: data.isNotApplicable,
             notApplicableReason: data.notApplicableReason,
-            remarks: data.workingNotes,
+            remarks: data.remarks,
             respondedAt: new Date(),
           },
         });

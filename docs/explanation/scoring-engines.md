@@ -1,9 +1,9 @@
 # The scoring and escalation engines
 
-AEGIS runs five independent numeric engines that turn examiner input into risk
-categories, audit frequencies, compliance scores, and escalation levels. Each
-is a pure-function module in `src/lib/` with no database or I/O dependency —
-the "Domain logic: pure engines" section of
+AEGIS runs five independent numeric engines plus an instance-scoring bridge
+that turn examiner input into risk categories, audit frequencies, compliance
+scores, and escalation levels. Each is a pure-function module in `src/lib/`
+with no database or I/O dependency — the "Domain logic: pure engines" section of
 [`docs/architecture.md`](../architecture.md#domain-logic-pure-engines) names
 them; this document works through what each one actually computes, the
 boundary cases, and why the formulas look the way they do.
@@ -86,6 +86,30 @@ uses `Math.round`, not `Math.floor`, specifically so that 14 equally-weighted
 `FULLY_COMPLIANT` leaves round to 100%, not 99% — a floor there would make a
 perfect score look imperfect.
 
+## Instance scoring: sample register → tree (`src/lib/instance-scoring.ts`)
+
+Credit modules are not scored by ticking the tree. Examiners answer
+`COMPLIANT` / `VIOLATION` / `N/A` per sampled account on the binary
+`ExaminationRegister`. `computeCompliancePercentage` then maps the
+COMPLIANT share of those answers onto the same 4-point `ScoreLabel` the
+tree engine already understands (100% Fully, ≥75% Largely, ≥50% Partially,
+else Non-compliant). N/A rows are not “zero” — they are excluded from the
+tally, the same way unscored leaves are excluded from `computeNodeScore`.
+
+**Complete exclusive N/A is examined, not unfinished.** Empty tallies and
+“every sampled cell is N/A” look the same to the percentage math (both
+yield `null`). `isCompleteExclusiveNotApplicable` distinguishes them:
+`sampledAccountCount × activeQuestionCount` N/A cells and zero scored cells
+means the module applies to nobody at this branch. Before freeze,
+`syncAllInstanceScores` writes those leaves as `isNotApplicable` so
+`findUnscoredLeaves` (`src/lib/rbia-completeness.ts`) lets the freeze
+through. A module with untouched questions still blocks freeze
+(`INCOMPLETE_EXAMINATION`). Do not treat an absent score as N/A.
+
+Post-fieldwork, `reviseScore` (`rbia:revise_score`, required reason) changes
+an existing `ExaminationResponse`; `setSectionNotApplicable` (`module:manage`)
+marks a whole section. Neither un-freezes `BranchRbiaScore`.
+
 ## Sampling: deterministic bucket-fill (`src/lib/sampling-engine.ts`)
 
 Loan sampling picks `sampleSizePct`% of a branch's portfolio, split across up
@@ -140,9 +164,13 @@ re-notify.
   `computeRamWithUplift` is the one actually called when a new assessment is
   created; do not call the plain `computeRam` from new code that has repeat
   findings to consider.
-- None of these five modules touches the database directly except
+- None of these modules touches the database directly except
   `detectRepeatFindingsForBranch`, which is intentionally the one exception —
-  it needs `pg_trgm` similarity, which only Postgres can compute.
+  it needs `pg_trgm` similarity, which only Postgres can compute. The
+  instance-scoring *bridge* is applied by `src/data-access/instance-scoring.ts`
+  (`syncAllInstanceScores`) before freeze.
+- Freeze completeness (`findUnscoredLeaves`) is a separate pure gate in
+  `src/lib/rbia-completeness.ts`. Do not fold it into `computeNodeScore`.
 - Every write derived from these engines still goes through
   `withAuditedMutation` — see
   [`src/data-access/README.md`](../../src/data-access/README.md) — the

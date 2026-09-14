@@ -71,3 +71,9 @@ Project Doc/~$*
 # built .aegispack archives (rebuild with pnpm build-core-pack / aegis-pack build)
 dist/packs/
 packs/*/.staging/
+
+# harness-eval run output (local reports)
+.harness-eval/
+
+# third-party skill kept per machine (pbakaus/impeccable), not vendored
+.claude/skills/frontend-design/
