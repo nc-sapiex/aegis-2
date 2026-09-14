@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   materializeEngagementStatements,
   getEngagementStatements,
+  getModuleRailData,
 } from "@/data-access/engagement-statements";
 import {
   integrationPrisma,
@@ -98,5 +99,35 @@ describe("materializeEngagementStatements", () => {
     });
     const statements = await getEngagementStatements(tenantId, engagementId);
     expect(statements[0].text).toBe("Loan file is complete");
+  });
+});
+
+describe("getModuleRailData", () => {
+  it("groups a bank-authored (no pack) CHECKLIST module under CORE", async () => {
+    const rail = await getModuleRailData(tenantId, engagementId);
+    expect(rail).toHaveLength(1);
+    expect(rail[0]).toMatchObject({
+      code: "CRD",
+      group: "CORE",
+      scored: 0,
+      total: 1,
+      score: null,
+    });
+  });
+
+  it("counts a scored response toward scored and score", async () => {
+    await withFixtures(() =>
+      integrationPrisma.examinationResponse.create({
+        data: {
+          tenantId,
+          engagementId,
+          nodeId,
+          score: 1,
+          scoreLabel: "FULLY_COMPLIANT",
+        },
+      }),
+    );
+    const rail = await getModuleRailData(tenantId, engagementId);
+    expect(rail[0]).toMatchObject({ scored: 1, total: 1, score: 1 });
   });
 });

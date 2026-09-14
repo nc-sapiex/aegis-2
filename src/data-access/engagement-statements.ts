@@ -182,3 +182,88 @@ export async function getModuleRegister(
       };
     });
 }
+
+export type RailModule = {
+  moduleId: string;
+  code: string;
+  name: string;
+  group: "CORE" | "PACKS" | "KERNEL";
+  scored: number;
+  total: number;
+  score: number | null;
+};
+
+/**
+ * The module rail for one engagement's CHECKLIST-kind modules (the ones the
+ * flat register serves — POPULATION_SAMPLE modules have their own
+ * account-rail navigation). Score is a plain mean of scored leaves, not the
+ * weighted/critical-capped composite computeModuleScore produces at freeze
+ * time — that tree walk is freeze-only machinery; this is a live nav badge.
+ * ponytail: plain mean, not weighted — upgrade if the rail needs to match
+ * the frozen composite exactly.
+ *
+ * No KERNEL entries yet (cash verification, findings — not AuditModule
+ * rows); the group renders empty until a later task defines their links.
+ */
+export async function getModuleRailData(
+  tenantId: string,
+  engagementId: string,
+): Promise<RailModule[]> {
+  const db = prismaForTenant(tenantId);
+  const selections = await db.engagementModule.findMany({
+    where: { tenantId, engagementId },
+    select: {
+      module: {
+        select: { id: true, code: true, name: true, packId: true, kinds: true },
+      },
+    },
+  });
+  const checklistModules = selections
+    .map((s) => s.module)
+    .filter((m) => m.kinds.includes("CHECKLIST"));
+  if (checklistModules.length === 0) return [];
+
+  const moduleIds = checklistModules.map((m) => m.id);
+  const nodes = await db.examinationNode.findMany({
+    where: {
+      tenantId,
+      moduleId: { in: moduleIds },
+      isLeaf: true,
+      isActive: true,
+    },
+    select: { id: true, moduleId: true },
+  });
+  const nodeIds = nodes.map((n) => n.id);
+  const responses = nodeIds.length
+    ? await db.examinationResponse.findMany({
+        where: { tenantId, engagementId, nodeId: { in: nodeIds } },
+        select: { nodeId: true, score: true, isNotApplicable: true },
+      })
+    : [];
+  const responseByNode = new Map(responses.map((r) => [r.nodeId, r]));
+
+  return checklistModules.map((m) => {
+    const moduleNodes = nodes.filter((n) => n.moduleId === m.id);
+    let scored = 0;
+    let scoreSum = 0;
+    let scoreCount = 0;
+    for (const n of moduleNodes) {
+      const response = responseByNode.get(n.id);
+      if (!response) continue;
+      if (response.score !== null || response.isNotApplicable) scored += 1;
+      if (response.score !== null) {
+        scoreSum += Number(response.score);
+        scoreCount += 1;
+      }
+    }
+    return {
+      moduleId: m.id,
+      code: m.code,
+      name: m.name,
+      group: m.packId ? ("PACKS" as const) : ("CORE" as const),
+      scored,
+      total: moduleNodes.length,
+      score: scoreCount > 0 ? scoreSum / scoreCount : null,
+    };
+  });
+}

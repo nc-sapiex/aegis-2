@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { getRequiredSession } from "@/data-access/session";
-import { getModuleRegister } from "@/data-access/engagement-statements";
+import {
+  getModuleRegister,
+  getModuleRailData,
+} from "@/data-access/engagement-statements";
 import { getEngagementModuleScores } from "@/data-access/rbia-scoring";
 import {
   getViolationSummary,
@@ -11,6 +14,7 @@ import {
   type RegisterStatement,
   type RegisterResponse,
 } from "@/components/rbia/examination-register";
+import { ModuleRail } from "@/components/rbia/module-rail";
 import { ComplianceSummary } from "@/components/rbia/compliance-summary";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "@/lib/icons";
@@ -34,10 +38,11 @@ export default async function ModuleExaminationPage({ params }: PageProps) {
   const session = await getRequiredSession();
   const tenantId = session.user.tenantId;
 
-  const [register, moduleScores, examProgress] = await Promise.all([
+  const [register, moduleScores, examProgress, rail] = await Promise.all([
     getModuleRegister(tenantId, engagementId, moduleCode),
     getEngagementModuleScores(session, engagementId),
     getExaminationProgress(session, engagementId, moduleCode),
+    getModuleRailData(tenantId, engagementId),
   ]);
 
   const moduleScoreRow = moduleScores.find(
@@ -103,19 +108,27 @@ export default async function ModuleExaminationPage({ params }: PageProps) {
         {moduleScoreRow?.moduleName ?? moduleCode}
       </h2>
 
-      <Card className="overflow-hidden">
-        {statements.length === 0 ? (
-          <p className="text-muted-foreground p-6 text-sm">
-            No statements in this module for this engagement.
-          </p>
-        ) : (
-          <ExaminationRegister
-            engagementId={engagementId}
-            statements={statements}
-            initialResponses={initialResponses}
-          />
-        )}
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <ModuleRail
+          engagementId={engagementId}
+          modules={rail.map((m) => ({ ...m, current: m.code === moduleCode }))}
+          currentTitle={moduleScoreRow?.moduleName ?? moduleCode}
+        />
+
+        <Card className="overflow-hidden">
+          {statements.length === 0 ? (
+            <p className="text-muted-foreground p-6 text-sm">
+              No statements in this module for this engagement.
+            </p>
+          ) : (
+            <ExaminationRegister
+              engagementId={engagementId}
+              statements={statements}
+              initialResponses={initialResponses}
+            />
+          )}
+        </Card>
+      </div>
 
       {/* Compliance Summary — only shown for credit modules with sampled data */}
       {complianceSummaryData && (
