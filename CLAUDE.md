@@ -55,6 +55,19 @@ SKIP_ENV_VALIDATION=1 pnpm build
 SESSION_COOKIE='...' ENGAGEMENT_ID=<uuid> pnpm spike:rls  # load check before each release, spec §10
 ```
 
+## Git & PR Workflow
+
+- Merge authority: a PR may be merged without asking nc first when its
+  changes are in line with an approved plan under `docs/superpowers/plans/`
+  or the objective in
+  `docs/superpowers/specs/2026-09-12-first-customer-readiness-design.md`,
+  local verification (build + tests) passes, and CI is green. Ask first when
+  a PR is out of scope of any approved plan, makes an unplanned
+  architectural or security-relevant decision, or when local review turns up
+  something CI didn't catch (in that case hold the merge and report the
+  finding instead of merging past it).
+- After merging, delete the remote branch and prune local worktrees.
+
 ## Invariants (enforced by tests that fail the build)
 
 - **Tenant id comes from the session only** — `getRequiredSession()`. Never
