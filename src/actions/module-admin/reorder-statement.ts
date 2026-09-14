@@ -28,15 +28,20 @@ export async function reorderStatement(
     userActor(session),
     "module.statement_reordered",
     async (tx) => {
-      // Sibling scope must match the node being moved on depth/isLeaf, not
-      // just tenantId/moduleId: a module's ExaminationNode tree can have
-      // multiple depths (0=root, 1=module, 2=sub-module, 3+=leaf items), and
-      // an unfiltered query would let a leaf statement swap displayOrder
-      // with a non-leaf group node, corrupting the register's ordering.
+      // Sibling scope must match the node being moved on parentId (not just
+      // depth/isLeaf/moduleId): displayOrder is a position within one parent
+      // group (schema comment: "Weight within parent group"), and a module
+      // can have several sub-modules at the same depth sharing moduleId
+      // (e.g. CRD-HLN's 6 depth-2 sub-modules, each with its own depth-3
+      // leaves). Without parentId, reordering a leaf can swap displayOrder
+      // with a leaf under a *different* sub-module, corrupting both groups'
+      // ordering — depth/isLeaf alone only rules out swapping across levels,
+      // not across sibling groups at the same level.
       const siblings = await tx.examinationNode.findMany({
         where: {
           tenantId,
           moduleId: node.moduleId,
+          parentId: node.parentId,
           depth: node.depth,
           isLeaf: node.isLeaf,
         },

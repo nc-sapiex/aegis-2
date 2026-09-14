@@ -460,4 +460,95 @@ describe("reorderStatement", () => {
     expect(b01After.displayOrder).toBe(b02Order);
     expect(b02After.displayOrder).toBe(b01Order);
   });
+
+  it("does not swap displayOrder across sibling groups sharing depth/isLeaf/moduleId", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { reorderStatement } =
+      await import("@/actions/module-admin/reorder-statement");
+
+    // Two sub-modules under CRD, each with one leaf child — matches the real
+    // seeded shape (e.g. CRD-HLN's 6 depth-2 sub-modules, each with depth-3
+    // leaves sharing moduleId/depth/isLeaf but different parentId).
+    const crd = await integrationOwner.auditModule.findFirstOrThrow({
+      where: { tenantId, code: "CRD" },
+    });
+    const subA = await integrationOwner.examinationNode.create({
+      data: {
+        tenantId,
+        moduleId: crd.id,
+        code: "CRD-A",
+        name: "Sub A",
+        path: "CRD/CRD-A",
+        depth: 2,
+        isLeaf: false,
+        weight: 1,
+        isCritical: false,
+        origin: "BANK",
+        displayOrder: 0,
+      },
+    });
+    const subB = await integrationOwner.examinationNode.create({
+      data: {
+        tenantId,
+        moduleId: crd.id,
+        code: "CRD-B",
+        name: "Sub B",
+        path: "CRD/CRD-B",
+        depth: 2,
+        isLeaf: false,
+        weight: 1,
+        isCritical: false,
+        origin: "BANK",
+        displayOrder: 1,
+      },
+    });
+    const leafA = await integrationOwner.examinationNode.create({
+      data: {
+        tenantId,
+        moduleId: crd.id,
+        parentId: subA.id,
+        code: "CRD-A-01",
+        name: "Leaf A",
+        path: "CRD/CRD-A/CRD-A-01",
+        depth: 3,
+        isLeaf: true,
+        weight: 1,
+        isCritical: false,
+        origin: "BANK",
+        displayOrder: 0,
+      },
+    });
+    const leafB = await integrationOwner.examinationNode.create({
+      data: {
+        tenantId,
+        moduleId: crd.id,
+        parentId: subB.id,
+        code: "CRD-B-01",
+        name: "Leaf B",
+        path: "CRD/CRD-B/CRD-B-01",
+        depth: 3,
+        isLeaf: true,
+        weight: 1,
+        isCritical: false,
+        origin: "BANK",
+        displayOrder: 0,
+      },
+    });
+
+    // leafA is the only child of subA — moving it "down" must be a no-op,
+    // never a swap with leafB (a different parent group that happens to
+    // share moduleId/depth/isLeaf).
+    const result = await reorderStatement(leafA.id, "down");
+    expect(result.success).toBe(true);
+
+    const leafAAfter = await integrationOwner.examinationNode.findUniqueOrThrow(
+      { where: { id: leafA.id } },
+    );
+    const leafBAfter = await integrationOwner.examinationNode.findUniqueOrThrow(
+      { where: { id: leafB.id } },
+    );
+    expect(leafAAfter.displayOrder).toBe(0);
+    expect(leafBAfter.displayOrder).toBe(0);
+  });
 });
