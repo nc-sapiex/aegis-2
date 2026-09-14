@@ -811,7 +811,7 @@ async function seedLifecycle() {
         nodeId: node.id,
         score: s.score,
         scoreLabel: s.label as any,
-        workingNotes: s.notes || null,
+        remarks: s.notes || null,
         flagForObservation: s.flag?.includes("obs") ?? false,
         flagForActionPoint: s.flag?.includes("ap") ?? false,
         respondedById:
