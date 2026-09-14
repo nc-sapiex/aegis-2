@@ -21,6 +21,7 @@
 import { PrismaClient } from "../src/generated/prisma/client.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
+import { fileURLToPath } from "node:url";
 
 /* ------------------------------------------------------------------ */
 /*  Bootstrap Prisma with pg.Pool for proper cleanup                  */
@@ -721,6 +722,46 @@ async function main() {
     counters[node.depth] = (counters[node.depth] ?? 0) + 1;
   }
 
+  // Depth-1 CRD-HLN is the AuditModule; depth >= 1 nodes in its subtree
+  // hang off that moduleId. Depth 0 (CRD) spans modules and stays null.
+  const housingNode = await prisma.examinationNode.findUnique({
+    where: { tenantId_code: { tenantId, code: "CRD-HLN" } },
+    select: { name: true, path: true, weight: true, isActive: true },
+  });
+  if (!housingNode) {
+    throw new Error("CRD-HLN examination node missing after upsert.");
+  }
+
+  const housingModule = await prisma.auditModule.upsert({
+    where: { tenantId_code: { tenantId, code: "CRD-HLN" } },
+    create: {
+      tenantId,
+      code: "CRD-HLN",
+      name: housingNode.name,
+      domain: "CREDIT",
+      kinds: ["CHECKLIST", "POPULATION_SAMPLE"],
+      applicability: {},
+      weight: housingNode.weight,
+      isActive: housingNode.isActive,
+    },
+    update: {
+      name: housingNode.name,
+      kinds: ["CHECKLIST", "POPULATION_SAMPLE"],
+      weight: housingNode.weight,
+      isActive: housingNode.isActive,
+    },
+    select: { id: true },
+  });
+
+  await prisma.examinationNode.updateMany({
+    where: {
+      tenantId,
+      path: { startsWith: housingNode.path },
+      depth: { gte: 1 },
+    },
+    data: { moduleId: housingModule.id, origin: "BANK" },
+  });
+
   /* ---------------------------------------------------------------- */
   /*  Summary table                                                   */
   /* ---------------------------------------------------------------- */
@@ -769,12 +810,18 @@ async function main() {
 /* ------------------------------------------------------------------ */
 /*  Execute with proper cleanup                                       */
 /* ------------------------------------------------------------------ */
-main()
-  .catch((err) => {
-    console.error("Seed failed:", err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-    await pool.end();
-  });
+// Only run when executed directly (`pnpm seed:rbia-housing`), not when
+// build-core-pack.ts imports NODES to assemble the core pack's source data.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main()
+    .catch((err) => {
+      console.error("Seed failed:", err);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+      await pool.end();
+    });
+}
+
+export { NODES };

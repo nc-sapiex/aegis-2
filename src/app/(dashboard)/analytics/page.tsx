@@ -4,13 +4,11 @@ import {
   getAuditPlanProgress,
   getComplianceAging,
   getFindingTrends,
-  getNpaMovement,
 } from "@/data-access/analytics";
 import { RiskHeatmap } from "@/components/analytics/risk-heatmap";
 import { PlanProgress } from "@/components/analytics/plan-progress";
 import { ComplianceAging } from "@/components/analytics/compliance-aging";
 import { FindingTrends } from "@/components/analytics/finding-trends";
-import { NpaWaterfall } from "@/components/analytics/npa-waterfall";
 import { getRbiaAnalyticsSummary } from "@/data-access/rbia-analytics";
 import { RbiaAnalyticsKpis } from "@/components/rbia/rbia-analytics-kpis";
 import { RbiaModuleRadarChart } from "@/components/rbia/rbia-analytics-radar";
@@ -40,14 +38,12 @@ export default async function AnalyticsPage() {
     planProgressData,
     complianceAgingData,
     findingTrendsData,
-    npaMovementData,
     rbiaData,
   ] = await Promise.all([
     getBranchRiskHeatmap(tenantId),
     getAuditPlanProgress(tenantId),
     getComplianceAging(tenantId),
     getFindingTrends(tenantId),
-    getNpaMovement(tenantId),
     getRbiaAnalyticsSummary(session),
   ]);
 
@@ -64,12 +60,11 @@ export default async function AnalyticsPage() {
       </div>
 
       <Tabs defaultValue="risk" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-6">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-5">
           <TabsTrigger value="risk">Branch Risk</TabsTrigger>
           <TabsTrigger value="plan">Audit Plans</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
           <TabsTrigger value="findings">Findings</TabsTrigger>
-          <TabsTrigger value="npa">NPA</TabsTrigger>
           <TabsTrigger value="rbia">RBIA Analytics</TabsTrigger>
         </TabsList>
 
@@ -87,10 +82,6 @@ export default async function AnalyticsPage() {
 
         <TabsContent value="findings" className="space-y-4">
           <FindingTrends data={findingTrendsData} />
-        </TabsContent>
-
-        <TabsContent value="npa" className="space-y-4">
-          <NpaWaterfall data={npaMovementData} />
         </TabsContent>
 
         <TabsContent value="rbia" className="space-y-6">

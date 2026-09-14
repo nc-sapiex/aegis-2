@@ -1,0 +1,280 @@
+- code: CASH
+  name: Cash
+  domain: CASH
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: ATM
+  name: ATM
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: DELIVERABLES_MANAGEMENT
+  name: Deliverables Management
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: SECURITY_STATIONERY
+  name: Security Stationery
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: CLEARING
+  name: Clearing
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: REMITTANCES
+  name: Remittances
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: DEPOSITS
+  name: Deposits
+  domain: DEPOSITS
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: GOVERNMENT_TRANSACTIONS
+  name: Government Transactions
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: CUSTOMER_SERVICE
+  name: Customer Service
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: HOUSEKEEPING
+  name: Housekeeping
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: LOCKERS_SAFE_DEPOSIT
+  name: Lockers/Safe Deposit
+  domain: DEPOSITS
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: KYC_AML_COMPLIANCE
+  name: KYC/AML Compliance
+  domain: KYC
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: THIRD_PARTY_PRODUCTS
+  name: Third Party Products
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: STAFF_ACCOUNTABILITY
+  name: Staff Accountability
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: GENERAL_ADMINISTRATION
+  name: General Administration
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: CREDIT_PRE-SANCTION
+  name: Credit Pre-Sanction
+  domain: CREDIT
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: CREDIT_POST-SANCTION
+  name: Credit Post-Sanction
+  domain: CREDIT
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: NPA_MANAGEMENT
+  name: NPA Management
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: GOLD_LOANS
+  name: Gold Loans
+  domain: CREDIT
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: PRIORITY_SECTOR_LENDING
+  name: Priority Sector Lending
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: NON_FUND_BASED
+  name: Non Fund Based
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: RETAIL_ASSETS
+  name: Retail Assets
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: INSURANCE
+  name: Insurance
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: PENSION
+  name: Pension
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: OTHER
+  name: Other
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: FEMA_COMPLIANCE
+  name: FEMA Compliance
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: KYC_AML_DETAILED
+  name: KYC/AML Detailed
+  domain: KYC
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: RETAIL_LIABILITIES
+  name: Retail Liabilities
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: RETAIL_SERVICES
+  name: Retail Services
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: CREDIT_ADVANCES
+  name: Credit/Advances
+  domain: CREDIT
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: INVESTMENT_TREASURY
+  name: Investment/Treasury
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: CREDIT_MONITORING_&_RECOVERY
+  name: Credit Monitoring & Recovery
+  domain: CREDIT
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: FOREIGN_EXCHANGE
+  name: Foreign Exchange
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: TRADE_FINANCE
+  name: Trade Finance
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: PRIORITY_SECTOR_ADVANCES
+  name: Priority Sector Advances
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: GOVERNMENT_BUSINESS
+  name: Government Business
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: AREA_37
+  name: Area 37
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: AREA_38
+  name: Area 38
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: MISCELLANEOUS
+  name: Miscellaneous
+  domain: OTHER
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1
+- code: CRD-HLN
+  name: Housing Loans
+  domain: CREDIT
+  kinds:
+    - CHECKLIST
+  applicability: {}
+  weight: 1

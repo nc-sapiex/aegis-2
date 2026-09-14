@@ -156,6 +156,7 @@ export async function freezeRbiaScore(
             depth: true,
             name: true,
             path: true,
+            moduleId: true,
           },
         });
 
@@ -174,7 +175,12 @@ export async function freezeRbiaScore(
         // Build tree using same two-pass Map approach as buildTree in rbia-examination.ts
         const nodeMap = new Map<
           string,
-          ScoredNode & { depth: number; parentId: string | null; name: string }
+          ScoredNode & {
+            depth: number;
+            parentId: string | null;
+            name: string;
+            moduleId: string | null;
+          }
         >();
         for (const n of allNodes) {
           const resp = responseMap.get(n.id);
@@ -189,22 +195,24 @@ export async function freezeRbiaScore(
             children: [],
             depth: n.depth,
             parentId: n.parentId,
+            moduleId: n.moduleId,
           } as ScoredNode & {
             depth: number;
             parentId: string | null;
             name: string;
+            moduleId: string | null;
           });
         }
 
         // Link children -> parents. Modules in scope come from the engagement's
-        // selection, not from every depth-1 node in the tenant catalogue: the
+        // selection, not from every module in the tenant catalogue: the
         // snapshot must describe this engagement, not the whole product.
-        const selections = await tx.engagementModuleSelection.findMany({
+        const selections = await tx.engagementModule.findMany({
           where: { engagementId: validated.engagementId, tenantId },
-          select: { moduleNodeId: true },
+          select: { moduleId: true },
         });
-        const selectedIds = new Set<string>(
-          selections.map((s: { moduleNodeId: string }) => s.moduleNodeId),
+        const selectedModuleIds = new Set<string>(
+          selections.map((s: { moduleId: string }) => s.moduleId),
         );
 
         for (const node of nodeMap.values()) {
@@ -214,10 +222,18 @@ export async function freezeRbiaScore(
           }
         }
 
+        // The module's own root is the depth-1 node whose moduleId points at
+        // the selected AuditModule (module-native backfill, see
+        // scripts/backfill/module-native.ts).
         const moduleNodes: ScoredNode[] = [];
-        for (const id of selectedIds) {
-          const mod = nodeMap.get(id);
-          if (mod) moduleNodes.push(mod);
+        for (const node of nodeMap.values()) {
+          if (
+            node.depth === 1 &&
+            node.moduleId &&
+            selectedModuleIds.has(node.moduleId)
+          ) {
+            moduleNodes.push(node);
+          }
         }
 
         if (moduleNodes.length === 0) {

@@ -110,7 +110,7 @@ export function BmResponseApCard({
             <Badge className={severityStyle}>{actionPoint.severity}</Badge>
             {/* Module code */}
             <Badge variant="outline" className="text-xs">
-              {actionPoint.moduleCode}
+              {actionPoint.module.code}
             </Badge>
             {/* Status */}
             <Badge className={statusInfo.className}>{statusInfo.label}</Badge>

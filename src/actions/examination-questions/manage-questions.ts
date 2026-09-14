@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/data-access/prisma";
+import { getModuleIdByCode } from "@/data-access/audit-modules";
 import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import {
@@ -77,9 +78,14 @@ export async function addQuestion(
 
     const db = prismaForTenant(tenantId);
 
+    const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+    if (!moduleId) {
+      return { success: false, error: `Unknown module: ${moduleCode}.` };
+    }
+
     // 4. Get max displayOrder for this module to append new question at end
     const lastQuestion = await db.examinationQuestion.findFirst({
-      where: { tenantId, moduleCode },
+      where: { tenantId, moduleId },
       select: { displayOrder: true },
       orderBy: { displayOrder: "desc" },
     });
@@ -90,7 +96,7 @@ export async function addQuestion(
     const question = await db.examinationQuestion.create({
       data: {
         tenantId,
-        moduleCode,
+        moduleId,
         text,
         rbiReference: rbiReference ?? null,
         bestPracticeTip: bestPracticeTip ?? null,

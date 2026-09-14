@@ -1,6 +1,7 @@
 import { getRequiredSession } from "@/data-access/session";
 import { getEngagementWithTeam } from "@/data-access/audit-execution";
 import { getEngagementMeetings } from "@/data-access/rbia-meetings";
+import { getEngagementReadiness } from "@/data-access/engagement-readiness";
 import { hasPermission } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { ChevronLeft } from "@/lib/icons";
@@ -107,6 +108,14 @@ export default async function RbiaLayout({ children, params }: LayoutProps) {
   );
   const prerequisiteMessage = getPrerequisiteMessage(engagement.status);
 
+  // Finish-line gate: only the fieldwork phase (IN_PROGRESS -> EXIT_MEETING,
+  // the state machine's nearest edge to the spec's "FIELDWORK -> REVIEW")
+  // needs the examination finished before the auditor moves on.
+  const readiness =
+    engagement.status === "IN_PROGRESS"
+      ? await getEngagementReadiness(session.user.tenantId, engagementId)
+      : null;
+
   const basePath = `/audit-execution/${engagementId}/rbia`;
 
   // HIA/CAE only — conditionally show Questions tab
@@ -134,19 +143,49 @@ export default async function RbiaLayout({ children, params }: LayoutProps) {
       />
 
       {/* Status transition control with disabled tooltip per CONTEXT.md */}
-      {nextStatus && (
-        <div className="flex items-center gap-3">
-          <StatusTransitionControl
-            currentStatus={engagement.status}
-            nextStatus={nextStatus}
-            label={transitionLabel}
-            engagementId={engagementId}
-            canTransition={canManageStatus}
-            prerequisiteMet={prerequisiteMet}
-            prerequisiteMessage={prerequisiteMessage}
-          />
-        </div>
-      )}
+      {nextStatus &&
+        (readiness && !readiness.fieldworkComplete ? (
+          <div className="space-y-1 border-t border-[color:var(--border)] pt-2 text-[12.5px]">
+            {readiness.needsRemarks > 0 && (
+              <a
+                href={basePath}
+                className="block text-[color:var(--warning)] underline"
+              >
+                {readiness.needsRemarks} statement
+                {readiness.needsRemarks === 1 ? "" : "s"} need remarks
+              </a>
+            )}
+            {readiness.notSaved > 0 && (
+              <a
+                href={basePath}
+                className="block text-[color:var(--destructive)] underline"
+              >
+                {readiness.notSaved} not saved
+              </a>
+            )}
+            {readiness.draftActionPoints > 0 && (
+              <a
+                href={`${basePath}/findings`}
+                className="block text-[color:var(--muted-foreground)] underline"
+              >
+                {readiness.draftActionPoints} action point
+                {readiness.draftActionPoints === 1 ? "" : "s"} in draft
+              </a>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <StatusTransitionControl
+              currentStatus={engagement.status}
+              nextStatus={nextStatus}
+              label={transitionLabel}
+              engagementId={engagementId}
+              canTransition={canManageStatus}
+              prerequisiteMet={prerequisiteMet}
+              prerequisiteMessage={prerequisiteMessage}
+            />
+          </div>
+        ))}
 
       {/* Tab navigation -- URL-based segments */}
       <TabNav

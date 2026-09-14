@@ -1,0 +1,4 @@
+[
+  { "packCode": "core", "version": "1.0.0", "name": "AEGIS Core" },
+  { "packCode": "example-forex", "version": "1.0.0", "name": "Example Forex" }
+]

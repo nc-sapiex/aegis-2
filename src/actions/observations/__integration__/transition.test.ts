@@ -21,18 +21,28 @@ async function seedObservation(tenantId: string, createdById: string) {
       },
       select: { id: true },
     });
+    const auditModule = await integrationOwner.auditModule.create({
+      data: {
+        tenantId,
+        code: "CRD",
+        name: "Credit",
+        domain: "CREDIT",
+        kinds: ["CHECKLIST"],
+        applicability: {},
+      },
+      select: { id: true },
+    });
     return integrationOwner.observation.create({
       data: {
         tenantId,
         title: "Concurrency probe",
-        condition: "c",
-        criteria: "c",
-        cause: "c",
-        effect: "c",
+        description: "d",
+        pertainsTo: "OPERATIONS",
         recommendation: "r",
         severity: "HIGH",
         status: "DRAFT",
         branchId: branch.id,
+        moduleId: auditModule.id,
         createdById,
         version: 1,
       },

@@ -315,6 +315,12 @@ async function main() {
       city: "Pune",
       state: "Maharashtra",
       type: "Head Office",
+      hasForex: true,
+      hasCurrencyChest: true,
+      hasGovtBusiness: true,
+      hasLockers: true,
+      hasAtm: true,
+      loanProducts: ["HOUSING", "GOLD", "VEHICLE", "MSME"],
     },
     {
       code: "BR002",
@@ -322,6 +328,12 @@ async function main() {
       city: "Pune",
       state: "Maharashtra",
       type: "Branch",
+      hasForex: false,
+      hasCurrencyChest: false,
+      hasGovtBusiness: false,
+      hasLockers: true,
+      hasAtm: true,
+      loanProducts: ["HOUSING", "GOLD"],
     },
     {
       code: "BR003",
@@ -329,6 +341,12 @@ async function main() {
       city: "Pune",
       state: "Maharashtra",
       type: "Branch",
+      hasForex: true,
+      hasCurrencyChest: false,
+      hasGovtBusiness: true,
+      hasLockers: true,
+      hasAtm: true,
+      loanProducts: ["HOUSING", "GOLD", "VEHICLE"],
     },
     {
       code: "BR004",
@@ -336,6 +354,12 @@ async function main() {
       city: "Pune",
       state: "Maharashtra",
       type: "Branch",
+      hasForex: false,
+      hasCurrencyChest: false,
+      hasGovtBusiness: false,
+      hasLockers: false,
+      hasAtm: true,
+      loanProducts: [],
     },
     {
       code: "BR005",
@@ -343,6 +367,12 @@ async function main() {
       city: "Pune",
       state: "Maharashtra",
       type: "Branch",
+      hasForex: false,
+      hasCurrencyChest: false,
+      hasGovtBusiness: false,
+      hasLockers: false,
+      hasAtm: true,
+      loanProducts: ["GOLD"],
     },
     {
       code: "BR006",
@@ -350,6 +380,12 @@ async function main() {
       city: "Pune",
       state: "Maharashtra",
       type: "Branch",
+      hasForex: false,
+      hasCurrencyChest: false,
+      hasGovtBusiness: true,
+      hasLockers: true,
+      hasAtm: true,
+      loanProducts: ["HOUSING", "VEHICLE"],
     },
     {
       code: "BR007",
@@ -357,6 +393,12 @@ async function main() {
       city: "Pune",
       state: "Maharashtra",
       type: "Branch",
+      hasForex: false,
+      hasCurrencyChest: false,
+      hasGovtBusiness: false,
+      hasLockers: false,
+      hasAtm: false,
+      loanProducts: [],
     },
     {
       code: "BR008",
@@ -364,6 +406,12 @@ async function main() {
       city: "Pune",
       state: "Maharashtra",
       type: "Branch",
+      hasForex: false,
+      hasCurrencyChest: false,
+      hasGovtBusiness: false,
+      hasLockers: true,
+      hasAtm: true,
+      loanProducts: ["HOUSING"],
     },
     {
       code: "BR009",
@@ -371,6 +419,12 @@ async function main() {
       city: "Pune",
       state: "Maharashtra",
       type: "Branch",
+      hasForex: false,
+      hasCurrencyChest: false,
+      hasGovtBusiness: false,
+      hasLockers: false,
+      hasAtm: true,
+      loanProducts: ["GOLD", "VEHICLE"],
     },
     {
       code: "BR010",
@@ -378,6 +432,12 @@ async function main() {
       city: "Pune",
       state: "Maharashtra",
       type: "Branch",
+      hasForex: false,
+      hasCurrencyChest: false,
+      hasGovtBusiness: true,
+      hasLockers: false,
+      hasAtm: true,
+      loanProducts: ["HOUSING", "GOLD"],
     },
     {
       code: "BR011",
@@ -385,6 +445,12 @@ async function main() {
       city: "Pune",
       state: "Maharashtra",
       type: "Branch",
+      hasForex: true,
+      hasCurrencyChest: false,
+      hasGovtBusiness: false,
+      hasLockers: true,
+      hasAtm: true,
+      loanProducts: ["HOUSING", "VEHICLE"],
     },
     {
       code: "BR012",
@@ -392,6 +458,12 @@ async function main() {
       city: "Pune",
       state: "Maharashtra",
       type: "Branch",
+      hasForex: false,
+      hasCurrencyChest: false,
+      hasGovtBusiness: false,
+      hasLockers: false,
+      hasAtm: false,
+      loanProducts: [],
     },
   ];
 
@@ -458,99 +530,6 @@ async function main() {
   console.log(
     `    ✓ ${ramParametersData.length} RAM parameters seeded for both tenants`,
   );
-
-  // ─── 4c. Seed Examination Areas + Items ─────────────────────────────
-
-  console.log("  Seeding examination areas and items...");
-
-  const examinationAreasData = await import(
-    "../src/data/seed/examination-areas.json",
-    { with: { type: "json" } }
-  ).then((m) => m.default);
-  const examinationItemsData = await import(
-    "../src/data/seed/examination-items.json",
-    { with: { type: "json" } }
-  ).then((m) => m.default);
-
-  for (const tid of [tenantA.id, tenantB.id]) {
-    const areaIdMap = new Map<string, string>();
-
-    for (const area of examinationAreasData) {
-      const record = await prisma.examinationArea.upsert({
-        where: {
-          tenantId_code: { tenantId: tid, code: area.code },
-        },
-        update: {
-          name: area.name,
-          displayOrder: area.displayOrder,
-        },
-        create: {
-          tenantId: tid,
-          code: area.code,
-          name: area.name,
-          riskWeight: 1.0,
-          displayOrder: area.displayOrder,
-          isActive: true,
-        },
-      });
-      areaIdMap.set(area.code, record.id);
-      // Also map by sectionNumber for items that use numeric areaCode
-      if ((area as any).sectionNumber) {
-        areaIdMap.set(String((area as any).sectionNumber), record.id);
-      }
-    }
-
-    let itemCount = 0;
-    for (const item of examinationItemsData) {
-      // Items may reference areas by code ("CASH") or by numeric areaCode ("1")
-      let areaId = areaIdMap.get(item.areaCode);
-      if (!areaId) {
-        // Try to find by name match
-        for (const area of examinationAreasData) {
-          if (area.name === (item as any).areaName) {
-            areaId = areaIdMap.get(area.code);
-            break;
-          }
-        }
-      }
-      if (!areaId) {
-        continue; // Skip unmapped items silently
-      }
-
-      await prisma.examinationItem.upsert({
-        where: {
-          tenantId_areaId_itemNumber: {
-            tenantId: tid,
-            areaId,
-            itemNumber: item.itemNumber,
-          },
-        },
-        update: {
-          particulars: item.particulars,
-          riskCategory: item.riskCategory,
-          regulatoryRef: (item as any).regulatoryReference ?? null,
-          displayOrder: item.displayOrder,
-        },
-        create: {
-          tenantId: tid,
-          areaId,
-          itemNumber: item.itemNumber,
-          particulars: item.particulars,
-          riskCategory: item.riskCategory,
-          regulatoryRef: (item as any).regulatoryReference ?? null,
-          displayOrder: item.displayOrder,
-          isActive: true,
-        },
-      });
-      itemCount++;
-    }
-
-    if (tid === tenantA.id) {
-      console.log(
-        `    ✓ ${examinationAreasData.length} areas, ${itemCount} items seeded for Tenant A`,
-      );
-    }
-  }
 
   // ─── 5. Create Audit Areas ──────────────────────────────────────────
 
@@ -892,6 +871,33 @@ async function main() {
 
   console.log("  Creating observations...");
 
+  // Observation.moduleId is a required FK. The real per-domain AuditModule
+  // rows come from scripts/backfill/module-native.ts (run against real
+  // ExaminationNode content), which this seed doesn't create — so give
+  // seeded observations one generic module to satisfy the FK.
+  const genModuleA = await prisma.auditModule.upsert({
+    where: { tenantId_code: { tenantId: tenantA.id, code: "GEN" } },
+    update: {},
+    create: {
+      tenantId: tenantA.id,
+      code: "GEN",
+      name: "General",
+      domain: "OTHER",
+      kinds: ["CHECKLIST"],
+    },
+  });
+  const genModuleB = await prisma.auditModule.upsert({
+    where: { tenantId_code: { tenantId: tenantB.id, code: "GEN" } },
+    update: {},
+    create: {
+      tenantId: tenantB.id,
+      code: "GEN",
+      name: "General",
+      domain: "OTHER",
+      kinds: ["CHECKLIST"],
+    },
+  });
+
   const findingsJson = await import("../src/data/seed/findings.json");
   const findings = findingsJson.findings;
 
@@ -924,13 +930,12 @@ async function main() {
       data: {
         tenantId: tenantA.id,
         title: f.title,
-        condition: f.observation,
-        criteria: f.riskImpact,
-        cause: f.rootCause,
-        effect: f.riskImpact,
+        description: `${f.observation}\n\nCriteria: ${f.riskImpact}\n\nRoot cause: ${f.rootCause}`,
         recommendation: f.actionPlan,
         severity: mapSeverity(f.severity),
         status: mapObservationStatus(f.status),
+        pertainsTo: "OPERATIONS",
+        moduleId: genModuleA.id,
         assignedToId,
         branchId: branches[branchIdx].id,
         auditAreaId: areaMap.get(areaName) ?? auditAreas[0].id,
@@ -963,13 +968,13 @@ async function main() {
     data: {
       tenantId: tenantB.id,
       title: "Test Bank Finding — Cash Reserve",
-      condition: "CRR maintenance below threshold",
-      criteria: "RBI minimum CRR requirement",
-      cause: "Liquidity management gap",
-      effect: "Regulatory penalty risk",
+      description:
+        "CRR maintenance below threshold. Criteria: RBI minimum CRR requirement. Root cause: Liquidity management gap.",
       recommendation: "Improve daily CRR monitoring",
       severity: Severity.MEDIUM,
       status: ObservationStatus.DRAFT,
+      pertainsTo: "FINANCE",
+      moduleId: genModuleB.id,
       branchId: branchB.id,
       createdById: userBankB.id,
     },

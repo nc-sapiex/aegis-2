@@ -8,8 +8,6 @@ import { SeverityBadge } from "@/components/ui/severity-badge";
 import { formatDate } from "@/lib/utils";
 import {
   Eye,
-  AlertTriangle,
-  Shield,
   Clock,
   Calendar,
   ChevronLeft,
@@ -25,10 +23,7 @@ interface FindingDetailProps {
   observation: {
     id: string;
     title: string;
-    condition: string;
-    criteria: string;
-    cause: string;
-    effect: string;
+    description: string;
     recommendation: string;
     severity: string;
     status: string;
@@ -233,67 +228,16 @@ export function FindingDetail({ observation, session }: FindingDetailProps) {
         </Card>
       )}
 
-      {/* Condition — What was found */}
+      {/* Description */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Eye className="text-muted-foreground h-4 w-4" />
-            Condition
-            <span className="text-muted-foreground text-xs font-normal">
-              What was found
-            </span>
+            Description
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-base leading-relaxed">{observation.condition}</p>
-        </CardContent>
-      </Card>
-
-      {/* Criteria — What should be */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Shield className="text-muted-foreground h-4 w-4" />
-            Criteria
-            <span className="text-muted-foreground text-xs font-normal">
-              What should be
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-base leading-relaxed">{observation.criteria}</p>
-        </CardContent>
-      </Card>
-
-      {/* Cause — Why it happened */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <AlertTriangle className="text-muted-foreground h-4 w-4" />
-            Cause
-            <span className="text-muted-foreground text-xs font-normal">
-              Why it happened
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-base leading-relaxed">{observation.cause}</p>
-        </CardContent>
-      </Card>
-
-      {/* Effect — Risk / Impact */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <AlertTriangle className="text-muted-foreground h-4 w-4" />
-            Effect
-            <span className="text-muted-foreground text-xs font-normal">
-              Risk / Impact
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-base leading-relaxed">{observation.effect}</p>
+          <p className="text-base leading-relaxed">{observation.description}</p>
         </CardContent>
       </Card>
 

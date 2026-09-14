@@ -1,0 +1,20 @@
+# packs/example-forex/nodes.yaml
+- code: FX-01
+  moduleCode: FX
+  name: FEMA Declarations
+  path: FX/FX-01
+  depth: 1
+  isLeaf: true
+  weight: 1.5
+  isCritical: true
+  description: FEMA declarations (Form A2, FIRC) are on file for every forex transaction sampled
+  regulatoryRef: FEMA 1999, RBI Master Direction on Import of Goods and Services
+- code: FX-02
+  moduleCode: FX
+  name: Authorised Dealer Category
+  path: FX/FX-02
+  depth: 1
+  isLeaf: true
+  weight: 1.0
+  isCritical: false
+  description: Branch's AD category matches the forex products it offers

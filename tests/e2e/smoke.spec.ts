@@ -53,10 +53,11 @@ test.describe("@smoke critical paths", () => {
     }) => {
       await page.goto("/findings/new");
       await page.getByLabel(/^title/i).fill("Smoke: cash retention breach");
-      await page.getByLabel(/condition/i).fill("Cash held above the limit");
-      await page.getByLabel(/criteria/i).fill("RBI cash retention limit");
-      await page.getByLabel(/cause/i).fill("Manual reconciliation gap");
-      await page.getByLabel(/effect/i).fill("Elevated operational risk");
+      await page
+        .getByLabel(/description/i)
+        .fill(
+          "Cash held above the limit, against the RBI cash retention limit, due to a manual reconciliation gap. Elevated operational risk.",
+        );
       await page
         .getByLabel(/recommendation/i)
         .fill("Automate the daily reconciliation");
@@ -66,6 +67,10 @@ test.describe("@smoke critical paths", () => {
         .getByRole("option", { name: /^high$/i })
         .first()
         .click();
+      await page.getByRole("combobox", { name: /module/i }).click();
+      await page.getByRole("option").first().click();
+      await page.getByRole("combobox", { name: /pertains to/i }).click();
+      await page.getByRole("option").first().click();
       await page.getByRole("combobox", { name: /^branch$/i }).click();
       await page.getByRole("option").first().click();
       await page.getByRole("combobox", { name: /audit area/i }).click();

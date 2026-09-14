@@ -33,8 +33,11 @@ export async function setSectionNotApplicable(
       userActor(session),
       "rbia.section_marked_na",
       async (tx) => {
+        // input.moduleId is an AuditModule id; the tree walk needs the
+        // depth-1 ExaminationNode it was backfilled from (module-native.ts)
+        // for its materialized path.
         const moduleNode = await tx.examinationNode.findFirst({
-          where: { id: input.moduleId, tenantId },
+          where: { moduleId: input.moduleId, tenantId, depth: 1 },
           select: { id: true, path: true },
         });
         if (!moduleNode) {

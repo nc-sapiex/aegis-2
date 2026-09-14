@@ -17,11 +17,6 @@ releases nothing.
 - Non-core modules (concurrent audit, IS audit, governance, regulatory hub,
   investments, housekeeping, QA, issues, work program, risk register, control
   library) stay in AEGIS 1.x until ported behind feature flags.
-- The v5 Excel-section examination tables and pages
-  (`AuditSectionInstance`, `LoanReview`, `SmaNpaEntry`, `AuditExaminationResponse`,
-  `ExaminationArea`, `ExaminationItem`) still exist in `prisma/schema.prisma`
-  but have no pages or actions. Removing them from the schema is a planned
-  task; do not build on them.
 - next-intl and Sentry. English strings live in `src/lib/strings.ts`, which
   keeps the old `useTranslations(ns)` call shape over `strings.en.json`.
 - The hand-coded RBIA PDF document. `generatePdfReport` returns an error for

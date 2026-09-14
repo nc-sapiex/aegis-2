@@ -4,7 +4,10 @@ import path from "path";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/__tests__/**/*.test.ts"],
+    include: [
+      "src/**/__tests__/**/*.test.ts",
+      "scripts/**/__tests__/**/*.test.ts",
+    ],
     // src/env.ts validates at import time. Server actions reach it through the
     // mailer and other helpers, so give every run a syntactically valid set
     // rather than mocking @/env in each file. No test connects to these.

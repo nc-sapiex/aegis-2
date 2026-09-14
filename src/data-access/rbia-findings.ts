@@ -6,6 +6,8 @@ import type {
   Severity,
   ActionPointStatus,
   ObservationStatus,
+  ActionPointKind,
+  ObservationPertainsTo,
 } from "@/generated/prisma/enums";
 
 /**
@@ -38,7 +40,9 @@ export type ActionPointData = {
   title: string;
   description: string;
   severity: Severity;
-  moduleCode: string;
+  kind: ActionPointKind;
+  moduleId: string;
+  module: { code: string; name: string };
   status: ActionPointStatus;
   sourceResponse: {
     id: string;
@@ -63,18 +67,15 @@ export type CarryForwardActionPointData = Omit<
 export type ObservationData = {
   id: string;
   title: string;
-  condition: string;
-  criteria: string;
-  cause: string;
-  effect: string;
+  description: string;
   recommendation: string;
   severity: Severity;
   status: ObservationStatus;
+  pertainsTo: ObservationPertainsTo;
   engagementId: string | null;
   branchId: string | null;
-  observationType: string;
+  sourceActionPointId: string | null;
   createdAt: Date;
-  // TODO Phase 20: Add sourceActionPointId to Observation schema for promote-to-observation link
 };
 
 export type EngagementFindings = {
@@ -111,7 +112,9 @@ export async function getEngagementActionPoints(
       title: true,
       description: true,
       severity: true,
-      moduleCode: true,
+      kind: true,
+      moduleId: true,
+      module: { select: { code: true, name: true } },
       status: true,
       bmResponseText: true,
       bmResponseDate: true,
@@ -159,16 +162,14 @@ export async function getEngagementObservations(
     select: {
       id: true,
       title: true,
-      condition: true,
-      criteria: true,
-      cause: true,
-      effect: true,
+      description: true,
       recommendation: true,
       severity: true,
       status: true,
+      pertainsTo: true,
       engagementId: true,
       branchId: true,
-      observationType: true,
+      sourceActionPointId: true,
       createdAt: true,
     },
   });
@@ -236,7 +237,9 @@ export async function getCarryForwardActionPoints(
       title: true,
       description: true,
       severity: true,
-      moduleCode: true,
+      kind: true,
+      moduleId: true,
+      module: { select: { code: true, name: true } },
       status: true,
       bmResponseText: true,
       bmResponseDate: true,

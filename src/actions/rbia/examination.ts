@@ -8,7 +8,6 @@ import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
 import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { SCORE_VALUES } from "@/lib/rbia-scoring-engine";
-import { descendantPathPrefix } from "@/lib/examination-path";
 import {
   SaveExaminationResponseSchema,
   AutoSelectModulesSchema,
@@ -116,10 +115,15 @@ export async function saveExaminationResponse(
         // in the response upsert or copying its metadata into an ActionPoint.
         const node = await tx.examinationNode.findFirst({
           where: { id: validated.nodeId, tenantId },
-          select: { code: true, name: true, path: true },
+          select: { code: true, name: true, path: true, moduleId: true },
         });
         if (!node) {
           throw new Error("Examination node not found");
+        }
+        if (validated.flagForActionPoint && !node.moduleId) {
+          throw new Error(
+            "Examination node has no module; cannot create an action point",
+          );
         }
 
         if (!SCORING_ALLOWED_STATUSES.has(engagement.status)) {
@@ -145,7 +149,7 @@ export async function saveExaminationResponse(
             scoreLabel,
             isNotApplicable: validated.isNotApplicable,
             notApplicableReason,
-            workingNotes: validated.workingNotes ?? null,
+            remarks: validated.workingNotes ?? null,
             flagForObservation: validated.flagForObservation,
             flagForActionPoint: validated.flagForActionPoint,
             respondedById: session.user.id,
@@ -156,7 +160,7 @@ export async function saveExaminationResponse(
             scoreLabel,
             isNotApplicable: validated.isNotApplicable,
             notApplicableReason,
-            workingNotes: validated.workingNotes ?? null,
+            remarks: validated.workingNotes ?? null,
             flagForObservation: validated.flagForObservation,
             flagForActionPoint: validated.flagForActionPoint,
             respondedById: session.user.id,
@@ -199,8 +203,7 @@ export async function saveExaminationResponse(
                 title: node.name,
                 description: validated.workingNotes ?? node.name,
                 severity: severityFromScore,
-                moduleCode:
-                  node.path.split("/").filter(Boolean)[1] ?? node.code,
+                moduleId: node.moduleId as string,
                 sourceResponseId: upsertedResponse.id,
                 status: "DRAFT",
                 createdById: session.user.id,
@@ -239,7 +242,7 @@ export async function saveExaminationResponse(
 // ─── autoSelectModulesAction ────────────────────────────────────────────────
 
 /**
- * Auto-select applicable modules for an engagement based on branch category.
+ * Auto-select applicable modules for an engagement based on its branch profile.
  * Wraps the DAL autoSelectModules with permission guards.
  *
  * Called when an auditor opens the examination view for the first time.
@@ -275,11 +278,7 @@ export async function autoSelectModulesAction(
     const validated = parsed.data;
 
     // 4-5. Execute via DAL (handles tenant scoping internally)
-    await autoSelectModules(
-      session,
-      validated.engagementId,
-      validated.branchCategory,
-    );
+    await autoSelectModules(session, validated.engagementId);
 
     // Revalidate path
     revalidatePath(`/audit-execution/${validated.engagementId}/rbia`);
@@ -332,7 +331,7 @@ export async function addModuleSelectionAction(
     const result = await addModuleSelection(
       session,
       validated.engagementId,
-      validated.moduleNodeId,
+      validated.moduleId,
       validated.reason,
     );
 
@@ -359,7 +358,7 @@ export async function addModuleSelectionAction(
  * Guards:
  * - PERMISSION_DENIED: user lacks rbia:examine
  * - VALIDATION_ERROR: input fails Zod schema (now includes required reason)
- * - NOT_FOUND: moduleNodeId does not exist in this tenant
+ * - NOT_FOUND: moduleId does not exist in this tenant
  * - CONFLICT: module has scored examination responses (ENGG-06 data integrity)
  *
  * Audit trail: removal reason is recorded via setAuditContext justification field.
@@ -397,13 +396,13 @@ export async function removeModuleSelectionAction(
     // 4. Scored-items guard — prevent removal of modules with existing examination responses
     const db = prismaForTenant(tenantId);
 
-    // Find the module node to get its materialized path for descendant lookup
-    const moduleNode = await db.examinationNode.findFirst({
-      where: { id: validated.moduleNodeId, tenantId },
-      select: { id: true, path: true },
+    // Confirm the module exists in this tenant.
+    const auditModule = await db.auditModule.findFirst({
+      where: { id: validated.moduleId, tenantId },
+      select: { id: true },
     });
 
-    if (!moduleNode) {
+    if (!auditModule) {
       return {
         success: false,
         error: "Module not found.",
@@ -411,13 +410,14 @@ export async function removeModuleSelectionAction(
       };
     }
 
-    // Find all leaf descendants of this module using materialized path prefix.
-    // Path is slash-separated; a "." prefix matches no children and skips ENGG-06.
+    // Every node in this module's subtree carries the same moduleId (the
+    // module-native backfill sets it for the module root and every
+    // descendant), so no path-prefix walk is needed to find its leaves.
     const descendantLeaves = await db.examinationNode.findMany({
       where: {
         tenantId,
         isLeaf: true,
-        path: { startsWith: descendantPathPrefix(moduleNode.path) },
+        moduleId: validated.moduleId,
       },
       select: { id: true },
     });
@@ -451,11 +451,11 @@ export async function removeModuleSelectionAction(
         sessionId: session.session.id,
       });
 
-      await tx.engagementModuleSelection.delete({
+      await tx.engagementModule.delete({
         where: {
-          engagementId_moduleNodeId: {
+          engagementId_moduleId: {
             engagementId: validated.engagementId,
-            moduleNodeId: validated.moduleNodeId,
+            moduleId: validated.moduleId,
           },
         },
       });
