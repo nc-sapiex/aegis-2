@@ -10,7 +10,7 @@ export default async function CreateObservationPage() {
   const db = prismaForTenant(tenantId);
 
   // Fetch dropdown options for form
-  const [branches, auditAreas] = await Promise.all([
+  const [branches, auditAreas, modules] = await Promise.all([
     db.branch.findMany({
       where: { tenantId },
       select: { id: true, name: true },
@@ -20,6 +20,11 @@ export default async function CreateObservationPage() {
       where: { tenantId },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
+    }),
+    db.auditModule.findMany({
+      where: { tenantId, isActive: true },
+      select: { id: true, code: true, name: true },
+      orderBy: { code: "asc" },
     }),
   ]);
 
@@ -41,7 +46,11 @@ export default async function CreateObservationPage() {
         </p>
       </div>
 
-      <ObservationForm branches={branches} auditAreas={auditAreas} />
+      <ObservationForm
+        branches={branches}
+        auditAreas={auditAreas}
+        modules={modules}
+      />
     </div>
   );
 }

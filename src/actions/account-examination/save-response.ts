@@ -29,20 +29,20 @@ const SCORING_ALLOWED_STATUSES = new Set([
  * Save (upsert) a COMPLIANT or VIOLATION response for a single account-question pair.
  *
  * Called every time an auditor records a response during account examination.
- * Upsert on the unique constraint [engagementId, loanAccountId, questionId] ensures
+ * Upsert on the unique constraint [engagementId, recordId, questionId] ensures
  * re-saving updates without duplicates.
  *
  * Security:
  * - Requires "examination:respond" — recording a result is a write
  * - Requires membership of the engagement's audit team
  * - Verifies engagement belongs to tenant and is in a scoring-allowed status
- * - Verifies loanAccount belongs to the same engagement and tenant
- * - Verifies the question belongs to the tenant and the account's module
+ * - Verifies the population record belongs to the same engagement and tenant
+ * - Verifies the question belongs to the tenant and the record's module
  *
  * AEXM-03: Stores response status per account-question pair.
  * AEXM-04: Records optional auditor notes with each response.
  *
- * @param input - Validated response input (engagementId, loanAccountId, questionId, status, note)
+ * @param input - Validated response input (engagementId, recordId, questionId, status, note)
  */
 export async function saveAccountExamResponse(
   input: SaveAccountExamResponseInput,
@@ -76,8 +76,7 @@ export async function saveAccountExamResponse(
       };
     }
 
-    const { engagementId, loanAccountId, questionId, status, note } =
-      parsed.data;
+    const { engagementId, recordId, questionId, status, note } = parsed.data;
 
     const db = prismaForTenant(tenantId);
 
@@ -111,20 +110,25 @@ export async function saveAccountExamResponse(
       return { success: false, error: teamGuard.error };
     }
 
-    // 5. Verify loanAccount belongs to this engagement and tenant
-    const loanAccount = await db.loanAccount.findFirst({
-      where: { id: loanAccountId, engagementId, tenantId },
-      select: { id: true, isSampled: true, moduleCode: true },
+    // 5. Verify the population record belongs to this engagement and tenant
+    const record = await db.populationRecord.findFirst({
+      where: { id: recordId, engagementId, tenantId },
+      select: {
+        id: true,
+        isSampled: true,
+        moduleId: true,
+        module: { select: { code: true } },
+      },
     });
 
-    if (!loanAccount) {
+    if (!record) {
       return {
         success: false,
-        error: "Loan account not found in this engagement.",
+        error: "Record not found in this engagement.",
       };
     }
 
-    if (!loanAccount.isSampled) {
+    if (!record.isSampled) {
       return {
         success: false,
         error: "Cannot record responses for accounts not in the sample.",
@@ -132,13 +136,13 @@ export async function saveAccountExamResponse(
     }
 
     // 5b. Verify the question belongs to this tenant and to the module the
-    // sampled account was drawn from. AccountExamResponse.questionId is a bare
+    // sampled record was drawn from. AccountExamResponse.questionId is a bare
     // foreign key, so nothing else stops an unrelated question being attached.
     const question = await db.examinationQuestion.findFirst({
       where: {
         id: questionId,
         tenantId,
-        moduleCode: loanAccount.moduleCode,
+        moduleId: record.moduleId,
         isActive: true,
       },
       select: { id: true },
@@ -161,9 +165,9 @@ export async function saveAccountExamResponse(
       (tx) =>
         tx.accountExamResponse.upsert({
           where: {
-            engagementId_loanAccountId_questionId: {
+            engagementId_recordId_questionId: {
               engagementId,
-              loanAccountId,
+              recordId,
               questionId,
             },
           },
@@ -177,7 +181,7 @@ export async function saveAccountExamResponse(
           create: {
             tenantId,
             engagementId,
-            loanAccountId,
+            recordId,
             questionId,
             status: isNotApplicable ? null : status,
             isNotApplicable,
@@ -194,14 +198,14 @@ export async function saveAccountExamResponse(
     // 7. Revalidate the examination page
     revalidatePath(`/audit-execution/${engagementId}/rbia`);
     revalidatePath(
-      `/audit-execution/${engagementId}/rbia/examination/${loanAccount.moduleCode}`,
+      `/audit-execution/${engagementId}/rbia/examination/${record.module.code}`,
     );
 
     logger.info(
       {
         action: "save_account_exam_response",
         engagementId,
-        loanAccountId,
+        recordId,
         questionId,
         status,
         responseId,

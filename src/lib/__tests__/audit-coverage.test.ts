@@ -22,10 +22,9 @@ const REGULATED_MODELS = [
   "RamAssessment",
   "RamAssessmentScore",
   "BranchRbiaScore",
-  "AuditExaminationResponse",
   "ExaminationResponse",
   "AccountExamResponse",
-  "LoanAccount",
+  "PopulationRecord",
 ] as const;
 
 /**

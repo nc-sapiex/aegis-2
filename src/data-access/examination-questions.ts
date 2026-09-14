@@ -1,5 +1,6 @@
 import "server-only";
 import { prismaForTenant } from "./prisma";
+import { getModuleIdByCode } from "./audit-modules";
 import type { AuthSession as Session } from "@/lib/auth";
 
 /**
@@ -59,16 +60,18 @@ export async function getQuestionsByModule(
 ): Promise<QuestionListItem[]> {
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+  if (!moduleId) return [];
 
   const questions = await db.examinationQuestion.findMany({
     where: {
       tenantId,
-      moduleCode,
+      moduleId,
       ...(includeInactive ? {} : { isActive: true }),
     },
     select: {
       id: true,
-      moduleCode: true,
+      module: { select: { code: true } },
       text: true,
       rbiReference: true,
       bestPracticeTip: true,
@@ -83,8 +86,9 @@ export async function getQuestionsByModule(
     orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
   });
 
-  return questions.map((q) => ({
+  return questions.map(({ module, ...q }) => ({
     ...q,
+    moduleCode: module.code,
     weight: Number(q.weight),
   }));
 }
@@ -114,7 +118,7 @@ export async function getQuestionById(
     where: { id: questionId, tenantId },
     select: {
       id: true,
-      moduleCode: true,
+      module: { select: { code: true } },
       text: true,
       rbiReference: true,
       bestPracticeTip: true,
@@ -132,8 +136,10 @@ export async function getQuestionById(
 
   if (!question) return null;
 
+  const { module, ...rest } = question;
   return {
-    ...question,
+    ...rest,
+    moduleCode: module.code,
     weight: Number(question.weight),
   };
 }

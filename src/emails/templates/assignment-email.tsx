@@ -10,7 +10,7 @@ interface AssignmentEmailProps {
   severity: string;
   branchName: string;
   dueDate: string;
-  conditionExcerpt: string;
+  descriptionExcerpt: string;
   observationUrl: string;
 }
 
@@ -21,7 +21,7 @@ export function AssignmentEmail({
   severity,
   branchName,
   dueDate,
-  conditionExcerpt,
+  descriptionExcerpt,
   observationUrl,
 }: AssignmentEmailProps) {
   return (
@@ -45,7 +45,9 @@ export function AssignmentEmail({
         </Text>
       </Section>
 
-      {conditionExcerpt && <Text style={excerptStyle}>{conditionExcerpt}</Text>}
+      {descriptionExcerpt && (
+        <Text style={excerptStyle}>{descriptionExcerpt}</Text>
+      )}
 
       <CtaButton href={observationUrl} text="View Observation" />
 

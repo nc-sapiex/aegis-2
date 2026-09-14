@@ -9,7 +9,7 @@ import { z } from "zod";
 
 export const SaveAccountExamResponseSchema = z.object({
   engagementId: z.string().uuid("Invalid engagement ID"),
-  loanAccountId: z.string().uuid("Invalid loan account ID"),
+  recordId: z.string().uuid("Invalid record ID"),
   questionId: z.string().uuid("Invalid question ID"),
   status: z.enum(["COMPLIANT", "VIOLATION", "NOT_APPLICABLE"], {
     error: "Status must be COMPLIANT, VIOLATION, or NOT_APPLICABLE",

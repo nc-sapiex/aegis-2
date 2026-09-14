@@ -15,6 +15,7 @@ import { logger } from "@/lib/logger";
 import {
   getLoanAccountSummary,
   countLoanAccountsForModule,
+  getSanctionAmountTotal,
 } from "@/data-access/loan-account";
 import { GetPortfolioSummarySchema } from "./schemas";
 
@@ -25,9 +26,9 @@ import { GetPortfolioSummarySchema } from "./schemas";
  *
  * Returns:
  * - Total account count
- * - Per-asset-class breakdown (count + amounts)
- * - Total sanction amount across all accounts
- * - Total outstanding amount across all accounts
+ * - Per-classification breakdown (count + amount)
+ * - Total amount across all accounts
+ * - Total sanction amount (read out of metadata; see getSanctionAmountTotal)
  *
  * @param input - engagementId + moduleCode
  */
@@ -58,24 +59,21 @@ export async function getPortfolioSummary(input: {
 
   try {
     // ── Queries ─────────────────────────────────────────────────────────
-    const [summary, totalAccounts] = await Promise.all([
+    const [summary, totalAccounts, totalSanction] = await Promise.all([
       getLoanAccountSummary(session, engagementId, moduleCode),
       countLoanAccountsForModule(session, engagementId, moduleCode),
+      getSanctionAmountTotal(session, engagementId, moduleCode),
     ]);
 
-    // Aggregate totals across all asset classes
-    let totalSanction = 0;
+    // Aggregate totals across all classifications
     let totalOutstanding = 0;
 
     const byAssetClass = summary.map((row) => {
-      const sanctionSum = Number(row._sum.sanctionAmount ?? 0);
-      const outstandingSum = Number(row._sum.outstandingAmount ?? 0);
-      totalSanction += sanctionSum;
+      const outstandingSum = Number(row._sum.amount ?? 0);
       totalOutstanding += outstandingSum;
       return {
-        assetClass: row.assetClass,
+        assetClass: row.classification,
         count: row._count,
-        sanctionAmount: sanctionSum,
         outstandingAmount: outstandingSum,
       };
     });
@@ -85,8 +83,8 @@ export async function getPortfolioSummary(input: {
       data: {
         totalAccounts,
         byAssetClass,
-        totalSanction,
         totalOutstanding,
+        totalSanction,
       },
     };
   } catch (error) {

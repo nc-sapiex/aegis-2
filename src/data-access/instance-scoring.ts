@@ -1,5 +1,6 @@
 import "server-only";
 import { prismaForTenant } from "./prisma";
+import { getModuleIdByCode } from "./audit-modules";
 import { withAuditedMutation, userActor } from "./audited-mutation";
 import type { AuthSession as Session } from "@/lib/auth";
 import {
@@ -64,12 +65,15 @@ export async function getQuestionResponseTallies(
 ): Promise<Map<string, ResponseTally[]>> {
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
 
   // Get all active questions for this module
-  const questions = await db.examinationQuestion.findMany({
-    where: { tenantId, moduleCode, isActive: true },
-    select: { id: true },
-  });
+  const questions = moduleId
+    ? await db.examinationQuestion.findMany({
+        where: { tenantId, moduleId, isActive: true },
+        select: { id: true },
+      })
+    : [];
 
   const questionIds = questions.map((q) => q.id);
 
@@ -141,6 +145,7 @@ export async function computeAndApplyInstanceScores(
 ): Promise<{ scoredLeafCount: number; moduleScore: number | null }> {
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
 
   // Step 1: Get response tallies and compute per-question compliance
   const tallies = await getQuestionResponseTallies(
@@ -151,10 +156,12 @@ export async function computeAndApplyInstanceScores(
   const complianceResults = computeModuleComplianceScores(tallies);
 
   // Step 2: Get question weights for weighted average
-  const questions = await db.examinationQuestion.findMany({
-    where: { tenantId, moduleCode, isActive: true },
-    select: { id: true, weight: true },
-  });
+  const questions = moduleId
+    ? await db.examinationQuestion.findMany({
+        where: { tenantId, moduleId, isActive: true },
+        select: { id: true, weight: true },
+      })
+    : [];
   const questionWeightMap = new Map(
     questions.map((q) => [q.id, Number(q.weight)]),
   );
@@ -181,7 +188,7 @@ export async function computeAndApplyInstanceScores(
       db,
       tenantId,
       engagementId,
-      moduleCode,
+      moduleId,
       [...tallies.keys()],
     );
     if (!fullyNotApplicable) {
@@ -198,7 +205,7 @@ export async function computeAndApplyInstanceScores(
         isNotApplicable: true,
         notApplicableReason:
           "Every sampled account-examination response for this module is not applicable",
-        workingNotes:
+        remarks:
           "Auto-marked not applicable: the binary register is complete with only N/A answers",
       },
     );
@@ -229,7 +236,7 @@ export async function computeAndApplyInstanceScores(
       // the leaf would carry a score and the N/A flag at once.
       isNotApplicable: false,
       notApplicableReason: null,
-      workingNotes: `Auto-scored from instance-based examination: ${modulePercentage}% compliance across ${complianceResults.length} question(s)`,
+      remarks: `Auto-scored from instance-based examination: ${modulePercentage}% compliance across ${complianceResults.length} question(s)`,
     },
   );
 
@@ -240,13 +247,13 @@ async function registerIsCompleteExclusiveNotApplicable(
   db: TenantClient,
   tenantId: string,
   engagementId: string,
-  moduleCode: string,
+  moduleId: string | null,
   questionIds: string[],
 ): Promise<boolean> {
-  if (questionIds.length === 0) return false;
+  if (!moduleId || questionIds.length === 0) return false;
 
-  const sampledAccounts = await db.loanAccount.findMany({
-    where: { engagementId, moduleCode, isSampled: true, tenantId },
+  const sampledAccounts = await db.populationRecord.findMany({
+    where: { engagementId, moduleId, isSampled: true, tenantId },
     select: { id: true },
   });
   const sampledIds = sampledAccounts.map((account) => account.id);
@@ -257,7 +264,7 @@ async function registerIsCompleteExclusiveNotApplicable(
       where: {
         engagementId,
         tenantId,
-        loanAccountId: { in: sampledIds },
+        recordId: { in: sampledIds },
         questionId: { in: questionIds },
         isNotApplicable: true,
       },
@@ -266,7 +273,7 @@ async function registerIsCompleteExclusiveNotApplicable(
       where: {
         engagementId,
         tenantId,
-        loanAccountId: { in: sampledIds },
+        recordId: { in: sampledIds },
         questionId: { in: questionIds },
         isNotApplicable: false,
       },
@@ -291,7 +298,7 @@ async function upsertModuleLeafResponses(
     scoreLabel: ScoreLabel | null;
     isNotApplicable: boolean;
     notApplicableReason: string | null;
-    workingNotes: string;
+    remarks: string;
   },
 ): Promise<number> {
   const db = prismaForTenant(tenantId);
@@ -334,7 +341,7 @@ async function upsertModuleLeafResponses(
             scoreLabel: data.scoreLabel,
             isNotApplicable: data.isNotApplicable,
             notApplicableReason: data.notApplicableReason,
-            workingNotes: data.workingNotes,
+            remarks: data.remarks,
             flagForObservation: false,
             flagForActionPoint: false,
             respondedAt: new Date(),
@@ -344,7 +351,7 @@ async function upsertModuleLeafResponses(
             scoreLabel: data.scoreLabel,
             isNotApplicable: data.isNotApplicable,
             notApplicableReason: data.notApplicableReason,
-            workingNotes: data.workingNotes,
+            remarks: data.remarks,
             respondedAt: new Date(),
           },
         });
@@ -360,7 +367,7 @@ async function upsertModuleLeafResponses(
 /**
  * Returns distinct module codes that have sampled loan account data for an engagement.
  *
- * Uses LoanAccount.isSampled = true to identify which credit modules have
+ * Uses PopulationRecord.isSampled = true to identify which credit modules have
  * been examined via sample-based audit. Only modules with sampled accounts
  * should have instance-based scores computed.
  *
@@ -375,13 +382,13 @@ export async function getCreditModuleCodes(
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
 
-  const modules = await db.loanAccount.findMany({
+  const modules = await db.populationRecord.findMany({
     where: { engagementId, isSampled: true, tenantId },
-    select: { moduleCode: true },
-    distinct: ["moduleCode"],
+    select: { module: { select: { code: true } } },
+    distinct: ["moduleId"],
   });
 
-  return modules.map((m) => m.moduleCode);
+  return modules.map((m) => m.module.code);
 }
 
 // ─── syncAllInstanceScores ────────────────────────────────────────────────────

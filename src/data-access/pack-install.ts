@@ -1,0 +1,163 @@
+import "server-only";
+import type { Prisma } from "@/generated/prisma/client";
+import type { ModuleDomain, ExaminationKind } from "@/generated/prisma/enums";
+import { withAuditedMutation } from "@/data-access/audited-mutation";
+import type { Actor } from "@/lib/session-context";
+import { readPackArchive } from "@/lib/pack/inspect";
+import { verifyPackManifest } from "@/lib/pack/sign";
+import { checkEntitlement } from "@/lib/pack/entitlement";
+import type { PackFiles } from "@/lib/pack/types";
+
+type InstallResult =
+  | { success: true; data: { packCode: string; version: string } }
+  | { success: false; error: string };
+
+export async function installPack(
+  tenantId: string,
+  actor: Actor,
+  filePath: string,
+  licensePublicKeyPem: string,
+  licenseFeatures: string[] = [],
+): Promise<InstallResult> {
+  const files = await readPackArchive(filePath);
+
+  if (!verifyPackManifest(files.manifest, licensePublicKeyPem)) {
+    return { success: false, error: "Signature invalid" };
+  }
+  if (
+    !checkEntitlement(
+      licenseFeatures,
+      files.manifest.id,
+      files.manifest.version,
+    )
+  ) {
+    return { success: false, error: "Not licensed" };
+  }
+
+  if (actor.kind !== "user") {
+    return {
+      success: false,
+      error: "Only a signed-in user can install a pack",
+    };
+  }
+  const actorId = actor.userId;
+
+  return withAuditedMutation(actor, "pack.installed", async (tx) => {
+    await upsertPack(tx, tenantId, files, actorId);
+    return {
+      success: true,
+      data: { packCode: files.manifest.id, version: files.manifest.version },
+    };
+  });
+}
+
+/**
+ * Append-only, idempotent upsert on (tenantId, code) per spec §7.3. A pack
+ * row that already exists keeps its bank-editable fields (weight, isCritical,
+ * isActive) untouched — only text/structure/metadata from the pack update.
+ * A BANK-origin row with the same code (added by the bank, not the pack) is
+ * left alone entirely; the pack never overwrites bank content.
+ */
+async function upsertPack(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  files: PackFiles,
+  actorId: string,
+): Promise<void> {
+  const install = await tx.contentPackInstall.upsert({
+    where: { tenantId_packCode: { tenantId, packCode: files.manifest.id } },
+    create: {
+      tenantId,
+      packCode: files.manifest.id,
+      version: files.manifest.version,
+      contentHash: files.manifest.contentHash,
+      installedById: actorId,
+    },
+    update: {
+      version: files.manifest.version,
+      contentHash: files.manifest.contentHash,
+      uninstalledAt: null,
+    },
+  });
+
+  const moduleIdByCode = new Map<string, string>();
+  for (const mod of files.modules) {
+    const existing = await tx.auditModule.findUnique({
+      where: { tenantId_code: { tenantId, code: mod.code } },
+    });
+    if (existing?.packId === install.id || !existing) {
+      const row = await tx.auditModule.upsert({
+        where: { tenantId_code: { tenantId, code: mod.code } },
+        create: {
+          tenantId,
+          code: mod.code,
+          name: mod.name,
+          domain: mod.domain as ModuleDomain,
+          kinds: mod.kinds as ExaminationKind[],
+          applicability: mod.applicability as Prisma.InputJsonValue,
+          packId: install.id,
+          packVersion: files.manifest.version,
+          weight: mod.weight, // first install only; bank edits to weight after this are never overwritten below
+        },
+        update: {
+          name: mod.name,
+          domain: mod.domain as ModuleDomain,
+          kinds: mod.kinds as ExaminationKind[],
+          applicability: mod.applicability as Prisma.InputJsonValue,
+          packVersion: files.manifest.version,
+          // weight intentionally omitted from `update` — bank-editable, preserved across upgrades
+        },
+      });
+      moduleIdByCode.set(mod.code, row.id);
+    }
+  }
+
+  for (const node of files.nodes) {
+    const moduleId = moduleIdByCode.get(node.moduleCode);
+    if (!moduleId) continue; // linted at build time; a runtime miss here means a stale archive, skip rather than crash the whole install
+    await tx.examinationNode.upsert({
+      where: { tenantId_code: { tenantId, code: node.code } },
+      create: {
+        tenantId,
+        moduleId,
+        code: node.code,
+        name: node.name,
+        path: node.path,
+        depth: node.depth,
+        isLeaf: node.isLeaf,
+        weight: node.weight,
+        isCritical: node.isCritical,
+        description: node.description,
+        regulatoryRef: node.regulatoryRef,
+        origin: "PACK",
+      },
+      update: {
+        name: node.name,
+        path: node.path,
+        description: node.description,
+        regulatoryRef: node.regulatoryRef,
+        // weight, isCritical, isActive intentionally omitted — bank-editable, preserved (spec §7.3)
+      },
+    });
+  }
+
+  for (const question of files.questions) {
+    const moduleId = moduleIdByCode.get(question.moduleCode);
+    if (!moduleId) continue;
+    await tx.examinationQuestion.upsert({
+      where: {
+        tenantId_moduleId_text: { tenantId, moduleId, text: question.text },
+      },
+      create: {
+        tenantId,
+        moduleId,
+        text: question.text,
+        rbiReference: question.rbiReference,
+        weight: question.weight,
+        isCritical: question.isCritical,
+        origin: "PACK",
+      },
+      update: { rbiReference: question.rbiReference },
+    });
+  }
+}

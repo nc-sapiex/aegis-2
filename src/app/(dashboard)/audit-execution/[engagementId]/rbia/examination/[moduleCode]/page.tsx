@@ -100,11 +100,11 @@ export default async function ExaminationPage({
     text: question.text,
   }));
 
-  const responses: Record<string, RegisterResponse> = Object.fromEntries(
+  const initialResponses: Record<string, RegisterResponse> = Object.fromEntries(
     questions.map((question) => [
       question.id,
       {
-        status: question.response?.status ?? null,
+        value: question.response?.status ?? null,
         remarks: question.response?.note ?? null,
       },
     ]),
@@ -125,11 +125,11 @@ export default async function ExaminationPage({
         <AccountRail accounts={railAccounts} />
 
         <ExaminationRegister
+          engagementId={engagementId}
           mode="binary"
           statements={statements}
-          responses={responses}
+          initialResponses={initialResponses}
           binaryContext={{
-            engagementId,
             recordId: selectedAccountId,
             canRespond,
           }}

@@ -95,21 +95,30 @@ export async function importLoanPortfolio(input: ImportLoanPortfolioInput) {
 
         const branchId = engagement.branchId as string;
 
+        const auditModule = await tx.auditModule.findUnique({
+          where: { tenantId_code: { tenantId, code: validated.moduleCode } },
+          select: { id: true },
+        });
+        if (!auditModule) {
+          throw new Error(`Unknown module: ${validated.moduleCode}`);
+        }
+        const moduleId = auditModule.id;
+
         // Count existing accounts (for the "replaced X" summary)
-        const previousCount = await tx.loanAccount.count({
+        const previousCount = await tx.populationRecord.count({
           where: {
             engagementId: validated.engagementId,
             tenantId,
-            moduleCode: validated.moduleCode,
+            moduleId,
           },
         });
 
         // Delete existing accounts for this engagement + module
-        await tx.loanAccount.deleteMany({
+        await tx.populationRecord.deleteMany({
           where: {
             engagementId: validated.engagementId,
             tenantId,
-            moduleCode: validated.moduleCode,
+            moduleId,
           },
         });
 
@@ -117,24 +126,26 @@ export async function importLoanPortfolio(input: ImportLoanPortfolioInput) {
         const importTimestamp = new Date();
 
         // Bulk create new accounts
-        await tx.loanAccount.createMany({
+        await tx.populationRecord.createMany({
           data: validated.rows.map((row) => ({
             tenantId,
             engagementId: validated.engagementId,
             branchId,
-            moduleCode: validated.moduleCode,
-            accountNo: row.accountNo,
-            borrowerName: row.borrowerName,
-            productType: row.loanType, // loanType in ParsedLoanRow → productType in DB
-            sanctionAmount: row.sanctionAmount,
-            outstandingAmount: row.outstandingAmount,
-            assetClass: row.assetClass,
-            dpd: row.dpd,
-            // sanctionDate is required in DB — use provided date or fallback to import timestamp
-            sanctionDate: row.sanctionDate
+            moduleId,
+            recordKey: row.accountNo,
+            displayName: row.borrowerName,
+            amount: row.outstandingAmount,
+            classification: row.assetClass,
+            // date is required in DB — use provided sanctionDate or fallback to import timestamp
+            date: row.sanctionDate
               ? new Date(row.sanctionDate)
               : importTimestamp,
-            metadata: row.metadata as Prisma.InputJsonValue,
+            metadata: {
+              ...(row.metadata as Record<string, unknown> | undefined),
+              productType: row.loanType, // loanType in ParsedLoanRow → productType in metadata
+              sanctionAmount: row.sanctionAmount,
+              dpd: row.dpd,
+            } as Prisma.InputJsonValue,
           })),
         });
 

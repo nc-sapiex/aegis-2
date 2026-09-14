@@ -26,7 +26,16 @@ import { RISK_CATEGORIES } from "@/lib/constants";
 interface ObservationFormProps {
   branches: { id: string; name: string }[];
   auditAreas: { id: string; name: string }[];
+  modules: { id: string; code: string; name: string }[];
 }
+
+const PERTAINS_TO_OPTIONS = [
+  { value: "FINANCE", label: "Finance" },
+  { value: "OPERATIONS", label: "Operations" },
+  { value: "LEGAL_RECOVERY", label: "Legal / Recovery" },
+  { value: "HR", label: "HR" },
+  { value: "IT", label: "IT" },
+] as const;
 
 type FormState = {
   success?: boolean;
@@ -40,13 +49,13 @@ async function submitAction(
 ): Promise<FormState> {
   const input = {
     title: formData.get("title") as string,
-    condition: formData.get("condition") as string,
-    criteria: formData.get("criteria") as string,
-    cause: formData.get("cause") as string,
-    effect: formData.get("effect") as string,
+    description: formData.get("description") as string,
     recommendation: formData.get("recommendation") as string,
     severity: formData.get("severity") as
       "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+    pertainsTo: formData.get("pertainsTo") as
+      "FINANCE" | "OPERATIONS" | "LEGAL_RECOVERY" | "HR" | "IT",
+    moduleId: formData.get("moduleId") as string,
     branchId: (formData.get("branchId") as string) || undefined,
     auditAreaId: (formData.get("auditAreaId") as string) || undefined,
     riskCategory: (formData.get("riskCategory") as string) || undefined,
@@ -59,6 +68,7 @@ async function submitAction(
 export function ObservationForm({
   branches,
   auditAreas,
+  modules,
 }: ObservationFormProps) {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(submitAction, {});
@@ -159,50 +169,14 @@ export function ObservationForm({
               <Separator />
 
               <div className="space-y-2">
-                <Label htmlFor="condition">Condition — What was found *</Label>
+                <Label htmlFor="description">Description *</Label>
                 <Textarea
-                  id="condition"
-                  name="condition"
-                  placeholder="Describe the current state or condition observed during the audit..."
+                  id="description"
+                  name="description"
+                  placeholder="Describe the finding: what was found, what was expected, why it happened, and its impact..."
                   required
                   minLength={10}
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="criteria">Criteria — What should be *</Label>
-                <Textarea
-                  id="criteria"
-                  name="criteria"
-                  placeholder="What is the expected standard, policy, or regulation that applies..."
-                  required
-                  minLength={10}
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="cause">Cause — Why it happened *</Label>
-                <Textarea
-                  id="cause"
-                  name="cause"
-                  placeholder="Root cause analysis — why the deviation from criteria occurred..."
-                  required
-                  minLength={10}
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="effect">Effect — Risk / Impact *</Label>
-                <Textarea
-                  id="effect"
-                  name="effect"
-                  placeholder="What is the risk or impact of the observed condition..."
-                  required
-                  minLength={10}
-                  rows={3}
+                  rows={6}
                 />
               </div>
 
@@ -241,6 +215,38 @@ export function ObservationForm({
                     <SelectItem value="MEDIUM">Medium</SelectItem>
                     <SelectItem value="HIGH">High</SelectItem>
                     <SelectItem value="CRITICAL">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="moduleId">Module *</Label>
+                <Select name="moduleId" required>
+                  <SelectTrigger id="moduleId">
+                    <SelectValue placeholder="Select module" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {modules.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.code} — {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="pertainsTo">Pertains To *</Label>
+                <Select name="pertainsTo" required>
+                  <SelectTrigger id="pertainsTo">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PERTAINS_TO_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

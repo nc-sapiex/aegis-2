@@ -80,7 +80,7 @@ export type RbiaReportActionPoint = {
   title: string;
   description: string;
   severity: Severity;
-  moduleCode: string;
+  module: { code: string; name: string };
   status: ActionPointStatus;
   bmResponseText: string | null;
   bmResponseDate: Date | null;
@@ -88,10 +88,7 @@ export type RbiaReportActionPoint = {
 
 export type RbiaReportObservation = {
   title: string;
-  condition: string;
-  criteria: string;
-  cause: string;
-  effect: string;
+  description: string;
   recommendation: string;
   severity: Severity;
   status: ObservationStatus;
@@ -208,7 +205,7 @@ export async function getRbiaReportData(
           title: true,
           description: true,
           severity: true,
-          moduleCode: true,
+          module: { select: { code: true, name: true } },
           status: true,
           bmResponseText: true,
           bmResponseDate: true,
@@ -221,10 +218,7 @@ export async function getRbiaReportData(
         orderBy: { createdAt: "asc" },
         select: {
           title: true,
-          condition: true,
-          criteria: true,
-          cause: true,
-          effect: true,
+          description: true,
           recommendation: true,
           severity: true,
           status: true,

@@ -107,35 +107,3 @@ export async function getTeamMembers(
     throw error;
   }
 }
-
-/**
- * Get active examination area codes for section allocation.
- * @param session - User session
- * @returns Array of examination area codes (e.g., ["CASH", "ATM", "CLEARING"])
- */
-export async function getExaminationAreaCodes(
-  session: Session,
-): Promise<string[]> {
-  const tenantId = session.user.tenantId;
-  const db = prismaForTenant(tenantId);
-
-  try {
-    const areas = await db.examinationArea.findMany({
-      where: {
-        tenantId,
-        isActive: true,
-      },
-      select: {
-        code: true,
-      },
-      orderBy: {
-        displayOrder: "asc",
-      },
-    });
-
-    return areas.map((area) => area.code);
-  } catch (error) {
-    logger.error({ error, tenantId }, "Failed to fetch examination area codes");
-    throw error;
-  }
-}
