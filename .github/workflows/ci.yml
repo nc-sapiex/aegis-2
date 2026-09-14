@@ -1,6 +1,9 @@
 name: CI
 
-# Docs-only changes skip this workflow; docs.yml checks generated reference docs.
+# Docs-only changes skip this workflow on main pushes; docs.yml checks generated
+# reference docs. On PRs the workflow always runs and the `changes` job skips
+# the rest: a skipped required check passes branch protection, a check that
+# never reports blocks the merge forever.
 on:
   push:
     branches: [main]
@@ -12,12 +15,6 @@ on:
       - ".github/workflows/docs.yml"
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "docs/**"
-      - "**/*.md"
-      - ".github/docs/**"
-      - ".github/dependabot.yml"
-      - ".github/workflows/docs.yml"
 
 # Cancel stale PR runs; let every main run finish.
 concurrency:
@@ -28,7 +25,36 @@ permissions:
   contents: read
 
 jobs:
+  # Outputs code=false only for a PR touching nothing but the paths push ignores.
+  # Jobs below fail open: if this job fails, its output is empty and they run.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - id: diff
+        name: Detect docs-only PR
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # HEAD is the PR merge commit; its first parent is the base tip.
+          if git diff --name-only HEAD^1 HEAD \
+            | grep -qvE '^docs/|\.md$|^\.github/docs/|^\.github/dependabot\.yml$|^\.github/workflows/docs\.yml$'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
   lint:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -44,6 +70,8 @@ jobs:
         run: pnpm exec prettier --check src
 
   typecheck:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -67,6 +95,8 @@ jobs:
   # Dockerfile's own defaults. If a change makes the build depend on a value the
   # Dockerfile does not provide, this job fails here rather than at deploy time.
   docker-build:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -84,6 +114,8 @@ jobs:
           cache-to: type=gha,mode=max
 
   unit-test:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -96,6 +128,8 @@ jobs:
           SKIP_ENV_VALIDATION: "1"
 
   integration-test:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -130,6 +164,8 @@ jobs:
         run: pnpm test:integration
 
   security-audit:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -151,6 +187,8 @@ jobs:
   # suite runs nightly and on demand from e2e.yml — it is slow and has known
   # flaky scenarios. Do not add continue-on-error here.
   e2e-smoke:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     uses: ./.github/workflows/e2e.yml
     with:
       smoke: true
