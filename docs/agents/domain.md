@@ -12,7 +12,7 @@ How the engineering skills should consume this repo's domain documentation when 
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 
-> Neither `CONTEXT.md` nor `docs/adr/` exists in this repo yet. That is expected — they appear when a term or decision actually needs recording. Note that `CLAUDE.md` already carries a good deal of domain vocabulary (RAM, RBIA, DAKSH, PCA, maker–checker, tenant isolation); `/domain-modeling` should build on that rather than contradict it.
+`CLAUDE.md` already carries a good deal of domain vocabulary (RAM, RBIA, DAKSH, PCA, maker–checker, tenant isolation); `/domain-modeling` should build on that rather than contradict it.
 
 ## File structure
 

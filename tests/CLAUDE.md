@@ -6,6 +6,14 @@ integration harness in `tests/integration/`. Vitest unit tests and
 integration specs live beside the code they cover, in `src/**/__tests__/`
 and `src/**/__integration__/`.
 
+## Running e2e specs
+
+`pnpm test:e2e:smoke` runs the `@smoke`-tagged subset; `pnpm test:e2e` runs
+everything; `pnpm test:e2e:ui` opens Playwright's UI mode for debugging a
+failing spec. Specs replay under 5 role projects defined in
+`playwright.config.ts` — `auditor`, `manager`, `cae`, `cco`, `auditee` — plus
+a `setup` project that runs first. Target one with `--project <role>`.
+
 ## `pnpm test:integration` resets the database it is pointed at
 
 `tests/integration/global-setup.ts` runs `prisma db push --force-reset`
