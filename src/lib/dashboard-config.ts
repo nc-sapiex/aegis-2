@@ -278,3 +278,16 @@ export function getDashboardConfig(roles: string[]): WidgetConfig[] {
     .map((id) => WIDGET_METADATA[id])
     .filter((w): w is WidgetConfig => !!w);
 }
+
+/**
+ * Intersect a requested widget-id list with the caller's role allowlist.
+ * `/api/dashboard` must not fetch CAE/CEO aggregates just because the query
+ * string named those widgets.
+ */
+export function allowedDashboardWidgetIds(
+  roles: string[],
+  requested: string[],
+): string[] {
+  const allowed = new Set(getDashboardConfig(roles).map((widget) => widget.id));
+  return requested.filter((id) => allowed.has(id));
+}

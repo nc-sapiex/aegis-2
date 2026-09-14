@@ -60,13 +60,6 @@ jobs:
       - name: Push database schema
         run: pnpm db:push
 
-      # Rehearses the hand-applied production migration in its real position:
-      # after the schema exists, before db:bootstrap, whose composite FKs
-      # depend on the unique indexes this file creates. db:push has already
-      # created everything here, so a green step also proves idempotency.
-      - name: Apply hand-run schema migration
-        run: pnpm db:apply prisma/migrations/20260904_f07_f15_schema_additions.sql
-
       - name: Apply non-Prisma database objects
         run: pnpm db:bootstrap
 

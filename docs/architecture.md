@@ -325,12 +325,12 @@ Three details that matter:
 - **Session GUCs read back as `''`, not NULL,** on a pooled connection that has
   previously set them, and `''::UUID` throws. Any SQL that reads one must wrap
   it in `NULLIF(current_setting(...), '')` — see
-  `prisma/migrations/20260826_audit_trigger_null_safe.sql`.
+  `prisma/sql/010_audit_trigger_function.sql`.
 
 A mutation made outside the wrapper does not produce an unattributed row — it
 **fails**. The trigger normalises an unset tenant to `NULL`, and
 `AuditLog.tenantId` is `NOT NULL`, so the audit insert aborts and takes the
-business write down with it (`prisma/migrations/20260826_audit_trigger_null_safe.sql`
+business write down with it (`prisma/sql/010_audit_trigger_function.sql`
 explains why that is deliberate). Historically the failure went unnoticed
 because callers wrap side effects in catch-alls.
 `src/data-access/__tests__/audited-mutation-discipline.test.ts` therefore scans

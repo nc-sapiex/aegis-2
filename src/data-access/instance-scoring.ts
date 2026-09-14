@@ -5,11 +5,14 @@ import { withAuditedMutation, userActor } from "./audited-mutation";
 import type { AuthSession as Session } from "@/lib/auth";
 import {
   computeModuleComplianceScores,
+  isCompleteExclusiveNotApplicable,
   type ResponseTally,
   type QuestionComplianceResult,
 } from "@/lib/instance-scoring";
 import { SCORE_VALUES } from "@/lib/rbia-scoring-engine";
 import { descendantPathPrefix } from "@/lib/examination-path";
+import type { TenantClient } from "@/lib/tenant-client";
+import type { ScoreLabel } from "@/generated/prisma/enums";
 
 /**
  * Data Access Layer for Instance-Based Scoring.
@@ -176,9 +179,37 @@ export async function computeAndApplyInstanceScores(
     totalWeight += weight;
   }
 
-  // No questions have been examined — nothing to apply
+  // No COMPLIANT/VIOLATION answers. Empty tallies also happen when every
+  // account-question cell is N/A (those rows are excluded above). If the
+  // register is complete and exclusively N/A, mark the module leaves N/A so
+  // freeze's completeness gate can pass. Otherwise this module is unfinished.
   if (totalWeight === 0) {
-    return { scoredLeafCount: 0, moduleScore: null };
+    const fullyNotApplicable = await registerIsCompleteExclusiveNotApplicable(
+      db,
+      tenantId,
+      engagementId,
+      moduleCode,
+      [...tallies.keys()],
+    );
+    if (!fullyNotApplicable) {
+      return { scoredLeafCount: 0, moduleScore: null };
+    }
+    const scoredLeafCount = await upsertModuleLeafResponses(
+      session,
+      tenantId,
+      engagementId,
+      moduleCode,
+      {
+        score: null,
+        scoreLabel: null,
+        isNotApplicable: true,
+        notApplicableReason:
+          "Every sampled account-examination response for this module is not applicable",
+        workingNotes:
+          "Auto-marked not applicable: the binary register is complete with only N/A answers",
+      },
+    );
+    return { scoredLeafCount, moduleScore: null };
   }
 
   const moduleScore = weightedSum / totalWeight;
@@ -189,17 +220,95 @@ export async function computeAndApplyInstanceScores(
   const modulePercentage = Math.round(moduleScore * 100);
   const moduleScoreLabel = mapComplianceToScoreLabel(modulePercentage);
 
-  // Find the credit module's ExaminationNode (depth 1 node with this code)
+  if (!moduleScoreLabel) {
+    return { scoredLeafCount: 0, moduleScore: null };
+  }
+
+  const scoredLeafCount = await upsertModuleLeafResponses(
+    session,
+    tenantId,
+    engagementId,
+    moduleCode,
+    {
+      score: SCORE_VALUES[moduleScoreLabel],
+      scoreLabel: moduleScoreLabel,
+      // Auto-scoring an item asserts it applies: clear any prior N/A, or
+      // the leaf would carry a score and the N/A flag at once.
+      isNotApplicable: false,
+      notApplicableReason: null,
+      workingNotes: `Auto-scored from instance-based examination: ${modulePercentage}% compliance across ${complianceResults.length} question(s)`,
+    },
+  );
+
+  return { scoredLeafCount, moduleScore };
+}
+
+async function registerIsCompleteExclusiveNotApplicable(
+  db: TenantClient,
+  tenantId: string,
+  engagementId: string,
+  moduleCode: string,
+  questionIds: string[],
+): Promise<boolean> {
+  if (questionIds.length === 0) return false;
+
+  const sampledAccounts = await db.loanAccount.findMany({
+    where: { engagementId, moduleCode, isSampled: true, tenantId },
+    select: { id: true },
+  });
+  const sampledIds = sampledAccounts.map((account) => account.id);
+  if (sampledIds.length === 0) return false;
+
+  const [notApplicableCount, scoredCount] = await Promise.all([
+    db.accountExamResponse.count({
+      where: {
+        engagementId,
+        tenantId,
+        loanAccountId: { in: sampledIds },
+        questionId: { in: questionIds },
+        isNotApplicable: true,
+      },
+    }),
+    db.accountExamResponse.count({
+      where: {
+        engagementId,
+        tenantId,
+        loanAccountId: { in: sampledIds },
+        questionId: { in: questionIds },
+        isNotApplicable: false,
+      },
+    }),
+  ]);
+
+  return isCompleteExclusiveNotApplicable({
+    sampledAccountCount: sampledIds.length,
+    activeQuestionCount: questionIds.length,
+    notApplicableCount,
+    scoredCount,
+  });
+}
+
+async function upsertModuleLeafResponses(
+  session: Session,
+  tenantId: string,
+  engagementId: string,
+  moduleCode: string,
+  data: {
+    score: number | null;
+    scoreLabel: ScoreLabel | null;
+    isNotApplicable: boolean;
+    notApplicableReason: string | null;
+    workingNotes: string;
+  },
+): Promise<number> {
+  const db = prismaForTenant(tenantId);
+
   const moduleNode = await db.examinationNode.findFirst({
     where: { tenantId, code: moduleCode, depth: 1, isActive: true },
     select: { id: true, path: true },
   });
+  if (!moduleNode) return 0;
 
-  if (!moduleNode || !moduleScoreLabel) {
-    return { scoredLeafCount: 0, moduleScore: null };
-  }
-
-  // Step 5: Find all active leaf nodes under this credit module.
   // Path is slash-separated (`ROOT/CREDIT/CREDIT-001`); a "." prefix matches nothing.
   const leafNodes = await db.examinationNode.findMany({
     where: {
@@ -210,11 +319,10 @@ export async function computeAndApplyInstanceScores(
     },
     select: { id: true },
   });
+  if (leafNodes.length === 0) return 0;
 
-  // Step 6: Upsert ExaminationResponse for each leaf node with the module
-  // ScoreLabel. This makes the existing scoring engine "see" the instance-based
-  // scores. ExaminationResponse carries an audit trigger, and this runs outside
-  // the freeze transaction by design, so the leaf upserts get their own audited
+  // ExaminationResponse carries an audit trigger, and this runs outside the
+  // freeze transaction by design, so the leaf upserts get their own audited
   // transaction attributed to the user driving the sync (the freeze actor).
   await withAuditedMutation(
     userActor(session),
@@ -229,25 +337,21 @@ export async function computeAndApplyInstanceScores(
             tenantId,
             engagementId,
             nodeId: leaf.id,
-            score: SCORE_VALUES[moduleScoreLabel],
-            scoreLabel: moduleScoreLabel,
-            // Auto-scoring an item asserts it applies: clear any prior N/A, or
-            // the leaf would carry a score and the N/A flag at once.
-            isNotApplicable: false,
-            notApplicableReason: null,
-            remarks: `Auto-scored from instance-based examination: ${modulePercentage}% compliance across ${complianceResults.length} question(s)`,
+            score: data.score,
+            scoreLabel: data.scoreLabel,
+            isNotApplicable: data.isNotApplicable,
+            notApplicableReason: data.notApplicableReason,
+            remarks: data.workingNotes,
             flagForObservation: false,
             flagForActionPoint: false,
             respondedAt: new Date(),
           },
           update: {
-            score: SCORE_VALUES[moduleScoreLabel],
-            scoreLabel: moduleScoreLabel,
-            // Auto-scoring an item asserts it applies: clear any prior N/A, or
-            // the leaf would carry a score and the N/A flag at once.
-            isNotApplicable: false,
-            notApplicableReason: null,
-            remarks: `Auto-scored from instance-based examination: ${modulePercentage}% compliance across ${complianceResults.length} question(s)`,
+            score: data.score,
+            scoreLabel: data.scoreLabel,
+            isNotApplicable: data.isNotApplicable,
+            notApplicableReason: data.notApplicableReason,
+            remarks: data.workingNotes,
             respondedAt: new Date(),
           },
         });
@@ -255,9 +359,7 @@ export async function computeAndApplyInstanceScores(
     },
   );
 
-  const scoredLeafCount = leafNodes.length;
-
-  return { scoredLeafCount, moduleScore };
+  return leafNodes.length;
 }
 
 // ─── getCreditModuleCodes ─────────────────────────────────────────────────────

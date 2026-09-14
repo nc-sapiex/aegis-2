@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { sendEmail } from "@/lib/ses-client";
+import { getMailer } from "@/lib/mail/mailer";
 import { renderEmailTemplate } from "@/emails/render";
 import {
   getPendingNotifications,
@@ -137,7 +137,7 @@ async function processOneNotification(
     const payload = notification.payload as Record<string, unknown>;
     const rendered = await renderNotificationEmail(notification.type, payload);
 
-    const result = await sendEmail({
+    const result = await getMailer().send({
       to: notification.recipient.email,
       subject: rendered.subject,
       htmlBody: rendered.html,
@@ -207,7 +207,7 @@ async function processBatchedNotifications(
 
     const rendered = await renderNotificationEmail("BULK_DIGEST", payload);
 
-    const result = await sendEmail({
+    const result = await getMailer().send({
       to: recipient.email,
       subject: rendered.subject,
       htmlBody: rendered.html,

@@ -3,6 +3,7 @@ import {
   computeCompliancePercentage,
   mapComplianceToScoreLabel,
   computeModuleComplianceScores,
+  isCompleteExclusiveNotApplicable,
   type ResponseTally,
   type QuestionComplianceResult,
 } from "@/lib/instance-scoring";
@@ -293,5 +294,72 @@ describe("computeModuleComplianceScores", () => {
     expect(result[0].compliantCount).toBe(2);
     expect(result[0].violationCount).toBe(3);
     expect(result[0].totalResponses).toBe(5);
+  });
+});
+
+// ─── isCompleteExclusiveNotApplicable ────────────────────────────────────────
+
+describe("isCompleteExclusiveNotApplicable", () => {
+  it("is true when every sampled account × question cell is N/A", () => {
+    expect(
+      isCompleteExclusiveNotApplicable({
+        sampledAccountCount: 2,
+        activeQuestionCount: 3,
+        notApplicableCount: 6,
+        scoredCount: 0,
+      }),
+    ).toBe(true);
+  });
+
+  it("is false when the register is empty (not examined)", () => {
+    expect(
+      isCompleteExclusiveNotApplicable({
+        sampledAccountCount: 2,
+        activeQuestionCount: 3,
+        notApplicableCount: 0,
+        scoredCount: 0,
+      }),
+    ).toBe(false);
+  });
+
+  it("is false when some cells are still unanswered", () => {
+    expect(
+      isCompleteExclusiveNotApplicable({
+        sampledAccountCount: 2,
+        activeQuestionCount: 3,
+        notApplicableCount: 5,
+        scoredCount: 0,
+      }),
+    ).toBe(false);
+  });
+
+  it("is false when any cell is COMPLIANT or VIOLATION", () => {
+    expect(
+      isCompleteExclusiveNotApplicable({
+        sampledAccountCount: 2,
+        activeQuestionCount: 3,
+        notApplicableCount: 5,
+        scoredCount: 1,
+      }),
+    ).toBe(false);
+  });
+
+  it("is false when there are no sampled accounts or questions", () => {
+    expect(
+      isCompleteExclusiveNotApplicable({
+        sampledAccountCount: 0,
+        activeQuestionCount: 3,
+        notApplicableCount: 0,
+        scoredCount: 0,
+      }),
+    ).toBe(false);
+    expect(
+      isCompleteExclusiveNotApplicable({
+        sampledAccountCount: 2,
+        activeQuestionCount: 0,
+        notApplicableCount: 0,
+        scoredCount: 0,
+      }),
+    ).toBe(false);
   });
 });
