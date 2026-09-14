@@ -45,11 +45,18 @@ export const env = createEnv({
     AWS_ACCESS_KEY_ID: z.string().min(1).optional(),
     AWS_SECRET_ACCESS_KEY: z.string().min(1).optional(),
     S3_BUCKET_NAME: z.string().min(1).optional(),
+    STORAGE_DRIVER: z.enum(["s3", "minio", "disabled"]).default("s3"),
+    S3_ENDPOINT: z.string().url().optional(), // required when STORAGE_DRIVER=minio
 
     // AWS SES Email (Mumbai region for RBI data localization)
     // Optional in development - required in production for email notifications
     AWS_SES_REGION: z.string().min(1).optional(),
     SES_FROM_EMAIL: z.string().email().optional(),
+    MAIL_DRIVER: z.enum(["ses", "smtp", "disabled"]).default("ses"),
+    SMTP_HOST: z.string().min(1).optional(),
+    SMTP_PORT: z.coerce.number().int().positive().optional(),
+    SMTP_USER: z.string().min(1).optional(),
+    SMTP_PASSWORD: z.string().min(1).optional(),
 
     // Sentry Error Tracking
     // Optional — error tracking degrades gracefully when not configured
@@ -93,8 +100,15 @@ export const env = createEnv({
     AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
     S3_BUCKET_NAME: process.env.S3_BUCKET_NAME,
+    STORAGE_DRIVER: process.env.STORAGE_DRIVER,
+    S3_ENDPOINT: process.env.S3_ENDPOINT,
     AWS_SES_REGION: process.env.AWS_SES_REGION,
     SES_FROM_EMAIL: process.env.SES_FROM_EMAIL,
+    MAIL_DRIVER: process.env.MAIL_DRIVER,
+    SMTP_HOST: process.env.SMTP_HOST,
+    SMTP_PORT: process.env.SMTP_PORT,
+    SMTP_USER: process.env.SMTP_USER,
+    SMTP_PASSWORD: process.env.SMTP_PASSWORD,
     SENTRY_DSN: process.env.SENTRY_DSN,
     SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
     NODE_ENV: process.env.NODE_ENV,

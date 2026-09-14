@@ -11,10 +11,12 @@ const sent: Array<{ to: string; subject: string }> = [];
 
 function mockEmail() {
   sent.length = 0;
-  vi.doMock("@/lib/ses-client", () => ({
-    sendEmail: vi.fn(async (msg: { to: string; subject: string }) => {
-      sent.push({ to: msg.to, subject: msg.subject });
-      return { success: true, messageId: `ses-${sent.length}` };
+  vi.doMock("@/lib/mail/mailer", () => ({
+    getMailer: () => ({
+      send: vi.fn(async (msg: { to: string; subject: string }) => {
+        sent.push({ to: msg.to, subject: msg.subject });
+        return { success: true, messageId: `ses-${sent.length}` };
+      }),
     }),
   }));
   vi.doMock("@/emails/render", () => ({
