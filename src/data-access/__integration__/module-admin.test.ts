@@ -252,4 +252,42 @@ describe("addBankStatement", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("rejects a NaN weight", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { addBankStatement } =
+      await import("@/actions/module-admin/add-bank-statement");
+
+    const ops = await integrationOwner.auditModule.findFirstOrThrow({
+      where: { tenantId, code: "OPS" },
+    });
+    const result = await addBankStatement({
+      moduleId: ops.id,
+      sectionCode: "OPS",
+      text: "x",
+      weight: Number("not-a-number"),
+      isCritical: false,
+    });
+    expect(result).toEqual({
+      success: false,
+      error: "Weight must be between 0.5 and 3.0.",
+    });
+  });
+
+  it("rejects a moduleId not scoped to the caller's tenant", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { addBankStatement } =
+      await import("@/actions/module-admin/add-bank-statement");
+
+    const result = await addBankStatement({
+      moduleId: "00000000-0000-0000-0000-000000000000",
+      sectionCode: "OPS",
+      text: "x",
+      weight: 1.0,
+      isCritical: false,
+    });
+    expect(result).toEqual({ success: false, error: "Module not found." });
+  });
 });

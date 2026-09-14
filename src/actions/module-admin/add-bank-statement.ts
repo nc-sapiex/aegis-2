@@ -46,40 +46,54 @@ export async function addBankStatement(
     return { success: false, error: "Module not found." };
   }
 
-  return withAuditedMutation(
-    userActor(session),
-    "module.bank_statement_added",
-    async (tx) => {
-      const existing = await tx.examinationNode.findMany({
-        where: { tenantId, code: { startsWith: `${input.sectionCode}-B` } },
-        select: { code: true },
-      });
-      const nextN =
-        existing.reduce((max, row) => {
-          const match = row.code.match(/-B(\d+)$/);
-          return match ? Math.max(max, Number(match[1])) : max;
-        }, 0) + 1;
-      const code = `${input.sectionCode}-B${String(nextN).padStart(2, "0")}`;
+  try {
+    return await withAuditedMutation(
+      userActor(session),
+      "module.bank_statement_added",
+      async (tx) => {
+        const existing = await tx.examinationNode.findMany({
+          where: { tenantId, code: { startsWith: `${input.sectionCode}-B` } },
+          select: { code: true },
+        });
+        const nextN =
+          existing.reduce((max, row) => {
+            const match = row.code.match(/-B(\d+)$/);
+            return match ? Math.max(max, Number(match[1])) : max;
+          }, 0) + 1;
+        const code = `${input.sectionCode}-B${String(nextN).padStart(2, "0")}`;
 
-      await tx.examinationNode.create({
-        data: {
-          tenantId,
-          moduleId: input.moduleId,
-          code,
-          name: input.text.slice(0, 60),
-          path: `${input.sectionCode}/${code}`,
-          depth: 1,
-          isLeaf: true,
-          weight: input.weight,
-          isCritical: input.isCritical,
-          description: input.text,
-          regulatoryRef: input.reference,
-          origin: "BANK",
-        },
-      });
+        await tx.examinationNode.create({
+          data: {
+            tenantId,
+            moduleId: input.moduleId,
+            code,
+            name: input.text.slice(0, 60),
+            path: `${input.sectionCode}/${code}`,
+            depth: 1,
+            isLeaf: true,
+            weight: input.weight,
+            isCritical: input.isCritical,
+            description: input.text,
+            regulatoryRef: input.reference,
+            origin: "BANK",
+          },
+        });
 
-      revalidatePath("/settings/modules");
-      return { success: true, data: { code } };
-    },
-  );
+        revalidatePath("/settings/modules");
+        return { success: true, data: { code } };
+      },
+    );
+  } catch (error) {
+    // Two concurrent calls for the same sectionCode can compute the same
+    // next -B<nn> and race on ExaminationNode's (tenantId, code) unique
+    // constraint — no duplicate is ever persisted, but the loser must
+    // return the error contract instead of throwing.
+    if ((error as { code?: string })?.code === "P2002") {
+      return {
+        success: false,
+        error: "Another statement was just added — please retry.",
+      };
+    }
+    throw error;
+  }
 }
