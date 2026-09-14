@@ -3,7 +3,6 @@
 import { LoginForm } from "@/components/auth/login-form";
 import { SignupForm } from "@/components/auth/signup-form";
 import { Suspense, useState } from "react";
-import { useTranslations } from "@/lib/strings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams } from "next/navigation";
 import { CircleAlert, CheckCircle2 } from "@/lib/icons";
@@ -17,8 +16,6 @@ import { CircleAlert, CheckCircle2 } from "@/lib/icons";
  * - Clean, centered layout with AEGIS branding
  */
 function LoginPageInner() {
-  const t = useTranslations("Login");
-  const tCommon = useTranslations("Common");
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"login" | "signup">("login");
 
@@ -38,10 +35,10 @@ function LoginPageInner() {
               <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-amber-600" />
               <div>
                 <p className="text-foreground text-sm font-medium">
-                  {t("sessionExpired")}
+                  Session Expired
                 </p>
                 <p className="text-muted-foreground text-xs">
-                  {t("sessionExpiredMessage")}
+                  Your session has expired. Please sign in again to continue.
                 </p>
               </div>
             </div>
@@ -57,13 +54,13 @@ function LoginPageInner() {
           {/* Tab list */}
           <TabsList className="grid w-full grid-cols-2 bg-white/50 backdrop-blur-sm">
             <TabsTrigger value="login" className="data-[state=active]:bg-white">
-              {t("signIn")}
+              Sign In
             </TabsTrigger>
             <TabsTrigger
               value="signup"
               className="data-[state=active]:bg-white"
             >
-              {t("signUp")}
+              Sign Up
             </TabsTrigger>
           </TabsList>
 

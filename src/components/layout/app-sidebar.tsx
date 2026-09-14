@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useTranslations } from "@/lib/strings";
 import {
   Sidebar,
   SidebarContent,
@@ -74,8 +73,6 @@ export function AppSidebar({
   userInitials = "U",
 }: AppSidebarProps) {
   const pathname = usePathname();
-  const tNav = useTranslations("Navigation");
-  const tTopBar = useTranslations("TopBar");
 
   // Filter nav items based on user's roles
   const visibleNavItems = filterNavByRoles(roles);
@@ -99,7 +96,7 @@ export function AppSidebar({
                     pathname === item.href ||
                     (item.href !== "/dashboard" &&
                       pathname.startsWith(item.href + "/"));
-                  const label = tNav(item.tKey);
+                  const label = item.title;
                   return (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
@@ -174,12 +171,12 @@ export function AppSidebar({
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/settings">{tNav("settings")}</Link>
+                  <Link href="/settings">Settings</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />
-                  {tTopBar("signOut")}
+                  Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

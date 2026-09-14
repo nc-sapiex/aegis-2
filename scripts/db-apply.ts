@@ -1,14 +1,12 @@
 /**
- * Apply one or more hand-run SQL files, in the order given.
+ * Apply one or more SQL files by hand, in the order given.
  *
- * Usage: pnpm db:apply prisma/migrations/20260904_f07_f15_schema_additions.sql
+ * Usage: pnpm db:apply prisma/sql/070_rls_policies.sql
  *
- * These files are deliberately *not* in the manifest that `db:bootstrap`
- * applies: they are schema migrations an operator runs by hand against
- * production, once, in a known order. This script exists so CI can rehearse
- * that same run against a `db:push`-built database, which both proves the SQL
- * parses and proves it is idempotent — push has already created everything the
- * file guards against.
+ * `db:bootstrap` applies every file in `prisma/sql/manifest.ts` itself
+ * (it doesn't shell out to this script). Use this to re-apply a single
+ * manifest file by hand — e.g. after editing it — without a full bootstrap
+ * re-run.
  */
 import { readFileSync } from "fs";
 import { resolve } from "path";

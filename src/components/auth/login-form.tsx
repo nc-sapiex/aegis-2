@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "@/lib/strings";
 import Image from "next/image";
+import Link from "next/link";
 import { signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,8 +29,6 @@ import { Lock, Mail, Shield, CircleAlert } from "@/lib/icons";
  */
 export function LoginForm() {
   const router = useRouter();
-  const t = useTranslations("Login");
-  const tCommon = useTranslations("Common");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -55,16 +53,20 @@ export function LoginForm() {
 
         switch (errorCode) {
           case "INVALID_EMAIL_OR_PASSWORD":
-            setError(t("invalidCredentials"));
+            setError("Invalid email or password");
             break;
           case "TOO_MANY_ATTEMPTS":
-            setError(t("rateLimited"));
+            setError(
+              "Too many login attempts. Please try again in 15 minutes.",
+            );
             break;
           case "ACCOUNT_LOCKED":
-            setError(t("accountLocked"));
+            setError(
+              "Account locked due to too many failed attempts. Please try again in 30 minutes.",
+            );
             break;
           default:
-            setError(t("loginFailed"));
+            setError("Login failed. Please try again.");
         }
       } else if (response.data) {
         // Success - redirect to dashboard
@@ -74,7 +76,7 @@ export function LoginForm() {
       }
     } catch (err) {
       console.error("Login error:", err);
-      setError(t("loginFailed"));
+      setError("Login failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -97,14 +99,14 @@ export function LoginForm() {
             />
             <div className="flex flex-col items-center">
               <span className="text-foreground text-xl font-bold tracking-wide">
-                {tCommon("appName")}
+                AEGIS
               </span>
               <span className="text-muted-foreground text-xs tracking-widest">
-                {tCommon("companyName")}
+                SAPIEX TECHNOLOGIES
               </span>
             </div>
             <p className="text-muted-foreground text-center text-sm">
-              {tCommon("appTagline")}
+              Audit & Compliance Platform for UCBs
             </p>
           </div>
 
@@ -122,14 +124,14 @@ export function LoginForm() {
             {/* Email */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">
-                {t("emailAddress")}
+                Email Address
               </Label>
               <div className="relative">
                 <Mail className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder={t("emailPlaceholder")}
+                  placeholder="rajesh.deshmukh@apexbank.example"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
@@ -140,15 +142,23 @@ export function LoginForm() {
 
             {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium">
-                {t("password")}
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-muted-foreground hover:text-foreground text-xs"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <Input
                   id="password"
                   type="password"
-                  placeholder={t("passwordPlaceholder")}
+                  placeholder="Enter password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10"
@@ -163,7 +173,7 @@ export function LoginForm() {
               className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-200/50 transition-all hover:from-blue-700 hover:to-blue-800 hover:shadow-lg"
               disabled={isLoading}
             >
-              {isLoading ? t("signingIn") : t("signIn")}
+              {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
 
@@ -179,7 +189,7 @@ export function LoginForm() {
 
       {/* Footer */}
       <p className="text-muted-foreground text-xs">
-        {tCommon("securedBy")} &middot; {tCommon("companyName")}
+        Secured by AEGIS &middot; SAPIEX TECHNOLOGIES
       </p>
     </div>
   );
