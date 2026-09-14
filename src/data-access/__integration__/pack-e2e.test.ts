@@ -74,13 +74,13 @@ describe("content packs, end to end", () => {
     ]);
     expect(result.success).toBe(true);
 
-    const module = await integrationOwner.auditModule.findFirst({
+    const auditModule = await integrationOwner.auditModule.findFirst({
       where: { tenantId, code: "FX" },
     });
-    expect(module?.name).toBe("Forex Business");
+    expect(auditModule?.name).toBe("Forex Business");
 
     const nodes = await integrationOwner.examinationNode.findMany({
-      where: { tenantId, moduleId: module?.id },
+      where: { tenantId, moduleId: auditModule?.id },
     });
     expect(nodes).toHaveLength(2);
     expect(nodes.every((n) => n.origin === "PACK")).toBe(true);

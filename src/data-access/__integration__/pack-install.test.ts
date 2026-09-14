@@ -93,10 +93,10 @@ describe("installPack", () => {
     });
     expect(install?.version).toBe("1.0.0");
 
-    const module = await integrationOwner.auditModule.findFirst({
+    const auditModule = await integrationOwner.auditModule.findFirst({
       where: { tenantId, code: "FX" },
     });
-    expect(module?.packId).toBe(install?.id);
+    expect(auditModule?.packId).toBe(install?.id);
 
     const node = await integrationOwner.examinationNode.findFirst({
       where: { tenantId, code: "FX-01" },
