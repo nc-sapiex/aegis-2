@@ -62,6 +62,8 @@ interface FindingFormProps {
   mode: "create-ap" | "create-observation" | "edit-ap" | "promote";
   existingData?: ActionPointData | ObservationData | null;
   sourceActionPointId?: string;
+  /** Pre-fills severity on a fresh create from the register row's tick (never overrides existingData). */
+  suggestedSeverity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" | null;
   onCancel: () => void;
   onSuccess: () => void;
 }
@@ -92,6 +94,7 @@ export function FindingForm({
   mode,
   existingData,
   sourceActionPointId,
+  suggestedSeverity,
   onCancel,
   onSuccess,
 }: FindingFormProps) {
@@ -115,7 +118,7 @@ export function FindingForm({
         : {
             title: "",
             description: "",
-            severity: "MEDIUM",
+            severity: suggestedSeverity ?? "MEDIUM",
             moduleCode: "",
           },
   });
@@ -154,7 +157,7 @@ export function FindingForm({
               cause: "",
               effect: "",
               recommendation: "",
-              severity: "MEDIUM",
+              severity: suggestedSeverity ?? "MEDIUM",
             },
   });
 
