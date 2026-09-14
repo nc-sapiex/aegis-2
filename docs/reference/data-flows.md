@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `cc9c1c8` (module-admin-reporting/foundation)
+> Source commit: `48b9c8a` (module-admin-reporting/foundation)
 
 Which processes read and write which tables.
 
@@ -26,7 +26,7 @@ reachability graph.
 | `compliance` | 5 | `BoardReport`, `ComplianceItem`, `NotificationQueue`, `User` |
 | `examination-questions` | 1 | `ExaminationQuestion` |
 | `loan-portfolio` | 3 | `AuditEngagement`, `AuditModule`, `PopulationRecord` |
-| `module-admin` | 1 | `AuditModule` |
+| `module-admin` | 2 | `AuditModule`, `ExaminationNode` |
 | `observations` | 3 | `ComplianceItem`, `Observation`, `ObservationTimeline` |
 | `ram` | 4 | `Branch`, `RamAssessment`, `RamAssessmentScore` |
 | `rbia` | 8 | `ActionPoint`, `AuditEngagement`, `AuditModule`, `BmResponseBatch`, `BranchRbiaScore`, `EngagementMeeting`, `EngagementModule`, `EngagementSectionNa`, `Evidence`, `ExaminationNode`, `ExaminationResponse`, `Observation` |
@@ -66,7 +66,7 @@ Tables reached from the greatest number of domains — the ones where a schema c
 | `BoardReport` | 2 | `compliance`, `reports` |
 | `ComplianceItem` | 2 | `compliance`, `observations` |
 | `NotificationQueue` | 2 | `compliance`, `jobs` |
-| `BmResponseBatch` | 2 | `jobs`, `rbia` |
+| `ExaminationNode` | 2 | `module-admin`, `rbia` |
 
 ### Domain access graph
 

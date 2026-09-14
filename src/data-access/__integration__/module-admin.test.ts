@@ -203,3 +203,53 @@ describe("saveModuleWeights", () => {
     expect(Number(updated.weight)).toBe(45);
   });
 });
+
+describe("addBankStatement", () => {
+  async function caeSession() {
+    const cae = await integrationOwner.user.findFirstOrThrow({
+      where: { tenantId, roles: { has: "CAE" } },
+      select: { id: true },
+    });
+    return fakeSession({ id: cae.id, tenantId, roles: ["CAE"] });
+  }
+
+  it("assigns the next <section>-B<nn> code", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { addBankStatement } =
+      await import("@/actions/module-admin/add-bank-statement");
+
+    const ops = await integrationOwner.auditModule.findFirstOrThrow({
+      where: { tenantId, code: "OPS" },
+    });
+    // fixture already has OPS-B01 (Task 2's setup) — this one should become OPS-B02
+    const result = await addBankStatement({
+      moduleId: ops.id,
+      sectionCode: "OPS",
+      text: "Cash retention limit is displayed",
+      weight: 1.0,
+      isCritical: false,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.code).toBe("OPS-B02");
+  });
+
+  it("rejects a weight outside 0.5-3.0", async () => {
+    vi.resetModules();
+    mockSessionModule(await caeSession());
+    const { addBankStatement } =
+      await import("@/actions/module-admin/add-bank-statement");
+
+    const ops = await integrationOwner.auditModule.findFirstOrThrow({
+      where: { tenantId, code: "OPS" },
+    });
+    const result = await addBankStatement({
+      moduleId: ops.id,
+      sectionCode: "OPS",
+      text: "x",
+      weight: 10,
+      isCritical: false,
+    });
+    expect(result.success).toBe(false);
+  });
+});
