@@ -1,4 +1,5 @@
 import type { ModuleSectionData } from "@/lib/reporting/module-section";
+import { formatScore } from "@/lib/format-score";
 
 /**
  * Row data for one module's worksheet, header rows included. The caller
@@ -11,7 +12,7 @@ export function buildModuleSheetRows(
   return [
     [
       `${section.moduleName} (${section.kind})`,
-      `Score: ${(section.score * 100).toFixed(1)}%`,
+      `Score: ${formatScore(section.score)}%`,
     ],
     ["Code", "Statement", "Result"],
     ...section.rows.map((r) => [r.code, r.text, r.result]),

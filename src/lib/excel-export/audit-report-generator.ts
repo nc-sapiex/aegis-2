@@ -49,12 +49,18 @@ export async function generateAuditReportXLSX(
   // Tab 6: Team Members
   await addTeamMembersSheet(workbook, auditData);
 
-  // Tab 7+: one worksheet per selected module (auditData.modules is empty
-  // when the engagement has no EngagementModule rows, so this is a no-op
-  // for engagements that never selected any).
-  auditData.modules.forEach((reportModule, i) => {
-    addModuleSheet(workbook, i, reportModuleToSection(reportModule));
-  });
+  // Tab 7+: one worksheet per selected module, RBIA engagements only —
+  // gated the same way generate-pdf.ts gates its module-driven rendering.
+  // auditData.modules can be non-empty for non-RBIA engagements too (any
+  // auditType gets EngagementModule rows when a branch matches a module's
+  // applicability predicate — see create-engagement.ts), so gating on
+  // modules.length alone would make the XLSX and PDF reports for the same
+  // engagement disagree on whether module content appears.
+  if (auditData.auditType === "RBIA") {
+    auditData.modules.forEach((reportModule, i) => {
+      addModuleSheet(workbook, i, reportModuleToSection(reportModule));
+    });
+  }
 
   // Generate buffer
   const buffer = await workbook.xlsx.writeBuffer();
