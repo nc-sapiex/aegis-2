@@ -30,6 +30,9 @@ async function main() {
     );
 
   const client = new Client({ connectionString });
+  // Surface RAISE WARNING from the manifest (e.g. 010's tamper warning);
+  // pg drops notices unless someone listens.
+  client.on("notice", (n) => console.warn(`${n.severity}: ${n.message}`));
   await client.connect();
   try {
     await ensureAppRole(client, appPassword);

@@ -64,7 +64,6 @@ const ID = {
   ap: Array.from({ length: 12 }, (_, i) => uid(`ap:${i + 1}`)),
   loan: Array.from({ length: 50 }, (_, i) => uid(`loan:${i + 1}`)),
   snap: Array.from({ length: 4 }, (_, i) => uid(`snap:${i}`)),
-  log: Array.from({ length: 10 }, (_, i) => uid(`log:${i}`)),
   uba: Array.from({ length: 3 }, (_, i) => uid(`uba:${i}`)),
   ar: Array.from({ length: 2 }, (_, i) => uid(`ar:${i}`)),
 };
@@ -640,7 +639,9 @@ async function seedLifecycle() {
   // Delete standalone records
   await prisma.boardReport.deleteMany({ where: { id: ID.board } });
   await prisma.dashboardSnapshot.deleteMany({ where: { id: { in: ID.snap } } });
-  await prisma.auditLog.deleteMany({ where: { id: { in: ID.log } } });
+  // AuditLog rows are not deleted here: they're part of the tenant's
+  // immutable hash chain now (see the audit log entries section below),
+  // and single-row deletes are incompatible with an immutable chained log.
   await prisma.userBranchAssignment.deleteMany({
     where: { id: { in: ID.uba } },
   });
@@ -2159,25 +2160,59 @@ async function seedLifecycle() {
     },
   ];
 
-  await prisma.auditLog.createMany({
-    data: auditLogEntries.map((entry, i) => ({
-      id: ID.log[i],
+  // These rows join the tenant's real hash chain via audit_chain_insert()
+  // (not tx.auditLog.createMany(), which would leave sequenceNumber unset
+  // and prevHash/rowHash NULL -- and, after Task 3's migration,
+  // sequenceNumber has no default at all, so createMany would fail outright).
+  // An immutable chained log can't be cleaned up with a per-row delete on
+  // re-run, so this checks what's already there instead: skip if all 10
+  // fixture rows exist, insert if none do, and fail loudly if the count is
+  // anything else (a previous run was interrupted mid-way).
+  //
+  // Matched on actionType plus the fixture's ipAddress. "observation.created"
+  // is also written by the real create-observation action, so actionType
+  // alone could count app rows. Not matched on createdAt: comparing a JS Date
+  // against a TIMESTAMP (no tz) column depends on how the driver serializes
+  // it, and a miss would insert a duplicate set of 10 rows on every re-run.
+  const fixtureActionTypes = auditLogEntries.map((entry) => entry.actionType);
+  const existingLogCount = await prisma.auditLog.count({
+    where: {
       tenantId,
-      tableName: entry.tableName,
-      recordId: entry.recordId,
-      operation: entry.operation,
-      actionType: entry.actionType,
-      userId: entry.userId,
-      oldData: null,
-      newData: entry.newData,
+      actionType: { in: fixtureActionTypes },
       ipAddress: "10.0.1.50",
-      createdAt: d(entry.date),
-      retentionExpiresAt: new Date(
-        d(entry.date).getTime() + 10 * 365.25 * 24 * 60 * 60 * 1000,
-      ),
-    })),
+    },
   });
-  console.log("  ✓ 10 audit log entries");
+
+  if (existingLogCount === auditLogEntries.length) {
+    console.log("  ✓ 10 audit log entries (already present, skipped)");
+  } else if (existingLogCount === 0) {
+    await prisma.$transaction(async (tx) => {
+      // Needed under an aegis_app-only DATABASE_URL: AuditChainHead/AuditLog
+      // carry FORCE ROW LEVEL SECURITY, and audit_chain_insert() runs with
+      // the caller's RLS context, not a bypass. A DATABASE_OWNER_URL
+      // connection doesn't need this (superuser bypasses RLS), but setting
+      // it unconditionally works under both.
+      await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`;
+      for (const entry of auditLogEntries) {
+        // Bind entry.date (an ISO string ending in "Z"), not a Date:
+        // @prisma/adapter-pg sends a Date as an offset-less UTC wall-clock
+        // literal, which ::timestamptz reads in the session TimeZone, so a
+        // non-UTC server would shift every seeded instant.
+        await tx.$executeRaw`
+          SELECT audit_chain_insert(
+            ${tenantId}::uuid, ${entry.tableName}, ${entry.recordId}, ${entry.operation}, ${entry.actionType},
+            NULL, NULL, ${JSON.stringify(entry.newData)}::jsonb,
+            '10.0.1.50', NULL, ${entry.userId}::uuid, ${entry.date}::timestamptz
+          )
+        `;
+      }
+    });
+    console.log("  ✓ 10 audit log entries");
+  } else {
+    throw new Error(
+      `Lifecycle audit log entries partially present for tenant ${tenantId}: expected 0 or ${auditLogEntries.length}, found ${existingLogCount}. An immutable chained log can't be repaired by re-running -- clean up manually before retrying.`,
+    );
+  }
 
   // 8d. Second engagement (Shivajinagar — IN_PROGRESS, simpler)
   await prisma.auditEngagement.create({

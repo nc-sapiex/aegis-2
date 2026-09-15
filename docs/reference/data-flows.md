@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `e3494e8` (module-framework/foundation)
+> Source commit: `6566157` (worktree-plan2-audit-chain)
 
 Which processes read and write which tables.
 
@@ -20,7 +20,7 @@ reachability graph.
 |---|---|---|
 | `(root)` | 8 | `Account`, `AuditeeResponse`, `Evidence`, `Observation`, `ObservationTimeline`, `Tenant`, `User` |
 | `account-examination` | 1 | `AccountExamResponse`, `AuditEngagement`, `ExaminationQuestion`, `PopulationRecord` |
-| `admin` | 4 | `AuditCalendar`, `Branch`, `ReportTemplate`, `Zone` |
+| `admin` | 5 | `AuditCalendar`, `Branch`, `ReportTemplate`, `Zone` |
 | `audit-execution` | 6 | `AuditEngagement`, `AuditModule`, `AuditTeamMember`, `Branch`, `CashCheck`, `EngagementModule` |
 | `audit-plans` | 3 | `AuditEngagement`, `AuditPlan`, `Branch` |
 | `compliance` | 5 | `BoardReport`, `ComplianceItem`, `NotificationQueue`, `User` |
@@ -43,6 +43,7 @@ reachability graph.
 | `overdue-escalation` | yes | `NotificationQueue`, `Observation`, `User` |
 | `rbia-overdue-escalation` | yes | `BmResponseBatch`, `NotificationQueue`, `User` |
 | `snapshot-metrics` | — | `DashboardSnapshot` |
+| `verify-audit-chain` | yes | `AuditChainHead`, `AuditChainVerification`, `NotificationQueue`, `User` |
 | `weekly-digest` | yes | `NotificationQueue`, `Observation`, `User` |
 
 ## Most widely accessed tables

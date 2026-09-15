@@ -24,6 +24,7 @@ const BARE_IMPORT_ALLOWLIST = new Set<string>([
   "src/jobs/overdue-escalation.ts",
   "src/jobs/rbia-overdue-escalation.ts",
   "src/jobs/snapshot-metrics.ts",
+  "src/jobs/verify-audit-chain.ts", // lists tenants before looping prismaForTenant
   "src/jobs/weekly-digest.ts",
   "tests/integration/harness.ts",
 ]);
