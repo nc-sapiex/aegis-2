@@ -3,6 +3,7 @@ import {
   materializeEngagementStatements,
   getEngagementStatements,
   getModuleRailData,
+  getModuleRegister,
 } from "@/data-access/engagement-statements";
 import {
   integrationOwner,
@@ -129,5 +130,23 @@ describe("getModuleRailData", () => {
     );
     const rail = await getModuleRailData(tenantId, engagementId);
     expect(rail[0]).toMatchObject({ scored: 1, total: 1, score: 1 });
+  });
+});
+
+describe("getModuleRegister", () => {
+  it("still lists a snapshotted statement after the catalogue row is turned off", async () => {
+    await withFixtures(() =>
+      integrationOwner.examinationNode.update({
+        where: { id: nodeId },
+        data: { isActive: false },
+      }),
+    );
+    const rows = await getModuleRegister(tenantId, engagementId, "CRD");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe(nodeId);
+    expect(rows[0].text).toBe("Loan file is complete");
+
+    const rail = await getModuleRailData(tenantId, engagementId);
+    expect(rail[0].total).toBe(1);
   });
 });

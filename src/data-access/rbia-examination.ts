@@ -6,6 +6,8 @@ import {
   evaluateApplicability,
   type BranchProfile,
 } from "@/lib/module-applicability";
+import { materializeEngagementStatements } from "@/data-access/engagement-statements";
+import type { Prisma } from "@/generated/prisma/client";
 
 /**
  * Data Access Layer for RBIA Examination tree and module selection.
@@ -277,15 +279,22 @@ export async function autoSelectModules(
 
   const applicableModules = await getApplicableModules(session, engagementId);
 
-  await db.engagementModule.createMany({
-    data: applicableModules.map((m) => ({
-      tenantId,
+  await db.$transaction(async (tx) => {
+    await tx.engagementModule.createMany({
+      data: applicableModules.map((m) => ({
+        tenantId,
+        engagementId,
+        moduleId: m.id,
+        isAutoSelected: true,
+        selectionReason: "Auto-selected based on branch profile",
+      })),
+      skipDuplicates: true,
+    });
+    await materializeEngagementStatements(
+      tx as unknown as Prisma.TransactionClient,
       engagementId,
-      moduleId: m.id,
-      isAutoSelected: true,
-      selectionReason: "Auto-selected based on branch profile",
-    })),
-    skipDuplicates: true,
+      tenantId,
+    );
   });
 }
 
@@ -316,6 +325,8 @@ export async function getModuleSelections(
 
 /**
  * Manually add a module to an engagement's selection with a documented reason.
+ * Snapshots the new module's statements in the same transaction so the
+ * register and freeze see them (spec §6.6).
  */
 export async function addModuleSelection(
   session: Session,
@@ -326,14 +337,22 @@ export async function addModuleSelection(
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
 
-  return db.engagementModule.create({
-    data: {
-      tenantId,
+  return db.$transaction(async (tx) => {
+    const created = await tx.engagementModule.create({
+      data: {
+        tenantId,
+        engagementId,
+        moduleId,
+        isAutoSelected: false,
+        selectionReason: reason,
+      },
+    });
+    await materializeEngagementStatements(
+      tx as unknown as Prisma.TransactionClient,
       engagementId,
-      moduleId,
-      isAutoSelected: false,
-      selectionReason: reason,
-    },
+      tenantId,
+    );
+    return created;
   });
 }
 
