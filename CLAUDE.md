@@ -19,8 +19,6 @@ releases nothing.
   library) stay in AEGIS 1.x until ported behind feature flags.
 - next-intl and Sentry. English strings live in `src/lib/strings.ts`, which
   keeps the old `useTranslations(ns)` call shape over `strings.en.json`.
-- The hand-coded RBIA PDF document. `generatePdfReport` returns an error for
-  RBIA engagements until the data-driven reporting engine lands (spec §6.2).
 
 ## Repository map
 
