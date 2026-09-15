@@ -203,7 +203,7 @@ export async function verifyTenantAuditChain(
     logger.error(
       {
         action: "audit_chain_tamper_detected",
-        severity: "CRITICAL",
+        alert: "CRITICAL",
         tenantId,
         firstBadSequence: verdict.firstBadSequence.toString(),
       },

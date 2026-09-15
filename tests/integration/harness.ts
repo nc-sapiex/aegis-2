@@ -70,7 +70,8 @@ export async function resetDatabase(): Promise<void> {
      WHERE schemaname = 'public' AND tablename NOT LIKE '_prisma%'
   `;
   const quoted = tables.map((t) => `"${t.tablename}"`).join(", ");
-  // AuditLog carries no delete rule in this project, so a plain TRUNCATE works.
+  // TRUNCATE ignores rules, so AuditLog's DO INSTEAD NOTHING delete rule
+  // (prisma/sql/090_audit_log_immutability.sql) does not block it.
   await integrationOwner.$executeRawUnsafe(
     `TRUNCATE TABLE ${quoted} RESTART IDENTITY CASCADE`,
   );
