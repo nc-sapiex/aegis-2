@@ -443,6 +443,7 @@ export async function getAuditReportData(
         orderBy: { verifiedAt: "desc" },
       },
       engagementModules: {
+        where: { tenantId },
         include: {
           module: true,
         },
@@ -556,6 +557,7 @@ async function getReportModules(
       }),
       db.engagementStatement.findMany({
         where: { tenantId, engagementId },
+        orderBy: { createdAt: "asc" }, // deterministic row order for a regulated, archived report
       }),
       db.examinationResponse.findMany({
         where: { tenantId, engagementId },
@@ -585,7 +587,12 @@ async function getReportModules(
     if (s.questionId) tallyByQuestion.set(s.questionId, []);
   }
   for (const r of accountResponses) {
-    tallyByQuestion.get(r.questionId)?.push({ status: r.status! });
+    // Schema comment says status is null only when isNotApplicable, which the
+    // query above already filters out — but that's a comment, not a DB
+    // constraint. Skip rather than assert, so a future drift can't silently
+    // inflate the compliance denominator with a null-status response.
+    if (r.status === null) continue;
+    tallyByQuestion.get(r.questionId)?.push({ status: r.status });
   }
   const complianceByQuestion = new Map(
     computeModuleComplianceScores(tallyByQuestion).map((r) => [

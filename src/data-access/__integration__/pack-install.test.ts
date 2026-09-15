@@ -6,8 +6,9 @@ import { create as createTar } from "tar";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildPackArchive } from "@/lib/pack/build";
 import { signPackManifest } from "@/lib/pack/sign";
-import { installPack } from "@/data-access/pack-install";
+import { installPack, uninstallPack } from "@/data-access/pack-install";
 import type { Actor } from "@/lib/session-context";
+import { setSessionContext } from "@/lib/session-context";
 import {
   integrationOwner,
   createTenant,
@@ -132,5 +133,43 @@ describe("installPack", () => {
       where: { tenantId, code: "FX-01" },
     });
     expect(Number(node?.weight)).toBe(2.5);
+  });
+
+  it("reactivates the pack's module and PACK-origin nodes on reinstall after an uninstall", async () => {
+    await integrationOwner.$transaction(async (tx) => {
+      await setSessionContext(tx, {
+        actor: { kind: "user", userId, tenantId },
+        actionType: "pack.uninstalled",
+      });
+      await uninstallPack(tx, tenantId, "example-forex");
+    });
+    const deactivatedModule = await integrationOwner.auditModule.findFirst({
+      where: { tenantId, code: "FX" },
+    });
+    expect(deactivatedModule?.isActive).toBe(false);
+
+    const result = await installPack(
+      tenantId,
+      actorFor(userId, tenantId),
+      packFile,
+      publicKeyPem,
+      ["pack:example-forex@*"],
+    );
+    expect(result.success).toBe(true);
+
+    const install = await integrationOwner.contentPackInstall.findFirst({
+      where: { tenantId, packCode: "example-forex" },
+    });
+    expect(install?.uninstalledAt).toBeNull();
+
+    const auditModule = await integrationOwner.auditModule.findFirst({
+      where: { tenantId, code: "FX" },
+    });
+    expect(auditModule?.isActive).toBe(true);
+
+    const node = await integrationOwner.examinationNode.findFirst({
+      where: { tenantId, code: "FX-01" },
+    });
+    expect(node?.isActive).toBe(true);
   });
 });

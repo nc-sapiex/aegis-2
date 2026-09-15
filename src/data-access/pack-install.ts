@@ -64,6 +64,12 @@ async function upsertPack(
   files: PackFiles,
   actorId: string,
 ): Promise<void> {
+  const existingInstall = await tx.contentPackInstall.findUnique({
+    where: { tenantId_packCode: { tenantId, packCode: files.manifest.id } },
+    select: { uninstalledAt: true },
+  });
+  const isReinstall = existingInstall?.uninstalledAt != null;
+
   const install = await tx.contentPackInstall.upsert({
     where: { tenantId_packCode: { tenantId, packCode: files.manifest.id } },
     create: {
@@ -158,6 +164,35 @@ async function upsertPack(
         origin: "PACK",
       },
       update: { rbiReference: question.rbiReference },
+    });
+  }
+
+  // A reinstall after an uninstall must undo uninstallPack's isActive:false —
+  // otherwise the ledger row says installed but every module/node/question
+  // stays dark, with no error anywhere (the bug this comment prevents).
+  // Scoped to origin: "PACK" for nodes/questions so a bank's own deliberate
+  // off-switch on its own BANK-origin content isn't silently overridden.
+  if (isReinstall) {
+    const reinstalledModuleIds = [...moduleIdByCode.values()];
+    await tx.auditModule.updateMany({
+      where: { tenantId, id: { in: reinstalledModuleIds } },
+      data: { isActive: true },
+    });
+    await tx.examinationNode.updateMany({
+      where: {
+        tenantId,
+        moduleId: { in: reinstalledModuleIds },
+        origin: "PACK",
+      },
+      data: { isActive: true },
+    });
+    await tx.examinationQuestion.updateMany({
+      where: {
+        tenantId,
+        moduleId: { in: reinstalledModuleIds },
+        origin: "PACK",
+      },
+      data: { isActive: true },
     });
   }
 }

@@ -30,19 +30,10 @@ export async function saveModuleWeights(
   const db = prismaForTenant(tenantId);
   const modules = await db.auditModule.findMany({
     where: { tenantId, id: { in: input.map((i) => i.moduleId) } },
-    include: { packInstall: true },
   });
   if (modules.length !== input.length) {
     return { success: false, error: "One or more modules were not found." };
   }
-  const coreIds = new Set(
-    modules.filter((m) => m.packInstall?.packCode === "core").map((m) => m.id),
-  );
-  // Core modules can never be zero-weighted or switched off (spec §7.6 D4) — this action
-  // only ever writes a positive weight (checked above), so the core rule is already
-  // satisfied by the 1-100 range check; this set exists for the isActive action (Task 5)
-  // to consult, not for this one to branch on further.
-  void coreIds;
 
   return withAuditedMutation(
     userActor(session),

@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet } from "@react-pdf/renderer";
 import type { ModuleSectionData } from "@/lib/reporting/module-section";
-import { formatScore } from "@/lib/format-score";
+import { formatModuleScore } from "@/lib/format-score";
 
 const styles = StyleSheet.create({
   section: { marginBottom: 16 },
@@ -52,10 +52,11 @@ export function GenericModuleSection({
   return (
     <View style={styles.section} wrap>
       <Text style={styles.sectionTitle}>
-        {section.moduleName} ({section.kind}) — {formatScore(section.score)}%
+        {section.moduleName} ({section.kind}) —{" "}
+        {formatModuleScore(section.score)}
       </Text>
-      {section.rows.map((row) => (
-        <View key={row.code} style={styles.row}>
+      {section.rows.map((row, i) => (
+        <View key={`${row.code}-${i}`} style={styles.row}>
           <Text style={styles.rowCode}>{row.code}</Text>
           <Text style={styles.rowText}>{row.text}</Text>
           <Text style={styles.rowResult}>{row.result}</Text>

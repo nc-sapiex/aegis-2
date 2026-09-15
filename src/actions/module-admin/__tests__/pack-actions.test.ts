@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+vi.mock("node:fs/promises", () => ({ access: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/data-access/session", () => ({ getRequiredSession: vi.fn() }));
 vi.mock("@/data-access/audited-mutation", () => ({
@@ -18,6 +19,7 @@ import { getRequiredSession } from "@/data-access/session";
 import { withAuditedMutation } from "@/data-access/audited-mutation";
 import { installPack, uninstallPack } from "@/data-access/pack-install";
 import { loadLicense } from "@/lib/license";
+import { access } from "node:fs/promises";
 import { fakeSession, TENANT_A } from "@/test/factories";
 
 describe("uninstallPackAction", () => {
@@ -75,6 +77,7 @@ describe("installPackAction", () => {
       fakeSession({ roles: ["CAE"] }) as never,
     );
     process.env.LICENSE_PUBLIC_KEY = "test-key";
+    vi.mocked(access).mockResolvedValue(undefined);
   });
 
   it("rejects a session without module:manage", async () => {
@@ -103,6 +106,15 @@ describe("installPackAction", () => {
     expect(installPack).not.toHaveBeenCalled();
   });
 
+  it("refuses when the pack file doesn't exist under PACKS_DIR", async () => {
+    vi.mocked(access).mockRejectedValue(new Error("ENOENT"));
+
+    const result = await installPackAction("../../etc/passwd");
+
+    expect(result).toEqual({ success: false, error: "Pack file not found." });
+    expect(installPack).not.toHaveBeenCalled();
+  });
+
   it("passes an empty features list when the license is invalid", async () => {
     vi.mocked(loadLicense).mockReturnValue({
       status: "invalid",
@@ -119,7 +131,7 @@ describe("installPackAction", () => {
     expect(installPack).toHaveBeenCalledWith(
       TENANT_A,
       undefined,
-      "/tmp/pack.zip",
+      expect.stringMatching(/[/\\]packs[/\\]pack\.zip$/),
       "test-key",
       [],
     );

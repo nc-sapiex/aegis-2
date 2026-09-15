@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/guards";
 import { prismaForTenant } from "@/lib/prisma";
 import { StatementsEditor } from "@/components/module-admin/statements-editor";
@@ -10,9 +11,12 @@ export default async function ModuleStatementsPage({
   const session = await requirePermission("module:manage");
   const { moduleCode } = await params;
   const db = prismaForTenant(session.user.tenantId);
-  const mod = await db.auditModule.findFirstOrThrow({
+  const mod = await db.auditModule.findFirst({
     where: { tenantId: session.user.tenantId, code: moduleCode },
   });
+  if (!mod) {
+    notFound();
+  }
   const nodes = await db.examinationNode.findMany({
     where: {
       tenantId: session.user.tenantId,

@@ -1,4 +1,5 @@
-import { SCORE_VALUES } from "@/lib/rbia-scoring-engine";
+import type { ScoreLabel } from "@/generated/prisma/enums";
+import { computeModuleScore, type ScoredNode } from "@/lib/rbia-scoring-engine";
 import type { ReportModule } from "@/data-access/reports";
 
 export type EngagementStatementLike = {
@@ -15,12 +16,23 @@ export type ResponseLike = {
   questionId?: string | null;
   accountRecordId?: string | null;
   scoreLabel: string | null;
+  compliantCount?: number | null;
+  violationCount?: number | null;
 };
 export type ModuleSectionData = {
   moduleName: string;
   kind: string;
-  score: number;
-  rows: { code: string; text: string; result: string }[];
+  /** null when no statement in the module has been scored yet ("Not Examined"). */
+  score: number | null;
+  rows: {
+    code: string;
+    text: string;
+    result: string;
+    weight: number;
+    isCritical: boolean;
+    compliantCount: number | null;
+    violationCount: number | null;
+  }[];
 };
 
 /**
@@ -49,19 +61,37 @@ export function buildModuleSection(
       code: statement.displayCode ?? key,
       text: statement.text,
       result: response?.scoreLabel ?? "unscored",
+      weight: statement.weight,
+      isCritical: statement.isCritical,
+      compliantCount: response?.compliantCount ?? null,
+      violationCount: response?.violationCount ?? null,
     };
   });
 
-  const scored = rows.filter(
-    (r) => r.result !== "unscored" && r.result in SCORE_VALUES,
-  );
-  const score =
-    scored.length > 0
-      ? scored.reduce(
-          (sum, r) => sum + SCORE_VALUES[r.result as keyof typeof SCORE_VALUES],
-          0,
-        ) / scored.length
-      : 0;
+  // Weighted roll-up with the critical-item cap, same engine the freeze
+  // snapshot and live scoring UI use — a module here is just a one-level
+  // ScoredNode tree (leaves are statements, no nesting at report time).
+  const moduleNode: ScoredNode = {
+    nodeId: module.code,
+    code: module.code,
+    weight: 1,
+    isCritical: false,
+    isLeaf: false,
+    children: statements.map((statement) => {
+      const key = statement.nodeId ?? statement.questionId ?? "";
+      const response = responseByStatementId.get(key);
+      return {
+        nodeId: key,
+        code: statement.displayCode ?? key,
+        weight: statement.weight,
+        isCritical: statement.isCritical,
+        isLeaf: true,
+        scoreLabel: (response?.scoreLabel as ScoreLabel | null) ?? null,
+        children: [],
+      };
+    }),
+  };
+  const score = computeModuleScore(moduleNode);
 
   return { moduleName: module.name, kind: module.kinds.join("/"), score, rows };
 }
@@ -86,6 +116,8 @@ export function reportModuleToSection(module: ReportModule): ModuleSectionData {
   const responses: ResponseLike[] = module.statements.map((s) => ({
     nodeId: s.id,
     scoreLabel: s.scoreLabel,
+    compliantCount: s.compliantCount,
+    violationCount: s.violationCount,
   }));
   return buildModuleSection(
     { code: module.code, name: module.name, kinds: module.kinds },

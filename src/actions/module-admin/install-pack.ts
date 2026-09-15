@@ -1,11 +1,18 @@
 "use server";
 
+import { access } from "node:fs/promises";
+import { basename, join, resolve } from "node:path";
 import { getRequiredSession } from "@/data-access/session";
 import { hasPermission } from "@/lib/permissions";
 import { installPack } from "@/data-access/pack-install";
 import { loadLicense } from "@/lib/license";
 import { userActor } from "@/data-access/audited-mutation";
 import { revalidatePath } from "next/cache";
+
+// installPack tar-extracts whatever path it's given — never pass a caller
+// filename through untouched. basename() strips any directory component
+// (including "../"), so the resolved path can never leave PACKS_DIR.
+const PACKS_DIR = resolve(process.env.PACKS_DIR ?? "packs");
 
 export async function installPackAction(
   filePath: string,
@@ -22,6 +29,13 @@ export async function installPackAction(
     return { success: false, error: "No license public key configured." };
   }
 
+  const resolvedPath = join(PACKS_DIR, basename(filePath));
+  try {
+    await access(resolvedPath);
+  } catch {
+    return { success: false, error: "Pack file not found." };
+  }
+
   const host = process.env.NEXT_PUBLIC_APP_URL
     ? new URL(process.env.NEXT_PUBLIC_APP_URL).hostname
     : "localhost";
@@ -34,7 +48,7 @@ export async function installPackAction(
   const result = await installPack(
     session.user.tenantId,
     userActor(session),
-    filePath,
+    resolvedPath,
     licensePublicKeyPem,
     features,
   );
