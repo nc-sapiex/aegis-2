@@ -197,6 +197,7 @@ export async function freezeRbiaScore(
                   name: true,
                   path: true,
                   moduleId: true,
+                  isActive: true,
                 },
               });
         const leafInScope = (isLeaf: boolean, id: string): boolean =>
@@ -282,18 +283,18 @@ export async function freezeRbiaScore(
         }
 
         // A module selected without its statements snapshotted (added before
-        // module add materialised them) has leaves but no snapshot rows.
-        // Every leaf would drop out of scope, the module would score null and
-        // leave the composite, and freeze would pass. Refuse instead.
+        // module add materialised them) has active leaves but no snapshot
+        // rows. Every leaf would drop out of scope, the module would score
+        // null and leave the composite, and freeze would pass. Refuse instead.
+        // Only active leaves count: a module whose statements are all turned
+        // off snapshots nothing, and re-adding it could never clear the error.
         if (snapshotNodeIds.size > 0) {
-          const leafModuleIds = new Set<string>();
+          const activeLeafModuleIds = new Set<string>();
           const snapshotModuleIds = new Set<string>();
-          for (const node of nodeMap.values()) {
-            if (!node.isLeaf || !node.moduleId) continue;
-            leafModuleIds.add(node.moduleId);
-            if (snapshotNodeIds.has(node.nodeId)) {
-              snapshotModuleIds.add(node.moduleId);
-            }
+          for (const n of allNodes) {
+            if (!n.isLeaf || !n.moduleId) continue;
+            if (n.isActive) activeLeafModuleIds.add(n.moduleId);
+            if (snapshotNodeIds.has(n.id)) snapshotModuleIds.add(n.moduleId);
           }
           const unsnapshotted = [...nodeMap.values()]
             .filter(
@@ -301,7 +302,7 @@ export async function freezeRbiaScore(
                 node.depth === 1 &&
                 node.moduleId &&
                 selectedModuleIds.has(node.moduleId) &&
-                leafModuleIds.has(node.moduleId) &&
+                activeLeafModuleIds.has(node.moduleId) &&
                 !snapshotModuleIds.has(node.moduleId),
             )
             .map((node) => node.code);

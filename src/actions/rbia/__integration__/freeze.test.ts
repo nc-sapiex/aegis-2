@@ -547,6 +547,44 @@ describe("freezeRbiaScore completeness", () => {
     if (result.success) expect(result.data.compositeScore).toBeCloseTo(0.75);
   });
 
+  it("freezes when a selected module snapshotted nothing because its statements are all off", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+    await withFixtures(() =>
+      integrationOwner.examinationNode.update({
+        where: { id: seed.creditLeaf.id },
+        data: { isActive: false },
+      }),
+    );
+    await addModuleSelection(
+      fakeSession({
+        id: cae.id,
+        tenantId: tenant.id,
+        roles: ["CAE"],
+      }) as never,
+      seed.engagementId,
+      seed.creditModule.id,
+      "Branch also books gold loans",
+    );
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.compositeScore).toBe(1);
+  });
+
   it("refuses to freeze a selected module that has no statement snapshot", async () => {
     const tenant = await createTenant();
     const cae = await createUser(tenant.id, ["CAE"]);
