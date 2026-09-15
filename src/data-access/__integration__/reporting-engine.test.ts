@@ -109,3 +109,109 @@ describe("getAuditReportData, module-native", () => {
     expect(data?.modules[0].statements[0].scoreLabel).toBe("FULLY_COMPLIANT");
   });
 });
+
+describe("getAuditReportData, POPULATION_SAMPLE (question-backed) statements", () => {
+  let sampleTenantId: string;
+  let sampleEngagementId: string;
+
+  beforeAll(async () => {
+    await withFixtures(async () => {
+      sampleTenantId = (await createTenant("Sample Report Bank")).id;
+      const user = await createUser(sampleTenantId, ["CAE"]);
+      const branch = await integrationOwner.branch.create({
+        data: {
+          tenantId: sampleTenantId,
+          name: "Sample Branch",
+          code: "SMP01",
+          city: "Pune",
+          state: "Maharashtra",
+          loanProducts: [],
+        },
+      });
+      const auditPlan = await integrationOwner.auditPlan.create({
+        data: { tenantId: sampleTenantId, year: 2026, quarter: "Q1_APR_JUN" },
+      });
+      const engagement = await integrationOwner.auditEngagement.create({
+        data: {
+          tenantId: sampleTenantId,
+          auditPlanId: auditPlan.id,
+          branchId: branch.id,
+          status: "COMPLETED",
+        },
+      });
+      sampleEngagementId = engagement.id;
+      const auditModule = await integrationOwner.auditModule.create({
+        data: {
+          tenantId: sampleTenantId,
+          code: "LOAN",
+          name: "Loan Portfolio",
+          domain: "CREDIT",
+          kinds: ["POPULATION_SAMPLE"],
+          applicability: {},
+          weight: 100,
+        },
+      });
+      await integrationOwner.engagementModule.create({
+        data: {
+          tenantId: sampleTenantId,
+          engagementId: sampleEngagementId,
+          moduleId: auditModule.id,
+          isAutoSelected: true,
+        },
+      });
+      const question = await integrationOwner.examinationQuestion.create({
+        data: {
+          tenantId: sampleTenantId,
+          moduleId: auditModule.id,
+          text: "Is the account within sanctioned limit?",
+        },
+      });
+      await integrationOwner.engagementStatement.create({
+        data: {
+          tenantId: sampleTenantId,
+          engagementId: sampleEngagementId,
+          questionId: question.id,
+          text: "Is the account within sanctioned limit?",
+          weight: 1,
+          isCritical: false,
+          origin: "BANK",
+        },
+      });
+      const record = await integrationOwner.populationRecord.create({
+        data: {
+          tenantId: sampleTenantId,
+          engagementId: sampleEngagementId,
+          moduleId: auditModule.id,
+          branchId: branch.id,
+          recordKey: "ACC-001",
+          displayName: "Test Borrower",
+          amount: 100000,
+          date: new Date(),
+          classification: "STANDARD",
+        },
+      });
+      await integrationOwner.accountExamResponse.create({
+        data: {
+          tenantId: sampleTenantId,
+          engagementId: sampleEngagementId,
+          recordId: record.id,
+          questionId: question.id,
+          status: "VIOLATION",
+          respondedById: user.id,
+        },
+      });
+    });
+  });
+
+  it("tallies AccountExamResponse into compliantCount/violationCount via computeModuleComplianceScores", async () => {
+    const session = { user: { tenantId: sampleTenantId } } as never;
+    const data = await getAuditReportData(session, sampleEngagementId);
+    expect(data).not.toBeNull();
+    expect(data?.modules).toHaveLength(1);
+    expect(data?.modules[0].code).toBe("LOAN");
+    const statement = data?.modules[0].statements[0];
+    expect(statement?.compliantCount).toBe(0);
+    expect(statement?.violationCount).toBe(1);
+    expect(statement?.scoreLabel).toBe("NON_COMPLIANT");
+  });
+});
