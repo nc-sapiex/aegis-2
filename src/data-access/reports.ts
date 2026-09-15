@@ -4,6 +4,10 @@ import type { BoardReportData } from "@/components/pdf-report/board-report";
 import { formatDateIndian } from "@/lib/excel-export";
 import type { AuthSession } from "@/lib/auth";
 import { withAuditedMutation, userActor } from "./audited-mutation";
+import {
+  computeModuleComplianceScores,
+  type ResponseTally,
+} from "@/lib/instance-scoring";
 
 function extractTenantId(session: AuthSession): string {
   return session.user.tenantId;
@@ -438,10 +442,22 @@ export async function getAuditReportData(
         where: { tenantId },
         orderBy: { verifiedAt: "desc" },
       },
+      engagementModules: {
+        include: {
+          module: true,
+        },
+      },
     },
   });
 
   if (!engagement) return null;
+
+  const modules = await getReportModules(
+    db,
+    tenantId,
+    engagementId,
+    engagement.engagementModules,
+  );
 
   // Fetch BH certificate signer and countersigner names
   let bhCertSignedByUser = null;
@@ -463,9 +479,174 @@ export async function getAuditReportData(
 
   return {
     ...engagement,
+    modules,
     bhCertSignedByName: bhCertSignedByUser?.name || null,
     bhCertCountersignedByName: bhCertCountersignedByUser?.name || null,
   };
+}
+
+type ReportEngagementModule = {
+  moduleId: string;
+  isAutoSelected: boolean;
+  selectionReason: string | null;
+  module: {
+    code: string;
+    name: string;
+    domain: string;
+    kinds: string[];
+  };
+};
+
+export type ReportModuleStatement = {
+  id: string;
+  text: string;
+  reference: string | null;
+  weight: number;
+  isCritical: boolean;
+  origin: string;
+  // CHECKLIST kind (nodeId-backed): a single per-engagement response.
+  scoreLabel: string | null;
+  remarks: string | null;
+  isNotApplicable: boolean;
+  notApplicableReason: string | null;
+  // POPULATION_SAMPLE kind (questionId-backed): tallied across every
+  // AccountExamResponse for the question — there is no single response.
+  compliantCount: number | null;
+  violationCount: number | null;
+};
+
+export type ReportModule = {
+  moduleId: string;
+  code: string;
+  name: string;
+  domain: string;
+  kinds: string[];
+  isAutoSelected: boolean;
+  selectionReason: string | null;
+  statements: ReportModuleStatement[];
+};
+
+/**
+ * Derives the module-native report section: each selected module with its
+ * EngagementStatement ground truth, joined to whichever response model its
+ * kind uses — ExaminationResponse (CHECKLIST, nodeId) or AccountExamResponse
+ * tallied per question (POPULATION_SAMPLE, questionId). EngagementStatement
+ * itself carries neither a moduleId nor a kind — only nodeId/questionId —
+ * so module membership is resolved via one lookup query against
+ * ExaminationNode/ExaminationQuestion, scoped to this engagement's modules.
+ */
+async function getReportModules(
+  db: ReturnType<typeof prismaForTenant>,
+  tenantId: string,
+  engagementId: string,
+  engagementModules: ReportEngagementModule[],
+): Promise<ReportModule[]> {
+  if (engagementModules.length === 0) return [];
+  const moduleIds = engagementModules.map((em) => em.moduleId);
+
+  const [nodes, questions, statements, nodeResponses, accountResponses] =
+    await Promise.all([
+      db.examinationNode.findMany({
+        where: { tenantId, moduleId: { in: moduleIds } },
+        select: { id: true, moduleId: true },
+      }),
+      db.examinationQuestion.findMany({
+        where: { tenantId, moduleId: { in: moduleIds } },
+        select: { id: true, moduleId: true },
+      }),
+      db.engagementStatement.findMany({
+        where: { tenantId, engagementId },
+      }),
+      db.examinationResponse.findMany({
+        where: { tenantId, engagementId },
+        select: {
+          nodeId: true,
+          scoreLabel: true,
+          remarks: true,
+          isNotApplicable: true,
+          notApplicableReason: true,
+        },
+      }),
+      db.accountExamResponse.findMany({
+        where: { tenantId, engagementId, isNotApplicable: false },
+        select: { questionId: true, status: true },
+      }),
+    ]);
+
+  const nodeModuleMap = new Map(nodes.map((n) => [n.id, n.moduleId]));
+  const questionModuleMap = new Map(questions.map((q) => [q.id, q.moduleId]));
+  const responseByNode = new Map(nodeResponses.map((r) => [r.nodeId, r]));
+
+  // Seed every question statement's tally (including zero-response ones) so
+  // computeModuleComplianceScores reports "Not Examined" (null) rather than
+  // silently omitting the statement.
+  const tallyByQuestion = new Map<string, ResponseTally[]>();
+  for (const s of statements) {
+    if (s.questionId) tallyByQuestion.set(s.questionId, []);
+  }
+  for (const r of accountResponses) {
+    tallyByQuestion.get(r.questionId)?.push({ status: r.status! });
+  }
+  const complianceByQuestion = new Map(
+    computeModuleComplianceScores(tallyByQuestion).map((r) => [
+      r.questionId,
+      r,
+    ]),
+  );
+
+  return engagementModules.map((em) => {
+    const moduleStatements: ReportModuleStatement[] = statements
+      .filter((s) =>
+        s.nodeId
+          ? nodeModuleMap.get(s.nodeId) === em.moduleId
+          : questionModuleMap.get(s.questionId!) === em.moduleId,
+      )
+      .map((s) => {
+        if (s.nodeId) {
+          const response = responseByNode.get(s.nodeId);
+          return {
+            id: s.id,
+            text: s.text,
+            reference: s.reference,
+            weight: Number(s.weight),
+            isCritical: s.isCritical,
+            origin: s.origin,
+            scoreLabel: response?.scoreLabel ?? null,
+            remarks: response?.remarks ?? null,
+            isNotApplicable: response?.isNotApplicable ?? false,
+            notApplicableReason: response?.notApplicableReason ?? null,
+            compliantCount: null,
+            violationCount: null,
+          };
+        }
+        const compliance = complianceByQuestion.get(s.questionId!);
+        return {
+          id: s.id,
+          text: s.text,
+          reference: s.reference,
+          weight: Number(s.weight),
+          isCritical: s.isCritical,
+          origin: s.origin,
+          scoreLabel: compliance?.scoreLabel ?? null,
+          remarks: null,
+          isNotApplicable: false,
+          notApplicableReason: null,
+          compliantCount: compliance?.compliantCount ?? null,
+          violationCount: compliance?.violationCount ?? null,
+        };
+      });
+
+    return {
+      moduleId: em.moduleId,
+      code: em.module.code,
+      name: em.module.name,
+      domain: em.module.domain,
+      kinds: em.module.kinds,
+      isAutoSelected: em.isAutoSelected,
+      selectionReason: em.selectionReason,
+      statements: moduleStatements,
+    };
+  });
 }
 
 /**
