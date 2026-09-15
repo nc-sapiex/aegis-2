@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { materializeEngagementStatements } from "@/data-access/engagement-statements";
+import { addModuleSelection } from "@/data-access/rbia-examination";
 import {
   resetDatabase,
   createTenant,
@@ -331,5 +333,105 @@ describe("freezeRbiaScore completeness", () => {
       });
     expect(creditResponse.isNotApplicable).toBe(true);
     expect(creditResponse.scoreLabel).toBeNull();
+  });
+
+  it("does not require a live leaf added after the engagement snapshot", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+
+    await withFixtures(async () => {
+      const opsNode = await integrationOwner.examinationNode.findUniqueOrThrow({
+        where: { id: seed.ops.id },
+        select: { moduleId: true },
+      });
+      await integrationOwner.examinationNode.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: opsNode.moduleId,
+          code: "OPS-B01",
+          name: "Late bank statement",
+          path: "ROOT/OPS/OPS-B01",
+          depth: 2,
+          isLeaf: true,
+          parentId: seed.ops.id,
+          weight: 1,
+          isActive: true,
+        },
+      });
+    });
+
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(true);
+  });
+
+  it("still requires a snapshotted leaf after the catalogue row is turned off", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+    await withFixtures(() =>
+      integrationOwner.examinationNode.update({
+        where: { id: seed.opsB.id },
+        data: { isActive: false },
+      }),
+    );
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const blocked = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(blocked.success).toBe(false);
+    if (!blocked.success) {
+      expect(blocked.code).toBe("INCOMPLETE_EXAMINATION");
+      expect(blocked.error).toContain("OPS-002");
+    }
+  });
+
+  it("snapshots statements when a module is added after engagement create", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+
+    await addModuleSelection(
+      fakeSession({
+        id: cae.id,
+        tenantId: tenant.id,
+        roles: ["CAE"],
+      }) as never,
+      seed.engagementId,
+      seed.creditModule.id,
+      "Branch also books gold loans",
+    );
+
+    const extra = await integrationOwner.engagementStatement.findFirst({
+      where: { engagementId: seed.engagementId, nodeId: seed.creditLeaf.id },
+    });
+    expect(extra).not.toBeNull();
   });
 });
