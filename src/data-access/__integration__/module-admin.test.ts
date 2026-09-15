@@ -144,6 +144,34 @@ describe("getModuleAdminView", () => {
     expect(forex?.group).toBe("pack");
     expect(forex?.packLabel).toBe("Pack · example-forex 1.0.0");
   });
+
+  it("defaults applicabilityText to 'All branches' for an empty predicate", async () => {
+    const rows = await getModuleAdminView(tenantId);
+    const ops = rows.find((r) => r.code === "OPS");
+    expect(ops?.applicabilityText).toBe("All branches");
+  });
+
+  it("computes applicabilityText from the branch profile", async () => {
+    await integrationOwner.branch.create({
+      data: {
+        tenantId,
+        name: "Forex Branch",
+        code: "FXB",
+        city: "Mumbai",
+        state: "MH",
+        hasForex: true,
+        loanProducts: [],
+      },
+    });
+    await integrationOwner.auditModule.update({
+      where: { tenantId_code: { tenantId, code: "CRD" } },
+      data: { applicability: { hasForex: true } },
+    });
+    const rows = await getModuleAdminView(tenantId);
+    expect(rows.find((r) => r.code === "CRD")?.applicabilityText).toMatch(
+      /of \d+ branches/,
+    );
+  });
 });
 
 describe("saveModuleWeights", () => {

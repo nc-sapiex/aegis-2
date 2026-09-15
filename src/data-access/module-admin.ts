@@ -1,6 +1,7 @@
 import "server-only";
 import { prismaForTenant } from "@/lib/prisma";
 import { computeModuleShares } from "@/lib/module-shares";
+import { evaluateApplicability } from "@/lib/module-applicability";
 
 export type ModuleAdminRow = {
   id: string;
@@ -15,6 +16,7 @@ export type ModuleAdminRow = {
   isActive: boolean;
   statementCount: number;
   bankStatementCount: number;
+  applicabilityText: string; // "All branches" or "<n> of <total> branches" (spec §7.6)
 };
 
 export async function getModuleAdminView(
@@ -40,6 +42,28 @@ export async function getModuleAdminView(
   );
   const shareByCode = new Map(shared.map((s) => [s.code, s.share]));
 
+  const branches = await db.branch.findMany({
+    where: { tenantId },
+    select: {
+      hasForex: true,
+      hasCurrencyChest: true,
+      hasGovtBusiness: true,
+      hasLockers: true,
+      hasAtm: true,
+      loanProducts: true,
+    },
+  });
+
+  function applicabilityText(predicate: unknown): string {
+    if (!predicate || Object.keys(predicate as object).length === 0) {
+      return "All branches";
+    }
+    const matching = branches.filter((b) =>
+      evaluateApplicability(predicate, b),
+    ).length;
+    return `${matching} of ${branches.length} branches`;
+  }
+
   return modules.map((m) => {
     const isCore = m.packInstall?.packCode === "core";
     const allContent = [...m.nodes, ...m.questions];
@@ -61,6 +85,7 @@ export async function getModuleAdminView(
       isActive: m.isActive,
       statementCount: allContent.length,
       bankStatementCount: allContent.filter((c) => c.origin === "BANK").length,
+      applicabilityText: applicabilityText(m.applicability),
     };
   });
 }
