@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `9a43b87` (worktree-plan2-audit-chain)
+> Source commit: `b271900` (worktree-plan2-audit-chain)
 
 Every table AEGIS maintains, with its columns, types and relationships.
 **77 models** and **25 enumerations**.

@@ -1,5 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, Building2, MapPin, FileText, Settings } from "@/lib/icons";
+import {
+  Users,
+  Building2,
+  MapPin,
+  FileText,
+  Settings,
+  ShieldCheck,
+} from "@/lib/icons";
 import Link from "next/link";
 import { requirePermission } from "@/lib/guards";
 
@@ -33,6 +40,12 @@ const adminSections = [
     description: "Configure risk assessment model parameters",
     href: "/admin/ram-config",
     icon: Settings,
+  },
+  {
+    title: "Audit Chain",
+    description: "Verify the audit trail and export an attestation",
+    href: "/admin/audit-chain",
+    icon: ShieldCheck,
   },
 ];
 

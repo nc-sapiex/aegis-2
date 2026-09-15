@@ -5,6 +5,7 @@ import {
   systemActor,
 } from "@/data-access/audited-mutation";
 import { logger } from "@/lib/logger";
+import type { Actor } from "@/lib/session-context";
 import { verifyChain, GENESIS_HASH, type LinkedRow } from "@/lib/audit-chain";
 
 /**
@@ -35,7 +36,7 @@ export async function verifyAuditChain(options?: {
 
   for (const tenant of tenants) {
     try {
-      await verifyTenant(tenant.id, options?.full ?? false);
+      await verifyTenantAuditChain(tenant.id, { full: options?.full });
     } catch (error) {
       logger.error(
         { action: "audit_chain_verify_error", tenantId: tenant.id, error },
@@ -69,7 +70,15 @@ type RawAuditRow = {
 const hashBuffer = (b: Uint8Array | null) =>
   b === null ? Buffer.alloc(0) : Buffer.from(b);
 
-async function verifyTenant(tenantId: string, full: boolean): Promise<void> {
+/**
+ * Verify one tenant's chain and record the verdict. `actor` defaults to the
+ * platform; the run-now action passes the admin who asked.
+ */
+export async function verifyTenantAuditChain(
+  tenantId: string,
+  options: { full?: boolean; actor?: Actor } = {},
+): Promise<{ ok: true } | { ok: false; firstBadSequence: bigint }> {
+  const full = options.full ?? false;
   const db = prismaForTenant(tenantId);
 
   // Read the head before the rows: rows committed after this read can only
@@ -130,7 +139,7 @@ async function verifyTenant(tenantId: string, full: boolean): Promise<void> {
   }
 
   await withAuditedMutation(
-    systemActor(tenantId),
+    options.actor ?? systemActor(tenantId),
     "audit_chain.verified",
     async (tx) => {
       await tx.auditChainVerification.create({
@@ -201,4 +210,5 @@ async function verifyTenant(tenantId: string, full: boolean): Promise<void> {
       "Audit chain verification FAILED",
     );
   }
+  return verdict;
 }
