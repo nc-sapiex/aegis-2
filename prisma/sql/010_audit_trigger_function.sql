@@ -142,6 +142,55 @@ RETURNS TEXT LANGUAGE sql IMMUTABLE AS $$
   END
 $$;
 
+-- The one copy of the canonical string and its SHA-256, used by
+-- audit_chain_insert() for new rows and by the backfill at the end of this
+-- file for rows written before the chain existed. 16 fields, every
+-- "AuditLog" column except "rowHash", in this exact order (must match
+-- src/lib/audit-chain.ts's canonicalString()): prevHash, id, tenantId,
+-- sequenceNumber, tableName, recordId, operation, actionType,
+-- justification, userId, ipAddress, sessionId, oldData, newData, createdAt,
+-- retentionExpiresAt. No separator: audit_chain_field makes the
+-- concatenation unambiguous on its own (see header comment). The timestamps
+-- are the stored TIMESTAMP(3) UTC wall-clock values, formatted with no
+-- further AT TIME ZONE. STABLE, not IMMUTABLE: to_char is STABLE.
+CREATE OR REPLACE FUNCTION audit_chain_row_hash(
+  p_prev_hash BYTEA,
+  p_id UUID,
+  p_tenant_id UUID,
+  p_sequence_number BIGINT,
+  p_table_name TEXT,
+  p_record_id TEXT,
+  p_operation TEXT,
+  p_action_type TEXT,
+  p_justification TEXT,
+  p_user_id TEXT,
+  p_ip_address TEXT,
+  p_session_id TEXT,
+  p_old_data JSONB,
+  p_new_data JSONB,
+  p_created_at TIMESTAMP,
+  p_retention_expires_at TIMESTAMP
+) RETURNS BYTEA LANGUAGE sql STABLE AS $$
+  SELECT digest(convert_to(
+    audit_chain_field(encode(p_prev_hash, 'hex'))
+    || audit_chain_field(p_id::TEXT)
+    || audit_chain_field(p_tenant_id::TEXT)
+    || audit_chain_field(p_sequence_number::TEXT)
+    || audit_chain_field(p_table_name)
+    || audit_chain_field(p_record_id)
+    || audit_chain_field(p_operation)
+    || audit_chain_field(p_action_type)
+    || audit_chain_field(p_justification)
+    || audit_chain_field(p_user_id)
+    || audit_chain_field(p_ip_address)
+    || audit_chain_field(p_session_id)
+    || audit_chain_field(p_old_data::TEXT)
+    || audit_chain_field(p_new_data::TEXT)
+    || audit_chain_field(to_char(p_created_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+    || audit_chain_field(to_char(p_retention_expires_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')),
+    'UTF8'), 'sha256')
+$$;
+
 CREATE OR REPLACE FUNCTION audit_chain_insert(
   p_tenant_id UUID,
   p_table_name TEXT,
@@ -160,7 +209,6 @@ DECLARE
   _id UUID := gen_random_uuid();
   _prev_hash BYTEA;
   _next_sequence BIGINT;
-  _canonical TEXT;
   _row_hash BYTEA;
   _retention_expires_at TIMESTAMP;
   -- "AuditLog".createdAt/retentionExpiresAt are TIMESTAMP (no time zone),
@@ -191,30 +239,11 @@ BEGIN
   _next_sequence := _next_sequence + 1;
   _retention_expires_at := _changed_at + INTERVAL '10 years';
 
-  -- 16 fields, every "AuditLog" column except "rowHash", in this exact
-  -- order (must match src/lib/audit-chain.ts's canonicalString()):
-  -- prevHash, id, tenantId, sequenceNumber, tableName, recordId, operation,
-  -- actionType, justification, userId, ipAddress, sessionId, oldData,
-  -- newData, createdAt, retentionExpiresAt. No separator: audit_chain_field
-  -- makes the concatenation unambiguous on its own (see header comment).
-  _canonical :=
-    audit_chain_field(encode(_prev_hash, 'hex'))
-    || audit_chain_field(_id::TEXT)
-    || audit_chain_field(p_tenant_id::TEXT)
-    || audit_chain_field(_next_sequence::TEXT)
-    || audit_chain_field(p_table_name)
-    || audit_chain_field(p_record_id)
-    || audit_chain_field(p_operation)
-    || audit_chain_field(p_action_type)
-    || audit_chain_field(p_justification)
-    || audit_chain_field(p_user_id::TEXT)
-    || audit_chain_field(p_ip_address)
-    || audit_chain_field(p_session_id)
-    || audit_chain_field(p_old_data::TEXT)
-    || audit_chain_field(p_new_data::TEXT)
-    || audit_chain_field(to_char(_changed_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
-    || audit_chain_field(to_char(_retention_expires_at, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'));
-  _row_hash := digest(convert_to(_canonical, 'UTF8'), 'sha256');
+  _row_hash := audit_chain_row_hash(
+    _prev_hash, _id, p_tenant_id, _next_sequence, p_table_name, p_record_id,
+    p_operation, p_action_type, p_justification, p_user_id::TEXT, p_ip_address,
+    p_session_id, p_old_data, p_new_data, _changed_at, _retention_expires_at
+  );
 
   INSERT INTO "AuditLog" (
     id, "tenantId", "userId", "tableName", "recordId", operation, "actionType",
@@ -264,3 +293,76 @@ BEGIN
   RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Backfill: chain the "AuditLog" rows written before this file existed (a
+-- database bootstrapped before the hash chain, or real history once there is
+-- some). It runs on every bootstrap and does nothing once every real-tenant
+-- row has a rowHash. The sentinel tenant is excluded by tenantId, never by
+-- hash nullability (see header).
+--
+-- A tenant with any unhashed row is rebuilt whole: renumbered 1..N by
+-- ("createdAt", id), every row rehashed, head reset. Gating row by row can't
+-- work, because renumbering has to move every row in the tenant. The gate
+-- never looks at "AuditChainHead", so a tenant whose head was already created
+-- by a post-chain write is still rebuilt.
+--
+-- Renumbering goes through negative values first. The ("tenantId",
+-- "sequenceNumber") unique index is checked row by row as an UPDATE runs, so
+-- moving old global numbers straight to 1..N collides with rows not yet
+-- moved; every negative target is free, and so is every positive one once
+-- the whole tenant is negative.
+--
+-- The audit_log_no_update/audit_log_no_delete rules turn these UPDATEs into
+-- silent no-ops. If they exist and there is work to do, stop loudly instead.
+DO $$
+DECLARE
+  _sentinel CONSTANT UUID := '00000000-0000-0000-0000-000000000000';
+  _tenant UUID;
+  _row "AuditLog"%ROWTYPE;
+  _prev_hash BYTEA;
+  _row_hash BYTEA;
+  _last_sequence BIGINT;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM "AuditLog" WHERE "rowHash" IS NULL AND "tenantId" <> _sentinel) THEN
+    RETURN;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_rewrite WHERE rulename IN ('audit_log_no_update', 'audit_log_no_delete')) THEN
+    RAISE EXCEPTION 'AuditLog has real-tenant rows with no rowHash, but the audit_log_no_update/audit_log_no_delete rules would silently block the backfill. Drop both rules and re-run db:bootstrap (a later bootstrap file recreates them).';
+  END IF;
+
+  FOR _tenant IN
+    SELECT DISTINCT "tenantId" FROM "AuditLog" WHERE "rowHash" IS NULL AND "tenantId" <> _sentinel
+  LOOP
+    -- Take the same head-row lock audit_chain_insert() takes, so a concurrent
+    -- audited write for this tenant waits for the rebuilt head.
+    INSERT INTO "AuditChainHead" ("tenantId", "lastSequence", "lastHash", "updatedAt")
+    VALUES (_tenant, 0, '\x0000000000000000000000000000000000000000000000000000000000000000'::BYTEA, NOW())
+    ON CONFLICT ("tenantId") DO NOTHING;
+    PERFORM 1 FROM "AuditChainHead" WHERE "tenantId" = _tenant FOR UPDATE;
+
+    UPDATE "AuditLog" a
+       SET "sequenceNumber" = -o.rn
+      FROM (SELECT id, row_number() OVER (ORDER BY "createdAt", id) AS rn
+              FROM "AuditLog" WHERE "tenantId" = _tenant) o
+     WHERE a.id = o.id;
+    UPDATE "AuditLog" SET "sequenceNumber" = -"sequenceNumber" WHERE "tenantId" = _tenant;
+
+    _prev_hash := '\x0000000000000000000000000000000000000000000000000000000000000000'::BYTEA;
+    _last_sequence := 0;
+    FOR _row IN SELECT * FROM "AuditLog" WHERE "tenantId" = _tenant ORDER BY "sequenceNumber" LOOP
+      _row_hash := audit_chain_row_hash(
+        _prev_hash, _row.id, _row."tenantId", _row."sequenceNumber", _row."tableName",
+        _row."recordId", _row.operation, _row."actionType", _row.justification,
+        _row."userId", _row."ipAddress", _row."sessionId", _row."oldData",
+        _row."newData", _row."createdAt", _row."retentionExpiresAt"
+      );
+      UPDATE "AuditLog" SET "prevHash" = _prev_hash, "rowHash" = _row_hash WHERE id = _row.id;
+      _prev_hash := _row_hash;
+      _last_sequence := _row."sequenceNumber";
+    END LOOP;
+
+    UPDATE "AuditChainHead"
+       SET "lastSequence" = _last_sequence, "lastHash" = _prev_hash, "updatedAt" = NOW()
+     WHERE "tenantId" = _tenant;
+  END LOOP;
+END $$;

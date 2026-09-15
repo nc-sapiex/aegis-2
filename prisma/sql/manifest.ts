@@ -74,6 +74,7 @@ export const REQUIRED_OBJECTS: RequiredObjects = {
     "audit_trigger_function",
     "audit_chain_insert",
     "audit_chain_field",
+    "audit_chain_row_hash",
     "prevent_frozen_score_update",
     "fn_extract_fiscal_year",
     "fn_dashboard_health_score",

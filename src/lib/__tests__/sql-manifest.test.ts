@@ -69,11 +69,24 @@ describe("audit chain", () => {
     expect(sql).toContain("FOR UPDATE");
     expect(sql).toContain("FUNCTION audit_chain_insert(");
     expect(sql).toContain("FUNCTION audit_chain_field(");
+    expect(sql).toContain("FUNCTION audit_chain_row_hash(");
   });
 
-  it("db:verify requires both chain functions", () => {
+  it("010 backfills pre-chain rows, excluding the sentinel tenant and refusing under the immutability rules", () => {
+    const sql = readFileSync(
+      join(process.cwd(), "prisma/sql/010_audit_trigger_function.sql"),
+      "utf8",
+    );
+    expect(sql).toContain('"rowHash" IS NULL AND "tenantId" <> _sentinel');
+    expect(sql).toContain("'00000000-0000-0000-0000-000000000000'");
+    expect(sql).toContain("audit_log_no_update");
+    expect(sql).toContain("RAISE EXCEPTION");
+  });
+
+  it("db:verify requires every chain function", () => {
     expect(REQUIRED_OBJECTS.functions).toContain("audit_chain_insert");
     expect(REQUIRED_OBJECTS.functions).toContain("audit_chain_field");
+    expect(REQUIRED_OBJECTS.functions).toContain("audit_chain_row_hash");
   });
 });
 
