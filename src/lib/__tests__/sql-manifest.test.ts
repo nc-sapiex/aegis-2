@@ -88,6 +88,18 @@ describe("audit chain", () => {
     expect(REQUIRED_OBJECTS.functions).toContain("audit_chain_field");
     expect(REQUIRED_OBJECTS.functions).toContain("audit_chain_row_hash");
   });
+
+  it("090 immutability rules apply after 010's backfill, and db:verify requires them", () => {
+    const at = (file: string) =>
+      (SQL_MANIFEST as readonly string[]).indexOf(file);
+    expect(at("prisma/sql/090_audit_log_immutability.sql")).toBeGreaterThan(
+      at("prisma/sql/010_audit_trigger_function.sql"),
+    );
+    expect(REQUIRED_OBJECTS.rules).toEqual([
+      "audit_log_no_update",
+      "audit_log_no_delete",
+    ]);
+  });
 });
 
 import { RLS_TABLES } from "../../../prisma/sql/manifest";

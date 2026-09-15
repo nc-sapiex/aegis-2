@@ -107,7 +107,10 @@ async function main() {
   console.log("  Cleaning existing data...");
   // Delete in dependency order (children before parents)
   await prisma.failedLoginAttempt.deleteMany();
-  await prisma.auditLog.deleteMany();
+  // TRUNCATE, not deleteMany: the audit_log_no_delete rule
+  // (prisma/sql/090_audit_log_immutability.sql) turns DELETE into a no-op.
+  // AuditChainHead goes with it so no tenant's head points at a vanished row.
+  await prisma.$executeRawUnsafe(`TRUNCATE "AuditLog", "AuditChainHead"`);
   await prisma.emailLog.deleteMany();
   await prisma.dashboardSnapshot.deleteMany();
   await prisma.onboardingProgress.deleteMany();

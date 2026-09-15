@@ -65,6 +65,19 @@ async function main() {
       if (!haveConstraints.has(c)) missing.push(`constraint ${c}`);
     }
 
+    // A DISABLEd rule counts as missing: disabling one is how a superuser
+    // edits the audit trail.
+    const rules = await client.query<{ rulename: string }>(
+      `SELECT r.rulename FROM pg_rewrite r
+         JOIN pg_class c ON c.oid = r.ev_class
+        WHERE c.relname = 'AuditLog' AND r.ev_enabled <> 'D'`,
+    );
+    const haveRules = new Set(rules.rows.map((r) => r.rulename));
+    for (const rule of REQUIRED_OBJECTS.rules) {
+      if (!haveRules.has(rule))
+        missing.push(`enabled rule ${rule} on AuditLog`);
+    }
+
     const role = await client.query<{
       rolname: string;
       rolsuper: boolean;
@@ -89,6 +102,18 @@ async function main() {
       missing.push("role aegis_system must not be SUPERUSER");
     } else if (!systemRole.rows[0].rolbypassrls) {
       missing.push("role aegis_system must be BYPASSRLS");
+    }
+
+    const auditWriters = await client.query<{ rolname: string }>(
+      `SELECT rolname FROM pg_roles
+        WHERE rolname IN ('aegis_app', 'aegis_system')
+          AND (has_table_privilege(rolname, '"AuditLog"', 'UPDATE')
+            OR has_table_privilege(rolname, '"AuditLog"', 'DELETE'))`,
+    );
+    for (const { rolname } of auditWriters.rows) {
+      missing.push(
+        `role ${rolname} must not have UPDATE or DELETE on AuditLog`,
+      );
     }
 
     const policies = await client.query<{ tablename: string }>(
