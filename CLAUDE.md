@@ -17,8 +17,8 @@ releases nothing.
 - Non-core modules (concurrent audit, IS audit, governance, regulatory hub,
   investments, housekeeping, QA, issues, work program, risk register, control
   library) stay in AEGIS 1.x until ported behind feature flags.
-- next-intl and Sentry. English strings live in `src/lib/strings.ts`, which
-  keeps the old `useTranslations(ns)` call shape over `strings.en.json`.
+- next-intl and Sentry. English strings are inline at each call site; the
+  `strings.ts` compatibility shim is gone.
 
 ## Repository map
 
