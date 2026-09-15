@@ -7,6 +7,7 @@ import { processWeeklyDigest } from "./weekly-digest";
 import { captureMetricsSnapshot } from "./snapshot-metrics";
 import { processComplianceEscalation } from "./compliance-escalation";
 import { verifyAuditChain } from "./verify-audit-chain";
+import { processGenerateBoardReport } from "./generate-board-report";
 import { logger } from "@/lib/logger";
 
 // Job names (duplicated from job-queue.ts to avoid server-only import)
@@ -62,8 +63,26 @@ export async function registerJobs(boss: PgBoss): Promise<void> {
         { action: "board_report_generation_requested", jobId: job.id },
         "Board report generation requested",
       );
+      try {
+        const result = await processGenerateBoardReport(
+          job.data as Parameters<typeof processGenerateBoardReport>[0],
+        );
+        logger.info(
+          {
+            action: "board_report_generated",
+            jobId: job.id,
+            s3Key: result.s3Key,
+          },
+          "Board report generated",
+        );
+      } catch (error) {
+        logger.error(
+          { action: "board_report_generation_error", jobId: job.id, error },
+          "Board report generation failed",
+        );
+        throw error;
+      }
     }
-    // Implementation in 08-04 (PDF Board Report)
   });
 
   // Daily metrics snapshot for dashboard trends (01:00 IST)
