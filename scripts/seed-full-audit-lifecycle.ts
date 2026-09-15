@@ -2177,22 +2177,17 @@ async function seedLifecycle() {
   // fixture rows exist, insert if none do, and fail loudly if the count is
   // anything else (a previous run was interrupted mid-way).
   //
-  // Matched on actionType alone (each of the 10 is a distinct literal not
-  // used anywhere else for this tenant -- the whole of seedLifecycle() runs
-  // inside withTriggersDetached, so no other write in this script reaches
-  // the trigger and produces a colliding AuditLog row). Deliberately NOT
-  // matched on createdAt: a JS Date bound as a `pg` query parameter
-  // serializes using the Node process's local timezone offset, which a
-  // TIMESTAMP (no tz) column then reinterprets through the session's
-  // TimeZone GUC on comparison -- neither of which is UTC in general, so an
-  // equality check against createdAt silently never matches and this branch
-  // would insert a duplicate set of 10 rows on every re-run. Confirmed
-  // empirically against a container started with `-c timezone=Asia/Kolkata`.
+  // Matched on actionType plus the fixture's ipAddress. "observation.created"
+  // is also written by the real create-observation action, so actionType
+  // alone could count app rows. Not matched on createdAt: comparing a JS Date
+  // against a TIMESTAMP (no tz) column depends on how the driver serializes
+  // it, and a miss would insert a duplicate set of 10 rows on every re-run.
   const fixtureActionTypes = auditLogEntries.map((entry) => entry.actionType);
   const existingLogCount = await prisma.auditLog.count({
     where: {
       tenantId,
       actionType: { in: fixtureActionTypes },
+      ipAddress: "10.0.1.50",
     },
   });
 
@@ -2207,11 +2202,15 @@ async function seedLifecycle() {
       // it unconditionally works under both.
       await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`;
       for (const entry of auditLogEntries) {
+        // Bind entry.date (an ISO string ending in "Z"), not a Date:
+        // @prisma/adapter-pg sends a Date as an offset-less UTC wall-clock
+        // literal, which ::timestamptz reads in the session TimeZone, so a
+        // non-UTC server would shift every seeded instant.
         await tx.$executeRaw`
           SELECT audit_chain_insert(
             ${tenantId}::uuid, ${entry.tableName}, ${entry.recordId}, ${entry.operation}, ${entry.actionType},
             NULL, NULL, ${JSON.stringify(entry.newData)}::jsonb,
-            '10.0.1.50', NULL, ${entry.userId}::uuid, ${d(entry.date)}::timestamptz
+            '10.0.1.50', NULL, ${entry.userId}::uuid, ${entry.date}::timestamptz
           )
         `;
       }
