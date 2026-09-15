@@ -1,6 +1,6 @@
-import { getRequiredSession } from "@/data-access/session";
 import { getObservationById } from "@/data-access/observations";
 import { FindingDetail } from "@/components/findings/finding-detail";
+import { requirePermission } from "@/lib/guards";
 import { notFound } from "next/navigation";
 
 interface FindingPageProps {
@@ -9,7 +9,7 @@ interface FindingPageProps {
 
 export default async function FindingPage({ params }: FindingPageProps) {
   const { id } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("observation:read");
   const observation = await getObservationById(session, id);
 
   if (!observation) {

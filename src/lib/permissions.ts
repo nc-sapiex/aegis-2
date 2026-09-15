@@ -123,7 +123,8 @@ export type Permission =
  * Role-to-permission mapping.
  * Each role has a specific set of permissions.
  *
- * BOARD_OBSERVER: Reserved for future use, no permissions yet (DE9).
+ * BOARD_OBSERVER: read-only board-level observer (DE9) — dashboard view,
+ * findings, and reports; no create/update/delete permission on anything.
  */
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   AUDITOR: [
@@ -247,7 +248,9 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "audit_trail:read",
   ],
   AUDITEE: ["observation:read"], // Limited to assigned observations only
-  BOARD_OBSERVER: [], // Reserved — no permissions yet (DE9)
+  // Read-only board-level observer: dashboard view, findings list, reports
+  // (read/download). No create/update/delete permission on anything.
+  BOARD_OBSERVER: ["dashboard:ceo", "observation:read", "report:read"],
   LEAD_AUDITOR: [
     "observation:create",
     "observation:read",

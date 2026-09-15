@@ -1,9 +1,9 @@
-import { getRequiredSession } from "@/data-access/session";
 import {
   getAccountsWithProgress,
   getQuestionsForAccount,
 } from "@/data-access/account-examination";
 import { hasPermission } from "@/lib/permissions";
+import { requirePermission } from "@/lib/guards";
 import {
   AccountRail,
   type SampledAccount,
@@ -44,7 +44,7 @@ export default async function ExaminationPage({
   const { engagementId, moduleCode } = await params;
   const { accountId } = await searchParams;
 
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
   const canRespond = hasPermission(session.user.roles, "examination:respond");
 
   const accounts = await getAccountsWithProgress(

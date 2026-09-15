@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getRequiredSession } from "@/data-access/session";
+import { requirePermission } from "@/lib/guards";
 import {
   getModuleRegister,
   getModuleRailData,
@@ -35,7 +35,7 @@ interface PageProps {
  */
 export default async function ModuleExaminationPage({ params }: PageProps) {
   const { engagementId, moduleCode } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
   const tenantId = session.user.tenantId;
 
   const [register, moduleScores, examProgress, rail] = await Promise.all([

@@ -1,4 +1,3 @@
-import { getRequiredSession } from "@/data-access/session";
 import {
   getEngagementModuleScores,
   getEngagementBranchScore,
@@ -9,6 +8,7 @@ import {
 } from "@/data-access/rbia-examination";
 import { getEngagementWithTeam } from "@/data-access/audit-execution";
 import { hasPermission } from "@/lib/permissions";
+import { requirePermission } from "@/lib/guards";
 import { RbiaScorePanel } from "@/components/rbia/rbia-score-panel";
 import { RbiaModuleGrid } from "@/components/rbia/rbia-module-grid";
 import { notFound } from "next/navigation";
@@ -25,12 +25,13 @@ interface PageProps {
  * 2. RbiaScorePanel -- composite score display with module breakdown
  * 3. RbiaModuleGrid -- clickable module cards linking to per-module tree pages
  *
- * The parent layout handles back link, stepper, transition control, tab nav,
- * and auth/permission checks. This page only fetches examination-specific data.
+ * The parent layout also checks audit_execution:read before rendering any
+ * child route; this page's own requirePermission call is the one the static
+ * authorization-gaps test verifies and stays correct if the layout ever changes.
  */
 export default async function RbiaExaminationPage({ params }: PageProps) {
   const { engagementId } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
 
   // Load engagement for branch name display
   const engagement = await getEngagementWithTeam(session, engagementId);

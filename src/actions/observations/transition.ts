@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/data-access/prisma";
 import { setAuditContext } from "@/data-access/audit-context";
-import { type Role } from "@/lib/permissions";
+import { hasPermission, type Role } from "@/lib/permissions";
 import {
   canTransition,
   type ObservationStatus,
@@ -32,6 +32,13 @@ export async function transitionObservation(input: TransitionObservationInput) {
   const session = await getRequiredSession();
   const userRoles = session.user.roles;
   const tenantId = session.user.tenantId;
+
+  // Coarse permission gate before the fine-grained, per-transition role
+  // check below (canTransition, driven by the pure state machine). Every
+  // role that can transition an observation holds observation:read.
+  if (!hasPermission(userRoles, "observation:read")) {
+    return { success: false as const, error: "Not authorized." };
+  }
 
   // Step 2: Validate input
   const parsed = TransitionObservationSchema.safeParse(input);

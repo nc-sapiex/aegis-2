@@ -1,17 +1,12 @@
-import { getRequiredSession } from "@/data-access/session";
 import { getRamAssessments } from "@/data-access/ram";
 import { RamAssessmentsTable } from "@/components/ram/ram-assessments-table";
 import { hasPermission } from "@/lib/permissions";
+import { requirePermission } from "@/lib/guards";
 import { prismaForTenant } from "@/data-access/prisma";
-import { redirect } from "next/navigation";
 
 export default async function RamPage() {
-  const session = await getRequiredSession();
+  const session = await requirePermission("ram:read");
   const userRoles = session.user.roles;
-
-  if (!hasPermission(userRoles, "ram:read")) {
-    redirect("/dashboard");
-  }
 
   const assessments = await getRamAssessments(session);
   const canCreate = hasPermission(userRoles, "ram:create");

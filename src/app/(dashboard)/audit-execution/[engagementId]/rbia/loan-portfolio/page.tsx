@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { getRequiredSession } from "@/data-access/session";
 import { getEngagementWithTeam } from "@/data-access/audit-execution";
 import {
   getLoanAccountSummary,
@@ -7,6 +6,7 @@ import {
   getSanctionAmountTotal,
 } from "@/data-access/loan-account";
 import { hasPermission } from "@/lib/permissions";
+import { requirePermission } from "@/lib/guards";
 import { MODULE_FIELD_CONFIGS } from "@/lib/loan-portfolio/types";
 import { PortfolioStats } from "@/components/loan-portfolio/portfolio-stats";
 import { LoanPortfolioUpload } from "@/components/loan-portfolio/loan-portfolio-upload";
@@ -35,7 +35,7 @@ const CREDIT_MODULE_CODES = [
  */
 export default async function LoanPortfolioPage({ params }: PageProps) {
   const { engagementId } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
   const userRoles = session.user.roles;
 
   // Load engagement to get branch name

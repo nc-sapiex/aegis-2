@@ -1,5 +1,5 @@
-import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/data-access/prisma";
+import { requirePermission } from "@/lib/guards";
 import { PlanGenerator } from "@/components/audit-plans/plan-generator";
 import { WhatIfSimulator } from "@/components/audit-plans/what-if-simulator";
 import { SurpriseAuditScheduler } from "@/components/audit-plans/surprise-audit-scheduler";
@@ -50,7 +50,7 @@ function getStatusVariant(
  * - List of existing audit plans with engagement counts
  */
 export default async function AuditPlansPage() {
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_plan:read");
   const tenantId = session.user.tenantId;
   const db = prismaForTenant(tenantId);
 

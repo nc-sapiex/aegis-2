@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/data-access/prisma";
 import { setAuditContext } from "@/data-access/audit-context";
-
+import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
 
@@ -72,11 +72,14 @@ export async function scheduleSurpriseAudit(
   const userRoles = session.user.roles;
   const tenantId = session.user.tenantId;
 
-  // R71: Surprise audits restricted to IAD Manager, ACE Officer, CAE only
+  // R71: Surprise audits restricted to IAD Manager, ACE Officer, CAE only.
+  // hasPermission(audit_plan:manage) covers AUDIT_MANAGER and CAE (the only
+  // roles holding it); the explicit role list stays to also admit
+  // ACE_OFFICER, which has no matching single permission.
   const surpriseAllowedRoles = ["AUDIT_MANAGER", "ACE_OFFICER", "CAE"];
-  const hasSurpriseAccess = surpriseAllowedRoles.some((role) =>
-    userRoles.includes(role),
-  );
+  const hasSurpriseAccess =
+    hasPermission(userRoles, "audit_plan:manage") ||
+    surpriseAllowedRoles.some((role) => userRoles.includes(role));
   if (!hasSurpriseAccess) {
     return {
       success: false,

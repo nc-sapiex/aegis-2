@@ -1,6 +1,7 @@
-import { getRequiredSession } from "@/data-access/session";
 import { getNotificationPreferences } from "@/data-access/notifications";
 import { NotificationPreferencesForm } from "@/components/settings/notification-preferences-form";
+import { requireAnyPermission } from "@/lib/guards";
+import { DASHBOARD_PERMISSIONS } from "@/lib/access-scope";
 
 const REGULATORY_ROLES = [
   "CAE",
@@ -10,7 +11,14 @@ const REGULATORY_ROLES = [
 ];
 
 export default async function NotificationPreferencesPage() {
-  const session = await getRequiredSession();
+  // Personal settings page — open to any real user, not gated behind a
+  // single business permission. Every role holds a dashboard:* permission
+  // except AUDITEE and BRANCH_HEAD, which hold observation:read instead —
+  // together these cover every assignable role (see getAssignableRoles()).
+  const session = await requireAnyPermission([
+    ...DASHBOARD_PERMISSIONS,
+    "observation:read",
+  ]);
   const prefs = await getNotificationPreferences(session);
   const userRoles = session.user.roles;
   const isRegulatoryRole = userRoles.some((r) => REGULATORY_ROLES.includes(r));

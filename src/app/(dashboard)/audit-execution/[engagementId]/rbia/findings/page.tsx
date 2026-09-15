@@ -1,8 +1,8 @@
-import { getRequiredSession } from "@/data-access/session";
 import { getEngagementWithTeam } from "@/data-access/audit-execution";
 import { getEngagementFindings } from "@/data-access/rbia-findings";
 import { getAllModules } from "@/data-access/rbia-examination";
 import { hasPermission } from "@/lib/permissions";
+import { requirePermission } from "@/lib/guards";
 import { notFound } from "next/navigation";
 import { FindingsList } from "@/components/rbia/findings-list";
 
@@ -23,7 +23,7 @@ interface PageProps {
  */
 export default async function FindingsPage({ params }: PageProps) {
   const { engagementId } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
   const userRoles = session.user.roles;
 
   const engagement = await getEngagementWithTeam(session, engagementId);

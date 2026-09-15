@@ -1,7 +1,5 @@
-import { getRequiredSession } from "@/data-access/session";
-import { hasPermission } from "@/lib/permissions";
+import { requirePermission } from "@/lib/guards";
 import { getQuestionsByModule } from "@/data-access/examination-questions";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { QuestionTable } from "@/components/examination-questions/question-table";
@@ -71,10 +69,7 @@ export default async function QuestionsPage({
   const { moduleCode: rawModuleCode } = await searchParams;
 
   // 1. Auth + permission guard — HIA/CAE only
-  const session = await getRequiredSession();
-  if (!hasPermission(session.user.roles, "audit_execution:manage_sections")) {
-    redirect(`/audit-execution/${engagementId}/rbia`);
-  }
+  const session = await requirePermission("audit_execution:manage_sections");
 
   // 2. Resolve active module (default to Housing Loans)
   const moduleCode =
