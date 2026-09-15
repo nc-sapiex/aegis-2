@@ -234,7 +234,7 @@ BEGIN
   VALUES (p_tenant_id, 0, '\x0000000000000000000000000000000000000000000000000000000000000000'::BYTEA, NOW())
   ON CONFLICT ("tenantId") DO NOTHING;
 
-  SELECT "lastSequence", "lastHash" INTO _next_sequence, _prev_hash
+  SELECT "lastSequence", "lastHash" INTO STRICT _next_sequence, _prev_hash
     FROM "AuditChainHead" WHERE "tenantId" = p_tenant_id FOR UPDATE;
   _next_sequence := _next_sequence + 1;
   _retention_expires_at := _changed_at + INTERVAL '10 years';
@@ -312,8 +312,16 @@ $$ LANGUAGE plpgsql;
 -- moved; every negative target is free, and so is every positive one once
 -- the whole tenant is negative.
 --
--- The audit_log_no_update/audit_log_no_delete rules turn these UPDATEs into
--- silent no-ops. If they exist and there is work to do, stop loudly instead.
+-- The audit_log_no_update/audit_log_no_delete rules (090) exist only once
+-- this backfill has already run. From then on an unhashed real-tenant row is
+-- not history waiting to be chained: it is tampering, or a write that skipped
+-- audit_chain_insert(). Rebuilding that tenant would erase the evidence the
+-- verify job exists to report, so the backfill warns, names the tenants and
+-- leaves them alone; verify-audit-chain reports the break.
+--
+-- FORCE ROW LEVEL SECURITY (070) hides every "AuditLog" row from an owner that
+-- is neither superuser nor BYPASSRLS, which would make the gate below read
+-- "nothing to do". Such an owner gets a warning instead of a silent no-op.
 DO $$
 DECLARE
   _sentinel CONSTANT UUID := '00000000-0000-0000-0000-000000000000';
@@ -323,11 +331,17 @@ DECLARE
   _row_hash BYTEA;
   _last_sequence BIGINT;
 BEGIN
+  IF NOT (SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user) THEN
+    RAISE WARNING 'AuditLog backfill skipped: role % is neither superuser nor BYPASSRLS, so row level security hides the rows it would check.', current_user;
+    RETURN;
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM "AuditLog" WHERE "rowHash" IS NULL AND "tenantId" <> _sentinel) THEN
     RETURN;
   END IF;
   IF EXISTS (SELECT 1 FROM pg_rewrite WHERE rulename IN ('audit_log_no_update', 'audit_log_no_delete')) THEN
-    RAISE EXCEPTION 'AuditLog has real-tenant rows with no rowHash, but the audit_log_no_update/audit_log_no_delete rules would silently block the backfill. Drop both rules and re-run db:bootstrap (a later bootstrap file recreates them).';
+    RAISE WARNING 'AuditLog rows with no rowHash in tenant(s) %, written or altered after the hash chain was in place. Treat as possible tampering and investigate with verify-audit-chain. Do not drop the immutability rules to rebuild these chains: a rebuild erases the evidence.',
+      (SELECT string_agg(DISTINCT "tenantId"::TEXT, ', ') FROM "AuditLog" WHERE "rowHash" IS NULL AND "tenantId" <> _sentinel);
+    RETURN;
   END IF;
 
   FOR _tenant IN

@@ -72,7 +72,7 @@ describe("audit chain", () => {
     expect(sql).toContain("FUNCTION audit_chain_row_hash(");
   });
 
-  it("010 backfills pre-chain rows, excluding the sentinel tenant and refusing under the immutability rules", () => {
+  it("010 backfills pre-chain rows, excluding the sentinel tenant, and never rebuilds a chain once the immutability rules exist", () => {
     const sql = readFileSync(
       join(process.cwd(), "prisma/sql/010_audit_trigger_function.sql"),
       "utf8",
@@ -80,7 +80,9 @@ describe("audit chain", () => {
     expect(sql).toContain('"rowHash" IS NULL AND "tenantId" <> _sentinel');
     expect(sql).toContain("'00000000-0000-0000-0000-000000000000'");
     expect(sql).toContain("audit_log_no_update");
-    expect(sql).toContain("RAISE EXCEPTION");
+    expect(sql).toContain("Treat as possible tampering");
+    // Telling an operator to drop the rules and re-bootstrap launders tampering.
+    expect(sql).not.toMatch(/drop both rules/i);
   });
 
   it("db:verify requires every chain function", () => {

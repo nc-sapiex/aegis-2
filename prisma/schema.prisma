@@ -1782,9 +1782,10 @@ model AuditLog {
   // Retention: computed as createdAt + 10 years (D14, PMLA)
   retentionExpiresAt DateTime?
 
-  // Per-tenant hash chain (spec §5). NULL only transiently: nullable so
-  // `prisma db push` can add the column before the backfill (Task 5) and
-  // the trigger rewrite (Task 3) populate every row.
+  // Per-tenant hash chain (spec §5). NULL on pre-auth lockout rows under the
+  // all-zero sentinel tenant, which belong to no chain, and on rows written
+  // before the chain existed until prisma/sql/010's backfill hashes them.
+  // Inside a real tenant's chain a NULL hash is a verification failure.
   prevHash Bytes?
   rowHash  Bytes?
 

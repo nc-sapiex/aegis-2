@@ -111,7 +111,7 @@ describe("verifyAuditChain", () => {
     const update = headUpdateMany.mock.calls[0][0];
     expect(update.where).toEqual({
       tenantId: T1,
-      lastVerifiedSequence: { lte: 3n },
+      lastVerifiedSequence: 1n,
     });
     expect(update.data.lastVerifiedSequence).toBe(3n);
     expect(Buffer.from(update.data.lastVerifiedHash)).toEqual(rows[2].rowHash);

@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `b271900` (worktree-plan2-audit-chain)
+> Source commit: `6566157` (worktree-plan2-audit-chain)
 
 Which processes read and write which tables.
 

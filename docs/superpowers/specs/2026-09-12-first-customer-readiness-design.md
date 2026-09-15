@@ -148,25 +148,40 @@ data-driven over the DAL module list so a new module is covered automatically.
   `actionType`, `justification`, `userId`, `ipAddress`, `sessionId`,
   `oldData`, `newData`, `createdAt`, `retentionExpiresAt` — each encoded
   length-prefixed (`-` for NULL, otherwise `<UTF-8 byte length>:<value>`,
-  jsonb columns as Postgres's own `jsonb::text` serialization) and
-  concatenated with no separator, and advances the head. The length prefix
+  jsonb columns as Postgres's own `jsonb::text` serialization, `prevHash` as
+  lowercase hex, `sequenceNumber` in decimal, timestamps in UTC as
+  `YYYY-MM-DDTHH:MM:SS.mmmZ`) and concatenated with no separator; the digest
+  is taken over the UTF-8 bytes. It then advances the head. The length prefix
   makes the concatenation unambiguous without a separator character, so
   content can never shift across a field boundary the way it could with a
   delimiter-joined string. Genesis `prevHash` is 32 zero bytes. Audit inserts
   serialize per tenant; different tenants do not contend.
 - `sequenceNumber` becomes per tenant (from the head row). `detectAuditGaps()`
-  is rewritten against it and called by the verify job.
-- Immutability is unchanged: `DO INSTEAD NOTHING` rules plus
-  `REVOKE UPDATE, DELETE` from `aegis_app`.
+  is rewritten against it. The verify job does not call it: a deleted row
+  breaks the next row's `prevHash`, and deleted newest rows fall short of the
+  head's `lastSequence`.
+- Immutability: `DO INSTEAD NOTHING` rules on `UPDATE` and `DELETE`
+  (new, `prisma/sql/090`) plus `REVOKE UPDATE, DELETE` from `aegis_app` and
+  `aegis_system`. `db:verify` requires both rules, enabled.
 - `src/lib/audit-chain.ts` is a pure module: `hashRow(row, prevHash)`,
   `verifyChain(rows)`. Unit-tested.
-- Job `verify-audit-chain` runs nightly at 02:00 IST, walks each tenant's
-  chain, writes `AuditChainVerification(tenantId, verifiedAt, ok, firstBadSequence)`,
-  and on the first mismatch raises a CRITICAL notification to CAE and the
-  platform admin.
-- Admin page: last verification per tenant, run-now button, export of the
-  chain head and a signed attestation PDF for an examiner.
-- One-off backfill script hashes existing rows in sequence order.
+- Job `verify-audit-chain` runs nightly at 02:00 IST over each tenant's rows
+  since its last clean checkpoint; `verify-audit-chain-full` walks every
+  chain from genesis weekly (Sunday 02:30 IST), since an incremental run never
+  re-hashes rows it already verified. Each run writes
+  `AuditChainVerification(tenantId, verifiedAt, ok, firstBadSequence)`, and on
+  the first mismatch raises a CRITICAL notification to the tenant's active CAE
+  and SYSTEM_ADMIN users.
+- Admin page: verification history, a verify-now button (the admin's own
+  tenant, whole chain), export of the chain head and an attestation PDF for an
+  examiner. The PDF is unsigned until the platform signing key exists.
+- The chain is unkeyed: a superuser who rewrites a row and every later hash is
+  caught only against a head hash kept outside the database (an exported
+  attestation, or §13's anchoring).
+- Rows written before the chain existed are hashed in sequence by an
+  idempotent backfill in the bootstrap step (`prisma/sql/010`). Once the
+  immutability rules exist it only warns: an unhashed row is then evidence of
+  tampering, and rebuilding the chain would erase it.
 - Integration tests: three audited writes verify clean; a superuser `UPDATE`
   of a middle row is reported by row; a superuser `DELETE` is reported by both
   gap and chain.

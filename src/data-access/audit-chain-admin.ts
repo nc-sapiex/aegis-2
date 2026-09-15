@@ -12,6 +12,15 @@ export async function getChainVerifications(tenantId: string) {
   });
 }
 
+/** The bank's name, for the attestation. */
+export async function getTenantName(tenantId: string): Promise<string> {
+  const tenant = await prismaForTenant(tenantId).tenant.findUniqueOrThrow({
+    where: { id: tenantId },
+    select: { name: true },
+  });
+  return tenant.name;
+}
+
 /** The tenant's chain length and head hash; null before any audited change. */
 export async function getChainHead(tenantId: string) {
   const head = await prismaForTenant(tenantId).auditChainHead.findUnique({

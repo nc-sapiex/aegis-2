@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `b271900` (worktree-plan2-audit-chain)
+> Source commit: `6566157` (worktree-plan2-audit-chain)
 
 Every table AEGIS maintains, with its columns, types and relationships.
 **77 models** and **25 enumerations**.
@@ -1514,7 +1514,7 @@ Indexes and constraints:
 | `ipAddress` | String | yes |  |  | RBI cyber security framework fields |
 | `sessionId` | String | yes |  |  |  |
 | `retentionExpiresAt` | DateTime | yes |  |  | Retention: computed as createdAt + 10 years (D14, PMLA) |
-| `prevHash` | Bytes | yes |  |  | Per-tenant hash chain (spec §5). NULL only transiently: nullable so `prisma db push` can add the column before the backfill (Task 5) and the trigger rewrite (Task 3) populate every row. |
+| `prevHash` | Bytes | yes |  |  | Per-tenant hash chain (spec §5). NULL on pre-auth lockout rows under the all-zero sentinel tenant, which belong to no chain, and on rows written before the chain existed until prisma/sql/010's backfill hashes them. Inside a real tenant's chain a NULL hash is a verification failure. |
 | `rowHash` | Bytes | yes |  |  |  |
 | `createdAt` | DateTime | no |  | `now()` |  |
 

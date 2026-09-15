@@ -68,7 +68,8 @@ export function AuditChainPanel({ head, history }: AuditChainPanelProps) {
       link.href = url;
       link.download = result.data.filename;
       link.click();
-      URL.revokeObjectURL(url);
+      // Revoking synchronously can cancel the download (Safari).
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     });
   }
 

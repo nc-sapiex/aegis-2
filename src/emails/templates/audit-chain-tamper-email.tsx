@@ -25,7 +25,7 @@ export function AuditChainTamperEmail({
       </Section>
 
       <Text style={bodyStyle}>
-        The nightly hash-chain check found that audit trail entry{" "}
+        A hash-chain verification found that audit trail entry{" "}
         <strong>#{firstBadSequence}</strong> no longer matches what was
         recorded. An entry may have been edited or deleted outside the
         application. Every entry from that point on is unverified until this is

@@ -6,11 +6,11 @@ import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { getRequiredSession } from "@/data-access/session";
 import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
-import { prismaForTenant } from "@/data-access/prisma";
 import { userActor } from "@/data-access/audited-mutation";
 import {
   getChainHead,
   getChainVerifications,
+  getTenantName,
 } from "@/data-access/audit-chain-admin";
 import { verifyTenantAuditChain } from "@/jobs/verify-audit-chain";
 import { ChainAttestation } from "@/components/pdf-report/chain-attestation";
@@ -65,18 +65,15 @@ export async function exportChainAttestation() {
   const tenantId = session.user.tenantId;
 
   try {
-    const [tenant, head, history] = await Promise.all([
-      prismaForTenant(tenantId).tenant.findUniqueOrThrow({
-        where: { id: tenantId },
-        select: { name: true },
-      }),
+    const [tenantName, head, history] = await Promise.all([
+      getTenantName(tenantId),
       getChainHead(tenantId),
       getChainVerifications(tenantId),
     ]);
     const generatedAt = new Date();
     const pdf = await renderToBuffer(
       React.createElement(ChainAttestation, {
-        tenantName: tenant.name,
+        tenantName,
         generatedAt,
         head,
         history,

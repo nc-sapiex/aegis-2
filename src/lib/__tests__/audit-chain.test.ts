@@ -63,6 +63,11 @@ describe("hashRow", () => {
 
     expect(result).toEqual(expected);
     expect(result).toHaveLength(32);
+    // Pinned independently of both encoders; the integration suite asserts
+    // SQL's audit_chain_row_hash() produces this same literal.
+    expect(result.toString("hex")).toBe(
+      "4d20a0c3c151e7f9c12a5d6bb80af430892fcc78a06b5eb830ad3b770c8d3ca9",
+    );
   });
 
   it("changes when any single field changes (avalanche, not exhaustive)", () => {

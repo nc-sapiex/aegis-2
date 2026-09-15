@@ -5,13 +5,13 @@ vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), error: vi.fn() },
 }));
 vi.mock("@/data-access/session", () => ({ getRequiredSession: vi.fn() }));
-vi.mock("@/data-access/prisma", () => ({ prismaForTenant: vi.fn() }));
 vi.mock("@/data-access/audited-mutation", () => ({
   userActor: vi.fn(() => ({ kind: "user" })),
 }));
 vi.mock("@/data-access/audit-chain-admin", () => ({
   getChainHead: vi.fn(),
   getChainVerifications: vi.fn(),
+  getTenantName: vi.fn(),
 }));
 vi.mock("@/jobs/verify-audit-chain", () => ({
   verifyTenantAuditChain: vi.fn(),

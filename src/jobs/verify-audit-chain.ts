@@ -151,10 +151,14 @@ export async function verifyTenantAuditChain(
       });
 
       if (verdict.ok) {
-        // updateMany + lte: a slower overlapping run never moves the
-        // checkpoint backwards.
+        // Compare-and-set on the checkpoint this run started from: if an
+        // overlapping run moved it meanwhile (a full run pulling it back to a
+        // break, or a faster run advancing it), this run's result is stale.
         await tx.auditChainHead.updateMany({
-          where: { tenantId, lastVerifiedSequence: { lte: lastSequence } },
+          where: {
+            tenantId,
+            lastVerifiedSequence: head?.lastVerifiedSequence ?? 0n,
+          },
           data: {
             lastVerifiedSequence: lastSequence,
             lastVerifiedHash: new Uint8Array(last?.rowHash ?? sinceHash),
