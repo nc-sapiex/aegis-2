@@ -252,11 +252,11 @@ async function registerIsCompleteExclusiveNotApplicable(
 ): Promise<boolean> {
   if (!moduleId || questionIds.length === 0) return false;
 
-  const sampledAccounts = await db.populationRecord.findMany({
+  const sampledRecords = await db.populationRecord.findMany({
     where: { engagementId, moduleId, isSampled: true, tenantId },
     select: { id: true },
   });
-  const sampledIds = sampledAccounts.map((account) => account.id);
+  const sampledIds = sampledRecords.map((record) => record.id);
   if (sampledIds.length === 0) return false;
 
   const [notApplicableCount, scoredCount] = await Promise.all([

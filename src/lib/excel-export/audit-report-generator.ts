@@ -6,6 +6,11 @@
  */
 
 import ExcelJS from "exceljs";
+import {
+  reportModuleToSection,
+  type ModuleSectionData,
+} from "@/lib/reporting/module-section";
+import { buildModuleSheetRows } from "./generic-module-sheet";
 
 // Type for full audit report data (from getAuditReportData)
 type AuditReportData = NonNullable<
@@ -43,6 +48,19 @@ export async function generateAuditReportXLSX(
 
   // Tab 6: Team Members
   await addTeamMembersSheet(workbook, auditData);
+
+  // Tab 7+: one worksheet per selected module, RBIA engagements only —
+  // gated the same way generate-pdf.ts gates its module-driven rendering.
+  // auditData.modules can be non-empty for non-RBIA engagements too (any
+  // auditType gets EngagementModule rows when a branch matches a module's
+  // applicability predicate — see create-engagement.ts), so gating on
+  // modules.length alone would make the XLSX and PDF reports for the same
+  // engagement disagree on whether module content appears.
+  if (auditData.auditType === "RBIA") {
+    auditData.modules.forEach((reportModule, i) => {
+      addModuleSheet(workbook, i, reportModuleToSection(reportModule));
+    });
+  }
 
   // Generate buffer
   const buffer = await workbook.xlsx.writeBuffer();
@@ -362,4 +380,38 @@ async function addTeamMembersSheet(
   sheet.getColumn(2).width = 30;
   sheet.getColumn(3).width = 20;
   sheet.getColumn(4).width = 40;
+}
+
+/**
+ * One worksheet per RBIA module (Tab 7+, generic-reporting engine, spec
+ * §6.2). Row 1 is the module title/score, row 2 is the column header, the
+ * rest are statement rows — buildModuleSheetRows already shapes this.
+ */
+function addModuleSheet(
+  workbook: ExcelJS.Workbook,
+  index: number,
+  section: ModuleSectionData,
+) {
+  // Worksheet names can't exceed 31 chars, can't contain []:*?/\, and must
+  // be unique — an index prefix guarantees uniqueness even when two module
+  // names collide after truncation (also keeps sheet order deterministic).
+  const label = section.moduleName.replace(/[[\]:*?/\\]/g, "");
+  const sheetName =
+    `${index + 1}. ${label}`.slice(0, 31) || `Module ${index + 1}`;
+  const sheet = workbook.addWorksheet(sheetName);
+
+  const rows = buildModuleSheetRows(section);
+  rows.forEach((row) => sheet.addRow(row));
+
+  sheet.getRow(1).font = { bold: true, size: 12 };
+  sheet.getRow(2).font = { bold: true };
+  sheet.getRow(2).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFD9E1F2" },
+  };
+
+  sheet.getColumn(1).width = 15;
+  sheet.getColumn(2).width = 60;
+  sheet.getColumn(3).width = 20;
 }

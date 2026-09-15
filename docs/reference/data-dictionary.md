@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `6566157` (worktree-plan2-audit-chain)
+> Source commit: `e28e78f` (module-admin-reporting/foundation)
 
 Every table AEGIS maintains, with its columns, types and relationships.
 **77 models** and **25 enumerations**.
@@ -1739,7 +1739,7 @@ Indexes and constraints:
 | `domain` | ModuleDomain | no |  |  |  |
 | `kinds` | ExaminationKind[] | no |  |  |  |
 | `applicability` | Json | no |  | `"{}"` | JSON predicate over the branch profile, e.g. {"hasForex": true} or {"loanProducts": {"contains": "GOLD"}}; {} means always applicable. |
-| `weight` | Decimal `@db.Decimal` | no |  | `1.0` |  |
+| `weight` | Int | no |  | `1` |  |
 | `packId` | String `@db.Uuid` | yes |  |  |  |
 | `packInstall` | ContentPackInstall | yes | FK→ContentPackInstall |  | relation |
 | `isActive` | Boolean | no |  | `true` |  |

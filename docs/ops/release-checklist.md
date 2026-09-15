@@ -25,30 +25,6 @@ combined with `main` at that moment, not the branch alone.
 
 ## Database Changes (If Applicable)
 
-**Important:** nothing applies SQL for you. The container runs `node server.js` —
-there is no `prisma migrate deploy` and no `db push` — and no deploy step exists
-in any case. Running code that needs a new table or column against a database
-that lacks it gives you an application that fails on those paths while
-`/api/health` stays green, because the check is `SELECT 1` plus a pg-boss row
-count.
-
-**Do not** bulk-apply `prisma/migrations/*.sql`. Apply named files only.
-Live RLS is `prisma/sql/070_rls_policies.sql`, applied by `pnpm db:bootstrap`
-— not a dated file in `prisma/migrations/`.
-
-Apply in this order — schema first, because `prisma/sql/060_tenant_composite_fks.sql`
-needs the `(tenantId, id)` unique indexes the schema file creates:
-
-- [ ] Apply this release's schema files, if it has any, with
-      `pnpm db:apply prisma/migrations/<file>.sql` — every dated file newer than
-      the last one applied to that database, oldest first. To date:
-      `20260904_f07_f15_schema_additions.sql`, then
-      `20260905_account_unique_accountid_providerid.sql`. Each is idempotent and
-      carries its own header explaining what it adds and why. CI rehearses the
-      F07–F15 file against a freshly pushed schema, so a failure there has
-      already failed a build. A database built by `pnpm db:push` from current
-      `main` already has everything both files add; they matter only for
-      databases pushed before the change.
 **Important:** nothing applies SQL for you. The container runs `node server.js`,
 and no deploy step exists in any case — `pnpm db:migrate` must be run by hand
 against the target database. Running code that needs a new table or column
@@ -74,11 +50,6 @@ pg-boss row count.
       `prisma/sql/060_tenant_composite_fks.sql` — each must return zero rows. If
       any returns rows there is cross-tenant data: **stop and repair it.** Do not
       weaken the constraint.
-- [ ] `pnpm db:bootstrap` — applies `prisma/sql/manifest.ts` (triggers, views,
-      functions, composite FKs, RLS policies). Idempotent; safe against a live
-      database.
-- [ ] `pnpm db:verify` — asserts every required object landed. Exits non-zero
-      and lists what is missing.
 - [ ] Merge. Nothing else happens.
 
 ---

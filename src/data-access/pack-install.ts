@@ -64,6 +64,12 @@ async function upsertPack(
   files: PackFiles,
   actorId: string,
 ): Promise<void> {
+  const existingInstall = await tx.contentPackInstall.findUnique({
+    where: { tenantId_packCode: { tenantId, packCode: files.manifest.id } },
+    select: { uninstalledAt: true },
+  });
+  const isReinstall = existingInstall?.uninstalledAt != null;
+
   const install = await tx.contentPackInstall.upsert({
     where: { tenantId_packCode: { tenantId, packCode: files.manifest.id } },
     create: {
@@ -112,9 +118,25 @@ async function upsertPack(
     }
   }
 
+  // New nodes need a displayOrder or they all tie at the schema default (0)
+  // and the statements editor's `orderBy: { displayOrder: "asc" }` returns an
+  // arbitrary order. Track the next value per module, seeded from whatever's
+  // already there (bank-added statements included) so a reinstall/upgrade
+  // appends after existing content instead of colliding with it.
+  const nextDisplayOrderByModule = new Map<string, number>();
+  for (const moduleId of moduleIdByCode.values()) {
+    const max = await tx.examinationNode.aggregate({
+      where: { tenantId, moduleId },
+      _max: { displayOrder: true },
+    });
+    nextDisplayOrderByModule.set(moduleId, (max._max.displayOrder ?? -1) + 1);
+  }
+
   for (const node of files.nodes) {
     const moduleId = moduleIdByCode.get(node.moduleCode);
     if (!moduleId) continue; // linted at build time; a runtime miss here means a stale archive, skip rather than crash the whole install
+    const displayOrder = nextDisplayOrderByModule.get(moduleId) ?? 0;
+    nextDisplayOrderByModule.set(moduleId, displayOrder + 1);
     await tx.examinationNode.upsert({
       where: { tenantId_code: { tenantId, code: node.code } },
       create: {
@@ -130,13 +152,14 @@ async function upsertPack(
         description: node.description,
         regulatoryRef: node.regulatoryRef,
         origin: "PACK",
+        displayOrder,
       },
       update: {
         name: node.name,
         path: node.path,
         description: node.description,
         regulatoryRef: node.regulatoryRef,
-        // weight, isCritical, isActive intentionally omitted — bank-editable, preserved (spec §7.3)
+        // weight, isCritical, isActive, displayOrder intentionally omitted — bank-editable, preserved (spec §7.3)
       },
     });
   }
@@ -160,4 +183,67 @@ async function upsertPack(
       update: { rbiReference: question.rbiReference },
     });
   }
+
+  // A reinstall after an uninstall must undo uninstallPack's isActive:false —
+  // otherwise the ledger row says installed but every module/node/question
+  // stays dark, with no error anywhere (the bug this comment prevents).
+  // Scoped to origin: "PACK" for nodes/questions so a bank's own deliberate
+  // off-switch on its own BANK-origin content isn't silently overridden.
+  if (isReinstall) {
+    const reinstalledModuleIds = [...moduleIdByCode.values()];
+    await tx.auditModule.updateMany({
+      where: { tenantId, id: { in: reinstalledModuleIds } },
+      data: { isActive: true },
+    });
+    await tx.examinationNode.updateMany({
+      where: {
+        tenantId,
+        moduleId: { in: reinstalledModuleIds },
+        origin: "PACK",
+      },
+      data: { isActive: true },
+    });
+    await tx.examinationQuestion.updateMany({
+      where: {
+        tenantId,
+        moduleId: { in: reinstalledModuleIds },
+        origin: "PACK",
+      },
+      data: { isActive: true },
+    });
+  }
+}
+
+/** Deactivates, never deletes (spec §7.3). The install ledger row stays for history. */
+export async function uninstallPack(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  packCode: string,
+): Promise<void> {
+  const install = await tx.contentPackInstall.findFirst({
+    where: { tenantId, packCode },
+  });
+  if (!install) return;
+
+  await tx.auditModule.updateMany({
+    where: { tenantId, packId: install.id },
+    data: { isActive: false },
+  });
+  const modules = await tx.auditModule.findMany({
+    where: { tenantId, packId: install.id },
+    select: { id: true },
+  });
+  const moduleIds = modules.map((m) => m.id);
+  await tx.examinationNode.updateMany({
+    where: { tenantId, moduleId: { in: moduleIds } },
+    data: { isActive: false },
+  });
+  await tx.examinationQuestion.updateMany({
+    where: { tenantId, moduleId: { in: moduleIds } },
+    data: { isActive: false },
+  });
+  await tx.contentPackInstall.update({
+    where: { id: install.id },
+    data: { uninstalledAt: new Date() },
+  });
 }

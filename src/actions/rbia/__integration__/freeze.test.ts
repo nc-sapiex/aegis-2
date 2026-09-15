@@ -96,13 +96,32 @@ async function seedExamination(tenantId: string, userId: string) {
       ops.id,
       opsModule.id,
     );
-    const credit = await node("CREDIT", "ROOT/CREDIT", 1, false, root.id);
+    const creditModule = await integrationOwner.auditModule.create({
+      data: {
+        tenantId,
+        code: "CREDIT",
+        name: "CREDIT",
+        domain: "OTHER",
+        kinds: ["CHECKLIST"],
+        applicability: {},
+      },
+      select: { id: true },
+    });
+    const credit = await node(
+      "CREDIT",
+      "ROOT/CREDIT",
+      1,
+      false,
+      root.id,
+      creditModule.id,
+    );
     const creditLeaf = await node(
       "CREDIT-001",
       "ROOT/CREDIT/CREDIT-001",
       2,
       true,
       credit.id,
+      creditModule.id,
     );
 
     // Only OPS is in scope for this engagement.
@@ -117,6 +136,7 @@ async function seedExamination(tenantId: string, userId: string) {
       opsA,
       opsB,
       credit,
+      creditModule,
       creditLeaf,
       userId,
     };
@@ -247,40 +267,24 @@ describe("freezeRbiaScore completeness", () => {
     await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
 
     await withFixtures(async () => {
-      const creditModule = await integrationOwner.auditModule.create({
-        data: {
-          tenantId: tenant.id,
-          code: "CREDIT",
-          name: "CREDIT",
-          domain: "CREDIT",
-          kinds: ["POPULATION_SAMPLE"],
-          applicability: {},
-        },
-        select: { id: true },
-      });
-      await integrationOwner.examinationNode.updateMany({
-        where: { id: { in: [seed.credit.id, seed.creditLeaf.id] } },
-        data: { moduleId: creditModule.id },
-      });
       await integrationOwner.engagementModule.create({
         data: {
           tenantId: tenant.id,
           engagementId: seed.engagementId,
-          moduleId: creditModule.id,
+          moduleId: seed.creditModule.id,
         },
       });
       const record = await integrationOwner.populationRecord.create({
         data: {
           tenantId: tenant.id,
           engagementId: seed.engagementId,
+          moduleId: seed.creditModule.id,
           branchId: seed.branchId,
-          moduleId: creditModule.id,
           recordKey: "LN-NA-001",
           displayName: "N/A Borrower",
-          amount: 750_000,
+          amount: 1_000_000,
           date: new Date("2025-01-15"),
           classification: "STANDARD",
-          metadata: { productType: "Housing Loan", sanctionAmount: 1_000_000 },
           isSampled: true,
         },
         select: { id: true },
@@ -288,7 +292,7 @@ describe("freezeRbiaScore completeness", () => {
       const question = await integrationOwner.examinationQuestion.create({
         data: {
           tenantId: tenant.id,
-          moduleId: creditModule.id,
+          moduleId: seed.creditModule.id,
           text: "Does this product feature apply?",
         },
         select: { id: true },

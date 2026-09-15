@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `6566157` (worktree-plan2-audit-chain)
+> Source commit: `e28e78f` (module-admin-reporting/foundation)
 
 Which processes read and write which tables.
 
@@ -26,6 +26,7 @@ reachability graph.
 | `compliance` | 5 | `BoardReport`, `ComplianceItem`, `NotificationQueue`, `User` |
 | `examination-questions` | 1 | `ExaminationQuestion` |
 | `loan-portfolio` | 3 | `AuditEngagement`, `AuditModule`, `PopulationRecord` |
+| `module-admin` | 7 | `AuditModule`, `ExaminationNode` |
 | `observations` | 3 | `ComplianceItem`, `Observation`, `ObservationTimeline` |
 | `ram` | 4 | `Branch`, `RamAssessment`, `RamAssessmentScore` |
 | `rbia` | 8 | `ActionPoint`, `AuditEngagement`, `AuditModule`, `BmResponseBatch`, `BranchRbiaScore`, `EngagementMeeting`, `EngagementModule`, `EngagementSectionNa`, `Evidence`, `ExaminationNode`, `ExaminationResponse`, `Observation` |
@@ -55,8 +56,8 @@ Tables reached from the greatest number of domains — the ones where a schema c
 | `AuditEngagement` | 6 | `account-examination`, `audit-execution`, `audit-plans`, `loan-portfolio`, `rbia`, `reports` |
 | `Observation` | 5 | `(root)`, `jobs`, `observations`, `rbia`, `repeat-findings` |
 | `Branch` | 4 | `admin`, `audit-execution`, `audit-plans`, `ram` |
+| `AuditModule` | 4 | `audit-execution`, `loan-portfolio`, `module-admin`, `rbia` |
 | `PopulationRecord` | 3 | `account-examination`, `loan-portfolio`, `sampling` |
-| `AuditModule` | 3 | `audit-execution`, `loan-portfolio`, `rbia` |
 | `ObservationTimeline` | 3 | `(root)`, `observations`, `repeat-findings` |
 | `User` | 3 | `(root)`, `compliance`, `jobs` |
 | `ExaminationQuestion` | 2 | `account-examination`, `examination-questions` |
@@ -66,7 +67,7 @@ Tables reached from the greatest number of domains — the ones where a schema c
 | `BoardReport` | 2 | `compliance`, `reports` |
 | `ComplianceItem` | 2 | `compliance`, `observations` |
 | `NotificationQueue` | 2 | `compliance`, `jobs` |
-| `BmResponseBatch` | 2 | `jobs`, `rbia` |
+| `ExaminationNode` | 2 | `module-admin`, `rbia` |
 
 ### Domain access graph
 
@@ -78,8 +79,8 @@ flowchart LR
         T_AuditEngagement["AuditEngagement"]
         T_Observation["Observation"]
         T_Branch["Branch"]
-        T_PopulationRecord["PopulationRecord"]
         T_AuditModule["AuditModule"]
+        T_PopulationRecord["PopulationRecord"]
         T_ObservationTimeline["ObservationTimeline"]
     end
     D_account_examination["account-examination"]
@@ -109,13 +110,15 @@ flowchart LR
     D_audit_plans --> T_Branch
     D_ram["ram"]
     D_ram --> T_Branch
+    D_audit_execution --> T_AuditModule
+    D_loan_portfolio --> T_AuditModule
+    D_module_admin["module-admin"]
+    D_module_admin --> T_AuditModule
+    D_rbia --> T_AuditModule
     D_account_examination --> T_PopulationRecord
     D_loan_portfolio --> T_PopulationRecord
     D_sampling["sampling"]
     D_sampling --> T_PopulationRecord
-    D_audit_execution --> T_AuditModule
-    D_loan_portfolio --> T_AuditModule
-    D_rbia --> T_AuditModule
     D__root_ --> T_ObservationTimeline
     D_observations --> T_ObservationTimeline
     D_repeat_findings --> T_ObservationTimeline

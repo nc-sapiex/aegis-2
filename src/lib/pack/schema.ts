@@ -30,11 +30,11 @@ export const PackModuleFileSchema = z.array(
     domain: z.string().min(1),
     kinds: z.array(z.enum(["CHECKLIST", "POPULATION_SAMPLE"])).min(1),
     applicability: z.record(z.string(), z.unknown()).default({}),
-    // AuditModule.weight is Decimal(5, 4) in the DB — max representable is
-    // 9.9999. Zod enforces the real DB ceiling so a pack author gets a clear
-    // validation error at build time, not a Postgres "numeric field
-    // overflow" at install time.
-    weight: z.number().min(0.1).max(9.9999),
+    // AuditModule.weight is Int in the DB, 1-100 (Global Constraints: bank-
+    // editable module weight). Zod enforces the real DB constraint so a pack
+    // author gets a clear validation error at build time, not a Postgres
+    // type error at install time.
+    weight: z.number().int().min(1).max(100),
   }),
 );
 

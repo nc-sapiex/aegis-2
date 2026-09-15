@@ -4,9 +4,9 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `6566157` (worktree-plan2-audit-chain)
+> Source commit: `e28e78f` (module-admin-reporting/foundation)
 
-Every addressable path in the application: **49 pages** and
+Every addressable path in the application: **51 pages** and
 **10 HTTP endpoints**.
 
 Pages are React Server Components under the Next.js App Router. Route groups in
@@ -65,6 +65,8 @@ the URL, so they are stripped here.
 | `/reset-password` | `src/app/(auth)/reset-password/page.tsx` |
 | `/settings` | `src/app/(dashboard)/settings/page.tsx` |
 | `/settings/compliance` | `src/app/(dashboard)/settings/compliance/page.tsx` |
+| `/settings/modules` | `src/app/(dashboard)/settings/modules/page.tsx` |
+| `/settings/modules/[moduleCode]/statements` | `src/app/(dashboard)/settings/modules/[moduleCode]/statements/page.tsx` |
 | `/settings/notifications` | `src/app/(dashboard)/settings/notifications/page.tsx` |
 
 ## HTTP endpoints
