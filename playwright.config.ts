@@ -6,6 +6,19 @@ import { defineConfig, devices } from "@playwright/test";
  * Runs against the Docker container on localhost:3000.
  * Auth setup creates storageState files for 4 roles.
  */
+/**
+ * The role projects below carry no `testMatch`, so every spec replays once per
+ * project. That is harmless for read-only specs but fatal for the core cycle:
+ * five serial runs against one database would each see the previous run's RAM
+ * assessment, committed plan and engagement. These two specs therefore run in
+ * exactly one project, and are excluded from the role projects.
+ *
+ * Alphabetical file order inside that project puts core-cycle before
+ * tenant-isolation, which is what the isolation assertion needs — it must read
+ * tenant B *after* tenant A's cycle has mutated the database.
+ */
+const CORE_CYCLE_SPECS = /(core-cycle|tenant-isolation)\.spec\.ts/;
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false, // Serial for state-dependent tests
@@ -29,6 +42,7 @@ export default defineConfig({
     // Auditor tests
     {
       name: "auditor",
+      testIgnore: CORE_CYCLE_SPECS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/auditor.json",
@@ -39,6 +53,7 @@ export default defineConfig({
     // Manager tests
     {
       name: "manager",
+      testIgnore: CORE_CYCLE_SPECS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/manager.json",
@@ -49,6 +64,7 @@ export default defineConfig({
     // CAE tests
     {
       name: "cae",
+      testIgnore: CORE_CYCLE_SPECS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/cae.json",
@@ -59,6 +75,7 @@ export default defineConfig({
     // CCO tests
     {
       name: "cco",
+      testIgnore: CORE_CYCLE_SPECS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/cco.json",
@@ -69,10 +86,23 @@ export default defineConfig({
     // Auditee tests
     {
       name: "auditee",
+      testIgnore: CORE_CYCLE_SPECS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/auditee.json",
       },
+      dependencies: ["setup"],
+    },
+
+    // The full RBIA cycle and the second-tenant isolation check — exactly one
+    // run each, in file order. Each describe block picks its own storageState,
+    // so this project sets none. The cycle drives ~40 server actions end to
+    // end, well past the 30s default.
+    {
+      name: "core",
+      testMatch: CORE_CYCLE_SPECS,
+      use: { ...devices["Desktop Chrome"] },
+      timeout: 300_000,
       dependencies: ["setup"],
     },
   ],
