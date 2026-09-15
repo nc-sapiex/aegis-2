@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { getAuditReportData } from "@/data-access/reports";
 import {
   integrationOwner,
@@ -6,16 +6,20 @@ import {
   createUser,
   resetDatabase,
   withFixtures,
+  fakeSession,
+  mockSessionModule,
 } from "../../../tests/integration/harness";
 
 let tenantId: string;
 let engagementId: string;
+let userId: string;
 
 beforeAll(async () => {
   await resetDatabase();
   await withFixtures(async () => {
     tenantId = (await createTenant("Report Bank")).id;
     const user = await createUser(tenantId, ["CAE"]);
+    userId = user.id;
     const branch = await integrationOwner.branch.create({
       data: {
         tenantId,
@@ -78,6 +82,7 @@ beforeAll(async () => {
         engagementId,
         nodeId: node.id,
         text: "Loan file complete",
+        reference: "CRD-01",
         weight: 1,
         isCritical: false,
         origin: "BANK",
@@ -213,5 +218,52 @@ describe("getAuditReportData, POPULATION_SAMPLE (question-backed) statements", (
     expect(statement?.compliantCount).toBe(0);
     expect(statement?.violationCount).toBe(1);
     expect(statement?.scoreLabel).toBe("NON_COMPLIANT");
+  });
+});
+
+describe("generatePdfReport, RBIA engagement", () => {
+  // The fixture engagement sets no auditType, so this relies on the Prisma
+  // schema default (@default("RBIA")) making isRbia true in generate-pdf.ts.
+  it("generates a real, module-driven PDF instead of the old not-available-yet error", async () => {
+    vi.resetModules();
+    mockSessionModule(fakeSession({ id: userId, tenantId, roles: ["CAE"] }));
+    vi.doMock("@/lib/s3", () => ({
+      uploadToS3: vi.fn(async () => "fake-s3-key"),
+    }));
+    const { generatePdfReport } =
+      await import("@/actions/reports/generate-pdf");
+    const result = await generatePdfReport({ engagementId });
+    expect(result.success).toBe(true);
+    // Discriminates "took the RBIA branch" from "fell through to the legacy
+    // AuditSummaryDocument" — both would report success: true.
+    if (result.success) {
+      expect(result.data.filename).toContain("_rbia");
+    }
+  });
+});
+
+describe("generateXlsxReport, RBIA engagement", () => {
+  it("adds a module worksheet instead of silently omitting module content", async () => {
+    vi.resetModules();
+    mockSessionModule(fakeSession({ id: userId, tenantId, roles: ["CAE"] }));
+    const uploadToS3 = vi.fn(
+      async (opts: { key: string; body: Buffer; contentType: string }) =>
+        opts.key,
+    );
+    vi.doMock("@/lib/s3", () => ({ uploadToS3 }));
+    const { generateXlsxReport } =
+      await import("@/actions/reports/generate-xlsx");
+    const result = await generateXlsxReport({ engagementId });
+    expect(result.success).toBe(true);
+    // Discriminates "wrote the module sheet" from "wrote Tabs 1-6 only" —
+    // both would report success: true.
+    const ExcelJS = (await import("exceljs")).default;
+    const body = uploadToS3.mock.calls[0]![0].body;
+    const workbook = new ExcelJS.Workbook();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(body as any);
+    expect(workbook.worksheets.some((w) => w.name.includes("Credit"))).toBe(
+      true,
+    );
   });
 });
