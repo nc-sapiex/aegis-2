@@ -161,3 +161,37 @@ async function upsertPack(
     });
   }
 }
+
+/** Deactivates, never deletes (spec §7.3). The install ledger row stays for history. */
+export async function uninstallPack(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  packCode: string,
+): Promise<void> {
+  const install = await tx.contentPackInstall.findFirst({
+    where: { tenantId, packCode },
+  });
+  if (!install) return;
+
+  await tx.auditModule.updateMany({
+    where: { tenantId, packId: install.id },
+    data: { isActive: false },
+  });
+  const modules = await tx.auditModule.findMany({
+    where: { tenantId, packId: install.id },
+    select: { id: true },
+  });
+  const moduleIds = modules.map((m) => m.id);
+  await tx.examinationNode.updateMany({
+    where: { tenantId, moduleId: { in: moduleIds } },
+    data: { isActive: false },
+  });
+  await tx.examinationQuestion.updateMany({
+    where: { tenantId, moduleId: { in: moduleIds } },
+    data: { isActive: false },
+  });
+  await tx.contentPackInstall.update({
+    where: { id: install.id },
+    data: { uninstalledAt: new Date() },
+  });
+}
