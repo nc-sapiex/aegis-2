@@ -10,16 +10,23 @@ import { prismaForTenant } from "@/lib/prisma";
  * engagement's ground truth (spec §6.6).
  *
  * Call inside the same transaction that creates the engagement's
- * EngagementModule rows, after they exist. Safe to call again (skipDuplicates)
- * when a module is added to an already-snapshotted engagement.
+ * EngagementModule rows, after they exist. When modules are added to an
+ * engagement that already has a snapshot, pass `onlyModuleIds`: without it,
+ * every statement added to an already-selected module since the snapshot
+ * would be pulled in, rescoping the running engagement.
  */
 export async function materializeEngagementStatements(
   tx: Prisma.TransactionClient,
   engagementId: string,
   tenantId: string,
+  onlyModuleIds?: string[],
 ): Promise<void> {
   const selectedModules = await tx.engagementModule.findMany({
-    where: { tenantId, engagementId },
+    where: {
+      tenantId,
+      engagementId,
+      ...(onlyModuleIds ? { moduleId: { in: onlyModuleIds } } : {}),
+    },
     select: { moduleId: true },
   });
   const moduleIds = selectedModules.map((m) => m.moduleId);
@@ -63,8 +70,8 @@ export async function materializeEngagementStatements(
   ];
 
   if (rows.length > 0) {
-    // skipDuplicates: adding a module after create, or auto-select after a
-    // partial snapshot, must not fail on the rows already snapshotted.
+    // skipDuplicates: a repeat call for a module already snapshotted adds
+    // nothing and does not fail.
     await tx.engagementStatement.createMany({
       data: rows,
       skipDuplicates: true,

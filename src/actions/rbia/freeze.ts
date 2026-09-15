@@ -181,6 +181,10 @@ export async function freezeRbiaScore(
                 where: {
                   tenantId,
                   moduleId: { in: [...selectedModuleIds] },
+                  // No snapshot: walk the live tree as before, active nodes
+                  // only. With one, a snapshotted leaf turned off since
+                  // must still count, so isActive is not filtered.
+                  ...(snapshotNodeIds.size === 0 ? { isActive: true } : {}),
                 },
                 select: {
                   id: true,
@@ -275,6 +279,41 @@ export async function freezeRbiaScore(
             ),
             { code: "INCOMPLETE_EXAMINATION" },
           );
+        }
+
+        // A module selected without its statements snapshotted (added before
+        // module add materialised them) has leaves but no snapshot rows.
+        // Every leaf would drop out of scope, the module would score null and
+        // leave the composite, and freeze would pass. Refuse instead.
+        if (snapshotNodeIds.size > 0) {
+          const leafModuleIds = new Set<string>();
+          const snapshotModuleIds = new Set<string>();
+          for (const node of nodeMap.values()) {
+            if (!node.isLeaf || !node.moduleId) continue;
+            leafModuleIds.add(node.moduleId);
+            if (snapshotNodeIds.has(node.nodeId)) {
+              snapshotModuleIds.add(node.moduleId);
+            }
+          }
+          const unsnapshotted = [...nodeMap.values()]
+            .filter(
+              (node) =>
+                node.depth === 1 &&
+                node.moduleId &&
+                selectedModuleIds.has(node.moduleId) &&
+                leafModuleIds.has(node.moduleId) &&
+                !snapshotModuleIds.has(node.moduleId),
+            )
+            .map((node) => node.code);
+          if (unsnapshotted.length > 0) {
+            throw Object.assign(
+              new Error(
+                `Cannot freeze: ${unsnapshotted.join(", ")} has no statement snapshot ` +
+                  `for this engagement. Remove the module and add it again.`,
+              ),
+              { code: "INCOMPLETE_EXAMINATION" },
+            );
+          }
         }
 
         // ── Completeness gate ──

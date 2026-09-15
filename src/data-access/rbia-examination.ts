@@ -280,20 +280,33 @@ export async function autoSelectModules(
   const applicableModules = await getApplicableModules(session, engagementId);
 
   await db.$transaction(async (tx) => {
+    const existing = await tx.engagementModule.findMany({
+      where: { tenantId, engagementId },
+      select: { moduleId: true },
+    });
+    const alreadySelected = new Set(existing.map((e) => e.moduleId));
+    const added = applicableModules
+      .map((m) => m.id)
+      .filter((id) => !alreadySelected.has(id));
+    if (added.length === 0) return;
+
     await tx.engagementModule.createMany({
-      data: applicableModules.map((m) => ({
+      data: added.map((moduleId) => ({
         tenantId,
         engagementId,
-        moduleId: m.id,
+        moduleId,
         isAutoSelected: true,
         selectionReason: "Auto-selected based on branch profile",
       })),
       skipDuplicates: true,
     });
+    // Snapshot only the modules added now: re-snapshotting the others would
+    // pull in statements added to them since (spec §6.6).
     await materializeEngagementStatements(
       tx as unknown as Prisma.TransactionClient,
       engagementId,
       tenantId,
+      added,
     );
   });
 }
@@ -351,6 +364,7 @@ export async function addModuleSelection(
       tx as unknown as Prisma.TransactionClient,
       engagementId,
       tenantId,
+      [moduleId],
     );
     return created;
   });
