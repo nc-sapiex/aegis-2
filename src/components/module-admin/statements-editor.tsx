@@ -89,9 +89,12 @@ export function StatementsEditor({
           </thead>
           <tbody>
             {nodes.map((n) => (
-              <tr key={n.id} className="border-b border-[color:hsl(var(--border))]">
+              <tr
+                key={n.id}
+                className="border-b border-[color:hsl(var(--border))]"
+              >
                 <td className="py-2 pr-3 text-[13px] tabular-nums">{n.code}</td>
-                <td className="py-2 pr-3 text-[14px]">
+                <td className="py-2 pr-3 text-[16px]">
                   {n.origin === "BANK" ? (
                     <textarea
                       defaultValue={n.description ?? ""}

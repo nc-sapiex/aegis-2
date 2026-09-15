@@ -109,7 +109,7 @@ export function AddStatementPanel({
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className={`${FIELD_INPUT} min-h-24 text-[14px]`}
+          className={`${FIELD_INPUT} min-h-24 text-[16px]`}
         />
       </label>
 

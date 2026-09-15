@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { ModuleAdminRow } from "@/data-access/module-admin";
 import { computeModuleShares, simulateWeightChange } from "@/lib/module-shares";
@@ -133,7 +134,10 @@ export function ModuleTable({
           const shareChanged = hasDraft && Math.abs(share - m.share) > 1e-6;
 
           return (
-            <tr key={m.id} className="border-b border-[color:hsl(var(--border))]">
+            <tr
+              key={m.id}
+              className="border-b border-[color:hsl(var(--border))]"
+            >
               <td className="py-2 pr-3">
                 <input
                   type="checkbox"
@@ -147,7 +151,7 @@ export function ModuleTable({
               <td className="py-2 pr-3 text-[13px]">
                 {m.name}{" "}
                 {m.packLabel && (
-                  <span className="ml-1 rounded-[2px] border border-[color:hsl(var(--primary))] px-1.5 py-0.5 text-[11px] tracking-[0.06em] text-[color:hsl(var(--primary))] uppercase">
+                  <span className="ml-1 rounded-[2px] border border-[color:hsl(var(--border-strong))] px-1.5 py-0.5 text-[11px] tracking-[0.06em] text-[color:hsl(var(--muted-foreground))] uppercase">
                     {m.packLabel}
                   </span>
                 )}
@@ -184,12 +188,18 @@ export function ModuleTable({
                 {m.statementCount}
                 {m.bankStatementCount > 0 &&
                   ` +${m.bankStatementCount} bank`}{" "}
+                <Link
+                  href={`/settings/modules/${m.code}/statements`}
+                  className="text-[color:hsl(var(--primary))] underline"
+                >
+                  Statements
+                </Link>{" "}
                 <button
                   type="button"
                   onClick={() => onAddStatement(m.id)}
                   className="text-[color:hsl(var(--primary))] underline"
                 >
-                  Statements
+                  Add
                 </button>
               </td>
             </tr>
