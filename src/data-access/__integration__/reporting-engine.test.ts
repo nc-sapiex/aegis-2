@@ -98,6 +98,68 @@ beforeAll(async () => {
         respondedAt: new Date(),
       },
     } as never);
+
+    // A second module in the SAME engagement, so the join's cross-module
+    // correctness (a statement attributed to its own module only, never a
+    // sibling's) is actually exercised — flagged in the plan's own
+    // self-review as the largest correctness risk here: a wrong join
+    // silently misattributes a statement rather than failing loudly.
+    const opsModule = await integrationOwner.auditModule.create({
+      data: {
+        tenantId,
+        code: "OPS",
+        name: "Operations",
+        domain: "ADMIN",
+        kinds: ["CHECKLIST"],
+        applicability: {},
+        weight: 50,
+      },
+    });
+    await integrationOwner.engagementModule.create({
+      data: {
+        tenantId,
+        engagementId,
+        moduleId: opsModule.id,
+        isAutoSelected: true,
+      },
+    });
+    const opsNode = await integrationOwner.examinationNode.create({
+      data: {
+        tenantId,
+        moduleId: opsModule.id,
+        code: "OPS-01",
+        name: "y",
+        path: "OPS/OPS-01",
+        depth: 1,
+        isLeaf: true,
+        weight: 1,
+        isCritical: false,
+        description: "Till balancing done",
+        origin: "BANK",
+      },
+    });
+    await integrationOwner.engagementStatement.create({
+      data: {
+        tenantId,
+        engagementId,
+        nodeId: opsNode.id,
+        text: "Till balancing done",
+        reference: "OPS-01",
+        weight: 1,
+        isCritical: false,
+        origin: "BANK",
+      },
+    });
+    await integrationOwner.examinationResponse.create({
+      data: {
+        tenantId,
+        engagementId,
+        nodeId: opsNode.id,
+        scoreLabel: "NON_COMPLIANT",
+        respondedById: user.id,
+        respondedAt: new Date(),
+      },
+    } as never);
   });
 });
 
@@ -108,10 +170,28 @@ describe("getAuditReportData, module-native", () => {
     const session = { user: { tenantId } } as never; // read the real AuthSession shape from data-access/session.ts if this fixture is insufficient
     const data = await getAuditReportData(session, engagementId);
     expect(data).not.toBeNull();
-    expect(data?.modules).toHaveLength(1);
-    expect(data?.modules[0].code).toBe("CRD");
-    expect(data?.modules[0].statements).toHaveLength(1);
-    expect(data?.modules[0].statements[0].scoreLabel).toBe("FULLY_COMPLIANT");
+    expect(data?.modules).toHaveLength(2);
+    const crd = data?.modules.find((m) => m.code === "CRD");
+    expect(crd?.statements).toHaveLength(1);
+    expect(crd?.statements[0].scoreLabel).toBe("FULLY_COMPLIANT");
+  });
+
+  it("attributes each statement to its own module only, never a sibling module's", async () => {
+    const session = { user: { tenantId } } as never;
+    const data = await getAuditReportData(session, engagementId);
+    const ops = data?.modules.find((m) => m.code === "OPS");
+    expect(ops?.statements).toHaveLength(1);
+    expect(ops?.statements[0].text).toBe("Till balancing done");
+    expect(ops?.statements[0].scoreLabel).toBe("NON_COMPLIANT");
+    // Cross-check: CRD's one statement is not this one, and vice versa —
+    // the join didn't collapse both modules' statements into either list.
+    const crd = data?.modules.find((m) => m.code === "CRD");
+    expect(crd?.statements.map((s) => s.text)).not.toContain(
+      "Till balancing done",
+    );
+    expect(ops?.statements.map((s) => s.text)).not.toContain(
+      "Loan file complete",
+    );
   });
 });
 
