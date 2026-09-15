@@ -152,16 +152,18 @@ describe("getModuleAdminView", () => {
   });
 
   it("computes applicabilityText from the branch profile", async () => {
-    await integrationOwner.branch.create({
-      data: {
-        tenantId,
-        name: "Forex Branch",
-        code: "FXB",
-        city: "Mumbai",
-        state: "MH",
-        hasForex: true,
-        loanProducts: [],
-      },
+    await withFixtures(async () => {
+      await integrationOwner.branch.create({
+        data: {
+          tenantId,
+          name: "Forex Branch",
+          code: "FXB",
+          city: "Mumbai",
+          state: "MH",
+          hasForex: true,
+          loanProducts: [],
+        },
+      });
     });
     await integrationOwner.auditModule.update({
       where: { tenantId_code: { tenantId, code: "CRD" } },
