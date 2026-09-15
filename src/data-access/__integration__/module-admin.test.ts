@@ -262,6 +262,19 @@ describe("addBankStatement", () => {
     });
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.code).toBe("OPS-B02");
+
+    // Must land in the same sibling group as OPS-B01 (depth/parentId) with
+    // the next displayOrder — otherwise reorderStatement's parentId+depth
+    // scoped sibling query can never see the two statements together.
+    const b01 = await integrationOwner.examinationNode.findFirstOrThrow({
+      where: { tenantId, code: "OPS-B01" },
+    });
+    const b02 = await integrationOwner.examinationNode.findFirstOrThrow({
+      where: { tenantId, code: "OPS-B02" },
+    });
+    expect(b02.depth).toBe(b01.depth);
+    expect(b02.parentId).toBe(b01.parentId);
+    expect(b02.displayOrder).toBe(b01.displayOrder + 1);
   });
 
   it("rejects a weight outside 0.5-3.0", async () => {

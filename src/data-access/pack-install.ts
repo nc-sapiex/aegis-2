@@ -118,9 +118,25 @@ async function upsertPack(
     }
   }
 
+  // New nodes need a displayOrder or they all tie at the schema default (0)
+  // and the statements editor's `orderBy: { displayOrder: "asc" }` returns an
+  // arbitrary order. Track the next value per module, seeded from whatever's
+  // already there (bank-added statements included) so a reinstall/upgrade
+  // appends after existing content instead of colliding with it.
+  const nextDisplayOrderByModule = new Map<string, number>();
+  for (const moduleId of moduleIdByCode.values()) {
+    const max = await tx.examinationNode.aggregate({
+      where: { tenantId, moduleId },
+      _max: { displayOrder: true },
+    });
+    nextDisplayOrderByModule.set(moduleId, (max._max.displayOrder ?? -1) + 1);
+  }
+
   for (const node of files.nodes) {
     const moduleId = moduleIdByCode.get(node.moduleCode);
     if (!moduleId) continue; // linted at build time; a runtime miss here means a stale archive, skip rather than crash the whole install
+    const displayOrder = nextDisplayOrderByModule.get(moduleId) ?? 0;
+    nextDisplayOrderByModule.set(moduleId, displayOrder + 1);
     await tx.examinationNode.upsert({
       where: { tenantId_code: { tenantId, code: node.code } },
       create: {
@@ -136,13 +152,14 @@ async function upsertPack(
         description: node.description,
         regulatoryRef: node.regulatoryRef,
         origin: "PACK",
+        displayOrder,
       },
       update: {
         name: node.name,
         path: node.path,
         description: node.description,
         regulatoryRef: node.regulatoryRef,
-        // weight, isCritical, isActive intentionally omitted — bank-editable, preserved (spec §7.3)
+        // weight, isCritical, isActive, displayOrder intentionally omitted — bank-editable, preserved (spec §7.3)
       },
     });
   }

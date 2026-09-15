@@ -62,6 +62,28 @@ export async function addBankStatement(
           }, 0) + 1;
         const code = `${input.sectionCode}-B${String(nextN).padStart(2, "0")}`;
 
+        // depth/parentId must match the module's other leaves, or
+        // reorderStatement's parentId+depth-scoped sibling query can never
+        // see this statement alongside them (it defaults to depth 1, no
+        // parent, for a module with no leaves yet — the flat pack convention).
+        const referenceLeaf = await tx.examinationNode.findFirst({
+          where: { tenantId, moduleId: input.moduleId, isLeaf: true },
+          select: { depth: true, parentId: true },
+        });
+        const depth = referenceLeaf?.depth ?? 1;
+        const parentId = referenceLeaf?.parentId ?? null;
+        const maxOrder = await tx.examinationNode.aggregate({
+          where: {
+            tenantId,
+            moduleId: input.moduleId,
+            parentId,
+            depth,
+            isLeaf: true,
+          },
+          _max: { displayOrder: true },
+        });
+        const displayOrder = (maxOrder._max.displayOrder ?? -1) + 1;
+
         await tx.examinationNode.create({
           data: {
             tenantId,
@@ -69,13 +91,15 @@ export async function addBankStatement(
             code,
             name: input.text.slice(0, 60),
             path: `${input.sectionCode}/${code}`,
-            depth: 1,
+            depth,
+            parentId,
             isLeaf: true,
             weight: input.weight,
             isCritical: input.isCritical,
             description: input.text,
             regulatoryRef: input.reference,
             origin: "BANK",
+            displayOrder,
           },
         });
 
