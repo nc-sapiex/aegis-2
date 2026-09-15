@@ -30,6 +30,10 @@ import {
   PasswordResetEmail,
   getPasswordResetSubject,
 } from "./templates/password-reset-email";
+import {
+  AuditChainTamperEmail,
+  getAuditChainTamperSubject,
+} from "./templates/audit-chain-tamper-email";
 import { env } from "@/env";
 
 /**
@@ -181,6 +185,15 @@ export async function renderEmailTemplate(
         batchId: p.batchId ?? "",
       });
       subject = getBmBatchOverdueSubject(p.branchName ?? "Unknown Branch");
+      break;
+
+    case "audit-chain-tamper":
+      element = createElement(AuditChainTamperEmail, {
+        bankName,
+        appUrl,
+        firstBadSequence: String(p.firstBadSequence ?? "?"),
+      });
+      subject = getAuditChainTamperSubject(bankName);
       break;
 
     case "password-reset":

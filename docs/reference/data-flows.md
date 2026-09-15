@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `85105ed` (worktree-plan2-audit-chain)
+> Source commit: `9a43b87` (worktree-plan2-audit-chain)
 
 Which processes read and write which tables.
 
@@ -43,6 +43,7 @@ reachability graph.
 | `overdue-escalation` | yes | `NotificationQueue`, `Observation`, `User` |
 | `rbia-overdue-escalation` | yes | `BmResponseBatch`, `NotificationQueue`, `User` |
 | `snapshot-metrics` | — | `DashboardSnapshot` |
+| `verify-audit-chain` | yes | `AuditChainHead`, `AuditChainVerification`, `NotificationQueue`, `User` |
 | `weekly-digest` | yes | `NotificationQueue`, `Observation`, `User` |
 
 ## Most widely accessed tables
