@@ -185,6 +185,28 @@ describe("saveModuleWeights", () => {
     return fakeSession({ id: cae.id, tenantId, roles: ["CAE"] });
   }
 
+  it("rejects a session without module:manage", async () => {
+    vi.resetModules();
+    mockSessionModule(
+      fakeSession({
+        id: "no-permission-user",
+        tenantId,
+        roles: ["BRANCH_HEAD"],
+      }),
+    );
+    const { saveModuleWeights } =
+      await import("@/actions/module-admin/save-module-weights");
+
+    const crd = await integrationOwner.auditModule.findFirstOrThrow({
+      where: { tenantId, code: "CRD" },
+    });
+    const result = await saveModuleWeights([{ moduleId: crd.id, weight: 45 }]);
+    expect(result).toEqual({
+      success: false,
+      error: "You do not have permission to manage modules.",
+    });
+  });
+
   it("rejects a weight outside 1-100", async () => {
     vi.resetModules();
     mockSessionModule(await caeSession());
@@ -242,6 +264,34 @@ describe("addBankStatement", () => {
     });
     return fakeSession({ id: cae.id, tenantId, roles: ["CAE"] });
   }
+
+  it("rejects a session without module:manage", async () => {
+    vi.resetModules();
+    mockSessionModule(
+      fakeSession({
+        id: "no-permission-user",
+        tenantId,
+        roles: ["BRANCH_HEAD"],
+      }),
+    );
+    const { addBankStatement } =
+      await import("@/actions/module-admin/add-bank-statement");
+
+    const ops = await integrationOwner.auditModule.findFirstOrThrow({
+      where: { tenantId, code: "OPS" },
+    });
+    const result = await addBankStatement({
+      moduleId: ops.id,
+      sectionCode: "OPS",
+      text: "x",
+      weight: 1.0,
+      isCritical: false,
+    });
+    expect(result).toEqual({
+      success: false,
+      error: "You do not have permission to manage modules.",
+    });
+  });
 
   it("assigns the next <section>-B<nn> code", async () => {
     vi.resetModules();
@@ -344,6 +394,28 @@ describe("toggleModule", () => {
     return fakeSession({ id: cae.id, tenantId, roles: ["CAE"] });
   }
 
+  it("rejects a session without module:manage", async () => {
+    vi.resetModules();
+    mockSessionModule(
+      fakeSession({
+        id: "no-permission-user",
+        tenantId,
+        roles: ["BRANCH_HEAD"],
+      }),
+    );
+    const { toggleModule } =
+      await import("@/actions/module-admin/toggle-module");
+
+    const ops = await integrationOwner.auditModule.findFirstOrThrow({
+      where: { tenantId, code: "OPS" },
+    });
+    const result = await toggleModule(ops.id, false);
+    expect(result).toEqual({
+      success: false,
+      error: "You do not have permission to manage modules.",
+    });
+  });
+
   it("rejects switching off a core module", async () => {
     vi.resetModules();
     mockSessionModule(await caeSession());
@@ -380,6 +452,28 @@ describe("editStatement", () => {
     });
     return fakeSession({ id: cae.id, tenantId, roles: ["CAE"] });
   }
+
+  it("rejects a session without module:manage", async () => {
+    vi.resetModules();
+    mockSessionModule(
+      fakeSession({
+        id: "no-permission-user",
+        tenantId,
+        roles: ["BRANCH_HEAD"],
+      }),
+    );
+    const { editStatement } =
+      await import("@/actions/module-admin/edit-statement");
+
+    const node = await integrationOwner.examinationNode.findFirstOrThrow({
+      where: { tenantId, code: "OPS-B01" },
+    });
+    const result = await editStatement(node.id, { text: "Attempted edit" });
+    expect(result).toEqual({
+      success: false,
+      error: "You do not have permission to manage modules.",
+    });
+  });
 
   it("a BANK row accepts a text edit", async () => {
     vi.resetModules();
@@ -452,6 +546,28 @@ describe("reorderStatement", () => {
     });
     return fakeSession({ id: cae.id, tenantId, roles: ["CAE"] });
   }
+
+  it("rejects a session without module:manage", async () => {
+    vi.resetModules();
+    mockSessionModule(
+      fakeSession({
+        id: "no-permission-user",
+        tenantId,
+        roles: ["BRANCH_HEAD"],
+      }),
+    );
+    const { reorderStatement } =
+      await import("@/actions/module-admin/reorder-statement");
+
+    const node = await integrationOwner.examinationNode.findFirstOrThrow({
+      where: { tenantId, code: "OPS-B01" },
+    });
+    const result = await reorderStatement(node.id, "down");
+    expect(result).toEqual({
+      success: false,
+      error: "You do not have permission to manage modules.",
+    });
+  });
 
   it("moving the first statement in a section up is a no-op success, not an error", async () => {
     vi.resetModules();
