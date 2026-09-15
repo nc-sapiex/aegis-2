@@ -21,6 +21,8 @@ export const SQL_MANIFEST = [
   "prisma/sql/060_tenant_composite_fks.sql",
   "prisma/sql/070_rls_policies.sql",
   "prisma/sql/080_rbia_branch_required.sql",
+  // After 010: its backfill UPDATEs AuditLog, which these rules would swallow.
+  "prisma/sql/090_audit_log_immutability.sql",
 ] as const;
 
 /**
@@ -67,11 +69,15 @@ export interface RequiredObjects {
   triggers: readonly string[];
   constraints: readonly string[];
   policies: readonly string[]; // tables that must have policy tenant_isolation
+  rules: readonly string[]; // enabled rules on AuditLog
 }
 
 export const REQUIRED_OBJECTS: RequiredObjects = {
   functions: [
     "audit_trigger_function",
+    "audit_chain_insert",
+    "audit_chain_field",
+    "audit_chain_row_hash",
     "prevent_frozen_score_update",
     "fn_extract_fiscal_year",
     "fn_dashboard_health_score",
@@ -93,4 +99,5 @@ export const REQUIRED_OBJECTS: RequiredObjects = {
     "rbia_requires_branch",
   ],
   policies: RLS_TABLES,
+  rules: ["audit_log_no_update", "audit_log_no_delete"],
 };

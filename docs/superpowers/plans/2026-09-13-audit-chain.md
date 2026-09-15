@@ -4,13 +4,13 @@
 
 **Goal:** Every audited write is chained to the one before it with a per-tenant SHA-256 hash a superuser cannot forge without detection, a nightly job proves the chain unbroken for every tenant, and a CAE/SYSTEM_ADMIN can see the last verification and pull a signed attestation for an examiner.
 
-**Architecture:** `AuditLog` gains `prevHash`/`rowHash` (`Bytes`); a new `AuditChainHead(tenantId PK, lastSequence, lastHash)` row per tenant is the single source the trigger locks with `SELECT … FOR UPDATE` before computing the next link, so `sequenceNumber` becomes genuinely per-tenant instead of the current global-autoincrement column (which already produces false-positive gaps under multi-tenant traffic — see Self-Review). A pure module (`src/lib/audit-chain.ts`) implements the identical hash algorithm in TypeScript so the nightly `verify-audit-chain` job and its unit tests never touch the database to know what a row's hash *should* be. Immutability is enforced twice: `REVOKE UPDATE, DELETE ON "AuditLog" FROM aegis_app` (already applied by the tenant-isolation plan's `grantAppRole()`) plus new `DO INSTEAD NOTHING` rules that block even a superuser or the owner role from mutating a row through ordinary SQL.
+**Architecture:** `AuditLog` gains `prevHash`/`rowHash` (`Bytes`); a new `AuditChainHead(tenantId PK, lastSequence, lastHash)` row per tenant is the single source the trigger locks with `SELECT … FOR UPDATE` before computing the next link, so `sequenceNumber` becomes genuinely per-tenant instead of the current global-autoincrement column (which already produces false-positive gaps under multi-tenant traffic — see Self-Review). A pure module (`src/lib/audit-chain.ts`) implements the identical hash algorithm in TypeScript so the nightly `verify-audit-chain` job and its unit tests never touch the database to know what a row's hash _should_ be. Immutability is enforced twice: `REVOKE UPDATE, DELETE ON "AuditLog" FROM aegis_app` (already applied by the tenant-isolation plan's `grantAppRole()`) plus new `DO INSTEAD NOTHING` rules that block even a superuser or the owner role from mutating a row through ordinary SQL.
 
 **Tech Stack:** PostgreSQL 16 (`pgcrypto`, already enabled via `prisma/schema.prisma`'s `extensions = [pgcrypto, pg_trgm]`), Prisma 7.4, pg-boss, `@react-pdf/renderer` (already a dependency), Vitest 4.
 
 **Spec:** `docs/superpowers/specs/2026-09-12-first-customer-readiness-design.md` §5 (Audit chain), §10 (Verification — tamper tests, human gate on §5), §11 weeks 4–5, §12 (per-tenant chain lock risk).
 
-**Depends on:** `docs/superpowers/plans/2026-09-13-tenant-isolation-rls.md`. This plan assumes that plan's Task 3 has landed on `main`: the `aegis_app` role exists, `DATABASE_OWNER_URL` is wired in `.env.example`/CI/`docker-compose.yml`, and `grantAppRole()` in `scripts/db-bootstrap.ts` already runs `REVOKE UPDATE, DELETE ON "AuditLog" FROM aegis_app`. If that plan's spike (§4.1) failed and Task 8's fallback ran instead, the app still connects as `aegis_app` with that same revoke (the fallback only reverts the RLS *client wrapping*, not the role/grants) — this plan is unaffected either way.
+**Depends on:** `docs/superpowers/plans/2026-09-13-tenant-isolation-rls.md`. This plan assumes that plan's Task 3 has landed on `main`: the `aegis_app` role exists, `DATABASE_OWNER_URL` is wired in `.env.example`/CI/`docker-compose.yml`, and `grantAppRole()` in `scripts/db-bootstrap.ts` already runs `REVOKE UPDATE, DELETE ON "AuditLog" FROM aegis_app`. If that plan's spike (§4.1) failed and Task 8's fallback ran instead, the app still connects as `aegis_app` with that same revoke (the fallback only reverts the RLS _client wrapping_, not the role/grants) — this plan is unaffected either way.
 
 ## Global Constraints
 
@@ -27,36 +27,38 @@
 
 ## File structure
 
-| File | Responsibility |
-|---|---|
-| `prisma/schema.prisma` (modify) | `AuditLog` gains `prevHash Bytes`, `rowHash Bytes`, drops `@default(autoincrement())` on `sequenceNumber`. New models `AuditChainHead`, `AuditChainVerification`. |
-| `src/lib/audit-chain.ts` (new) | Pure: `hashRow(input, prevHash)`, `verifyChain(rows)`, `GENESIS_HASH`. The canonical algorithm both the trigger and the verify job agree on. |
-| `src/lib/__tests__/audit-chain.test.ts` (new) | Unit tests, including a fixed test vector the SQL-side integration test reproduces. |
-| `prisma/migrations/20260913_audit_chain.sql` (new) | Drops the old `sequenceNumber` sequence default; rewrites `audit_trigger_function()` to lock the tenant's head row, compute `rowHash`, advance `sequenceNumber` and the head; adds the `DO INSTEAD NOTHING` rules. |
-| `prisma/sql/manifest.ts` (modify) | Adds the new migration file to `SQL_MANIFEST` after `020_attach_audit_triggers.sql`; adds `AuditChainHead`/`AuditChainVerification` awareness is not needed here (Prisma-managed tables), but `REQUIRED_OBJECTS.functions` and a new `rules` key are added. |
-| `scripts/db-verify.ts` (modify) | Asserts `audit_trigger_function` still exists (already does), plus the two new `DO INSTEAD NOTHING` rules and that `aegis_app` cannot `UPDATE`/`DELETE` `AuditLog` (`has_table_privilege`). |
-| `scripts/backfill-audit-chain.ts` (new) | One-off: hashes pre-existing `AuditLog` rows per tenant in `sequenceNumber` order, creates each tenant's `AuditChainHead`. Runs against `DATABASE_OWNER_URL`, before the immutability rules exist (see Task 6's ordering note). |
-| `src/data-access/audit-trail.ts` (modify) | `detectAuditGaps` rewritten against `AuditChainHead.lastSequence` instead of `MIN`/`MAX` over a shared column. |
-| `src/jobs/verify-audit-chain.ts` (new) | Nightly: walks every tenant's chain via `verifyChain`, writes `AuditChainVerification`, queues a CRITICAL notification to CAE/SYSTEM_ADMIN on the first mismatch. |
-| `src/jobs/index.ts`, `src/lib/job-queue.ts` (modify) | Register and schedule `verify-audit-chain` at 02:00 IST. |
-| `prisma/schema.prisma` (modify, same file as above) | `NotificationType` gains `AUDIT_CHAIN_TAMPER_DETECTED`. |
-| `src/data-access/audit-chain-admin.ts` (new) | DAL: `getChainVerifications(tenantId)`, `getChainHead(tenantId)`. |
-| `src/actions/admin/run-audit-chain-verification.ts` (new) | Server action: run-now button, `admin:system` permission. |
-| `src/actions/admin/export-chain-attestation.ts` (new) | Server action: renders the signed attestation PDF. |
-| `src/components/pdf-report/chain-attestation.tsx` (new) | `@react-pdf/renderer` document: tenant, chain head, verification history, an Ed25519-style note that the export itself is stamped with the app's license signature (reuses whatever signing key the licensing plan introduces — see Self-Review). |
-| `src/app/(dashboard)/admin/audit-chain/page.tsx` (new) | Admin page: last verification per tenant, run-now button, export button. |
-| `src/components/admin/audit-chain-panel.tsx` (new) | Client component: the page's interactive body. |
-| `src/data-access/__integration__/audit-chain.test.ts` (new) | Three clean writes verify OK; superuser `UPDATE` of a middle row is caught by row; superuser `DELETE` is caught by both a sequence gap and a chain break. |
+| File                                                        | Responsibility                                                                                                                                                                                                                                              |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prisma/schema.prisma` (modify)                             | `AuditLog` gains `prevHash Bytes`, `rowHash Bytes`, drops `@default(autoincrement())` on `sequenceNumber`. New models `AuditChainHead`, `AuditChainVerification`.                                                                                           |
+| `src/lib/audit-chain.ts` (new)                              | Pure: `hashRow(input, prevHash)`, `verifyChain(rows)`, `GENESIS_HASH`. The canonical algorithm both the trigger and the verify job agree on.                                                                                                                |
+| `src/lib/__tests__/audit-chain.test.ts` (new)               | Unit tests, including a fixed test vector the SQL-side integration test reproduces.                                                                                                                                                                         |
+| `prisma/migrations/20260913_audit_chain.sql` (new)          | Drops the old `sequenceNumber` sequence default; rewrites `audit_trigger_function()` to lock the tenant's head row, compute `rowHash`, advance `sequenceNumber` and the head; adds the `DO INSTEAD NOTHING` rules.                                          |
+| `prisma/sql/manifest.ts` (modify)                           | Adds the new migration file to `SQL_MANIFEST` after `020_attach_audit_triggers.sql`; adds `AuditChainHead`/`AuditChainVerification` awareness is not needed here (Prisma-managed tables), but `REQUIRED_OBJECTS.functions` and a new `rules` key are added. |
+| `scripts/db-verify.ts` (modify)                             | Asserts `audit_trigger_function` still exists (already does), plus the two new `DO INSTEAD NOTHING` rules and that `aegis_app` cannot `UPDATE`/`DELETE` `AuditLog` (`has_table_privilege`).                                                                 |
+| `scripts/backfill-audit-chain.ts` (new)                     | One-off: hashes pre-existing `AuditLog` rows per tenant in `sequenceNumber` order, creates each tenant's `AuditChainHead`. Runs against `DATABASE_OWNER_URL`, before the immutability rules exist (see Task 6's ordering note).                             |
+| `src/data-access/audit-trail.ts` (modify)                   | `detectAuditGaps` rewritten against `AuditChainHead.lastSequence` instead of `MIN`/`MAX` over a shared column.                                                                                                                                              |
+| `src/jobs/verify-audit-chain.ts` (new)                      | Nightly: walks every tenant's chain via `verifyChain`, writes `AuditChainVerification`, queues a CRITICAL notification to CAE/SYSTEM_ADMIN on the first mismatch.                                                                                           |
+| `src/jobs/index.ts`, `src/lib/job-queue.ts` (modify)        | Register and schedule `verify-audit-chain` at 02:00 IST.                                                                                                                                                                                                    |
+| `prisma/schema.prisma` (modify, same file as above)         | `NotificationType` gains `AUDIT_CHAIN_TAMPER_DETECTED`.                                                                                                                                                                                                     |
+| `src/data-access/audit-chain-admin.ts` (new)                | DAL: `getChainVerifications(tenantId)`, `getChainHead(tenantId)`.                                                                                                                                                                                           |
+| `src/actions/admin/run-audit-chain-verification.ts` (new)   | Server action: run-now button, `admin:system` permission.                                                                                                                                                                                                   |
+| `src/actions/admin/export-chain-attestation.ts` (new)       | Server action: renders the signed attestation PDF.                                                                                                                                                                                                          |
+| `src/components/pdf-report/chain-attestation.tsx` (new)     | `@react-pdf/renderer` document: tenant, chain head, verification history, an Ed25519-style note that the export itself is stamped with the app's license signature (reuses whatever signing key the licensing plan introduces — see Self-Review).           |
+| `src/app/(dashboard)/admin/audit-chain/page.tsx` (new)      | Admin page: last verification per tenant, run-now button, export button.                                                                                                                                                                                    |
+| `src/components/admin/audit-chain-panel.tsx` (new)          | Client component: the page's interactive body.                                                                                                                                                                                                              |
+| `src/data-access/__integration__/audit-chain.test.ts` (new) | Three clean writes verify OK; superuser `UPDATE` of a middle row is caught by row; superuser `DELETE` is caught by both a sequence gap and a chain break.                                                                                                   |
 
 ---
 
 ### Task 1: Schema — hash columns and the two new tables
 
 **Files:**
+
 - Modify: `prisma/schema.prisma` (`AuditLog` model, `NotificationType` enum, two new models)
 - Test: `src/lib/__tests__/sql-manifest.test.ts` (extend `REQUIRED_OBJECTS.functions` expectation — no new function yet, this task is schema-only)
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: `AuditLog.prevHash: Buffer`, `AuditLog.rowHash: Buffer` (both nullable until Task 5's backfill and Task 3's trigger rewrite land — see the ordering note in Task 6); `AuditChainHead { tenantId, lastSequence: bigint, lastHash: Buffer, updatedAt }`; `AuditChainVerification { id, tenantId, verifiedAt, ok, firstBadSequence: bigint | null }`; `NotificationType.AUDIT_CHAIN_TAMPER_DETECTED`.
 
@@ -94,6 +96,11 @@ model AuditChainHead {
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   lastSequence BigInt  @default(0)
   lastHash    Bytes
+  // Checkpoint the nightly job advances on a clean verification (Task 7).
+  // Distinct from lastSequence/lastHash above, which the trigger advances on
+  // every write and which may be ahead of what's actually been verified.
+  lastVerifiedSequence BigInt  @default(0)
+  lastVerifiedHash     Bytes?
   updatedAt   DateTime @updatedAt
 }
 
@@ -155,10 +162,12 @@ git commit -m "feat(audit): schema for the per-tenant hash chain (AuditChainHead
 ### Task 2: Pure hash module
 
 **Files:**
+
 - Create: `src/lib/audit-chain.ts`
 - Create: `src/lib/__tests__/audit-chain.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing (pure).
 - Produces: `GENESIS_HASH: Buffer` (32 zero bytes); `type ChainableRow = { tenantId: string; sequenceNumber: bigint; tableName: string; recordId: string; operation: string; actorUserId: string | null; changedAt: Date; oldData: unknown; newData: unknown }`; `hashRow(row: ChainableRow, prevHash: Buffer): Buffer`; `verifyChain(rows: ChainableRow[], genesisPrevHash?: Buffer): { ok: true } | { ok: false; firstBadSequence: bigint }` where each row is also expected to carry its own `prevHash`/`rowHash` for the second signature below.
 
@@ -170,7 +179,12 @@ Task 3's SQL trigger and this module MUST compute byte-identical hashes for the 
 // src/lib/__tests__/audit-chain.test.ts
 import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
-import { GENESIS_HASH, hashRow, verifyChain, type ChainableRow } from "@/lib/audit-chain";
+import {
+  GENESIS_HASH,
+  hashRow,
+  verifyChain,
+  type ChainableRow,
+} from "@/lib/audit-chain";
 
 function row(overrides: Partial<ChainableRow> = {}): ChainableRow {
   return {
@@ -205,8 +219,14 @@ describe("hashRow", () => {
 
   it("changes when any single field changes (avalanche, not exhaustive)", () => {
     const base = hashRow(row(), GENESIS_HASH);
-    const changedRecordId = hashRow(row({ recordId: "99999999-9999-4999-8999-999999999999" }), GENESIS_HASH);
-    const changedNewData = hashRow(row({ newData: { code: "A001", name: "Tampered" } }), GENESIS_HASH);
+    const changedRecordId = hashRow(
+      row({ recordId: "99999999-9999-4999-8999-999999999999" }),
+      GENESIS_HASH,
+    );
+    const changedNewData = hashRow(
+      row({ newData: { code: "A001", name: "Tampered" } }),
+      GENESIS_HASH,
+    );
     const changedPrevHash = hashRow(row(), Buffer.alloc(32, 1));
 
     expect(changedRecordId.equals(base)).toBe(false);
@@ -222,7 +242,9 @@ describe("hashRow", () => {
 });
 
 describe("verifyChain", () => {
-  function chainOf(rows: ChainableRow[]): (ChainableRow & { prevHash: Buffer; rowHash: Buffer })[] {
+  function chainOf(
+    rows: ChainableRow[],
+  ): (ChainableRow & { prevHash: Buffer; rowHash: Buffer })[] {
     let prev = GENESIS_HASH;
     return rows.map((r) => {
       const rowHash = hashRow(r, prev);
@@ -233,18 +255,33 @@ describe("verifyChain", () => {
   }
 
   it("reports ok for a clean chain of three rows", () => {
-    const rows = chainOf([row({ sequenceNumber: 1n }), row({ sequenceNumber: 2n }), row({ sequenceNumber: 3n })]);
+    const rows = chainOf([
+      row({ sequenceNumber: 1n }),
+      row({ sequenceNumber: 2n }),
+      row({ sequenceNumber: 3n }),
+    ]);
     expect(verifyChain(rows)).toEqual({ ok: true });
   });
 
   it("reports the first bad sequence when a middle row's data was edited after hashing", () => {
-    const rows = chainOf([row({ sequenceNumber: 1n }), row({ sequenceNumber: 2n }), row({ sequenceNumber: 3n })]);
-    rows[1] = { ...rows[1], newData: { code: "A001", name: "Edited by a superuser" } };
+    const rows = chainOf([
+      row({ sequenceNumber: 1n }),
+      row({ sequenceNumber: 2n }),
+      row({ sequenceNumber: 3n }),
+    ]);
+    rows[1] = {
+      ...rows[1],
+      newData: { code: "A001", name: "Edited by a superuser" },
+    };
     expect(verifyChain(rows)).toEqual({ ok: false, firstBadSequence: 2n });
   });
 
   it("reports the first bad sequence when a middle row is deleted (gap in prevHash linkage)", () => {
-    const rows = chainOf([row({ sequenceNumber: 1n }), row({ sequenceNumber: 2n }), row({ sequenceNumber: 3n })]);
+    const rows = chainOf([
+      row({ sequenceNumber: 1n }),
+      row({ sequenceNumber: 2n }),
+      row({ sequenceNumber: 3n }),
+    ]);
     const withGap = [rows[0], rows[2]]; // row 2 deleted; row 3's prevHash no longer matches row 1's rowHash
     expect(verifyChain(withGap)).toEqual({ ok: false, firstBadSequence: 3n });
   });
@@ -309,8 +346,12 @@ function canonicalString(row: ChainableRow, prevHash: Buffer): string {
     row.operation,
     row.actorUserId ?? "",
     row.changedAt.toISOString(),
-    row.oldData === null || row.oldData === undefined ? "null" : JSON.stringify(row.oldData),
-    row.newData === null || row.newData === undefined ? "null" : JSON.stringify(row.newData),
+    row.oldData === null || row.oldData === undefined
+      ? "null"
+      : JSON.stringify(row.oldData),
+    row.newData === null || row.newData === undefined
+      ? "null"
+      : JSON.stringify(row.newData),
   ].join("|");
 }
 
@@ -361,11 +402,13 @@ git commit -m "feat(audit): pure hashRow/verifyChain module, the algorithm the t
 ### Task 3: Rewrite the trigger to compute the chain
 
 **Files:**
+
 - Create: `prisma/migrations/20260913_audit_chain.sql`
 - Modify: `prisma/sql/manifest.ts` (`SQL_MANIFEST`, `REQUIRED_OBJECTS.functions` unchanged — `audit_trigger_function` already listed)
 - Modify: `src/lib/__tests__/sql-manifest.test.ts`
 
 **Interfaces:**
+
 - Consumes: `AUDITED_TABLES` from `src/lib/audit-triggers.ts` (the trigger fires on the same tables as before — this task changes the function's body, not which tables carry it).
 - Produces: every `AuditLog` row inserted from this point on carries `sequenceNumber`, `prevHash`, `rowHash` matching `src/lib/audit-chain.ts`'s algorithm exactly.
 
@@ -376,13 +419,18 @@ Append to `src/lib/__tests__/sql-manifest.test.ts`:
 ```ts
 describe("audit chain migration", () => {
   it("is present in the manifest after the audit trigger attachment", () => {
-    const i = SQL_MANIFEST.indexOf("prisma/migrations/20260913_audit_chain.sql");
+    const i = SQL_MANIFEST.indexOf(
+      "prisma/migrations/20260913_audit_chain.sql",
+    );
     const j = SQL_MANIFEST.indexOf("prisma/sql/020_attach_audit_triggers.sql");
     expect(i).toBeGreaterThan(j);
   });
 
   it("the migration file computes rowHash with pgcrypto digest(...,'sha256')", () => {
-    const sql = readFileSync(join(process.cwd(), "prisma/migrations/20260913_audit_chain.sql"), "utf8");
+    const sql = readFileSync(
+      join(process.cwd(), "prisma/migrations/20260913_audit_chain.sql"),
+      "utf8",
+    );
     expect(sql).toContain("digest(");
     expect(sql).toContain("'sha256'");
     expect(sql).toContain("FOR UPDATE");
@@ -522,10 +570,12 @@ git commit -m "feat(audit): trigger computes the per-tenant hash chain on every 
 ### Task 4: `detectAuditGaps` against the real per-tenant sequence
 
 **Files:**
+
 - Modify: `src/data-access/audit-trail.ts`
 - Test: `src/data-access/__tests__/audit-trail.test.ts` (create if it does not already cover this function — check first: `test -f src/data-access/__tests__/audit-trail.test.ts`)
 
 **Interfaces:**
+
 - Consumes: `AuditChainHead` (Task 1), `AuditLog.sequenceNumber` (Task 3).
 - Produces: `detectAuditGaps(tenantId: string): Promise<{ missingSequence: bigint }[]>` — same signature as today, corrected semantics.
 
@@ -555,7 +605,9 @@ describe("detectAuditGaps", () => {
 
   it("reports a missing sequence number as a bigint", async () => {
     const { prisma } = await import("@/lib/prisma");
-    (prisma.$queryRaw as ReturnType<typeof vi.fn>).mockResolvedValue([{ missing_sequence: 5n }]);
+    (prisma.$queryRaw as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { missing_sequence: 5n },
+    ]);
     const { detectAuditGaps } = await import("@/data-access/audit-trail");
     const gaps = await detectAuditGaps("11111111-1111-4111-8111-111111111111");
     expect(gaps).toEqual([{ missingSequence: 5n }]);
@@ -604,9 +656,11 @@ git commit -m "test(audit): regression test for detectAuditGaps; correct its doc
 ### Task 5: Backfill script
 
 **Files:**
+
 - Create: `scripts/backfill-audit-chain.ts`
 
 **Interfaces:**
+
 - Consumes: `hashRow`, `GENESIS_HASH` from `src/lib/audit-chain.ts`; connects via `DATABASE_OWNER_URL` (falls back to `DATABASE_URL`, same convention as `scripts/db-bootstrap.ts`).
 - Produces: every pre-existing `AuditLog` row gets `sequenceNumber`/`prevHash`/`rowHash`; one `AuditChainHead` row per tenant with rows.
 
@@ -625,11 +679,17 @@ This script must run **before** Task 6's immutability rules exist — it `UPDATE
 // Usage: DATABASE_OWNER_URL=... npx tsx scripts/backfill-audit-chain.ts
 
 import { Client } from "pg";
-import { hashRow, GENESIS_HASH, type ChainableRow } from "../src/lib/audit-chain";
+import {
+  hashRow,
+  GENESIS_HASH,
+  type ChainableRow,
+} from "../src/lib/audit-chain";
 
 async function main() {
-  const connectionString = process.env.DATABASE_OWNER_URL ?? process.env.DATABASE_URL;
-  if (!connectionString) throw new Error("DATABASE_OWNER_URL or DATABASE_URL is required");
+  const connectionString =
+    process.env.DATABASE_OWNER_URL ?? process.env.DATABASE_URL;
+  if (!connectionString)
+    throw new Error("DATABASE_OWNER_URL or DATABASE_URL is required");
 
   const client = new Client({ connectionString });
   await client.connect();
@@ -646,7 +706,9 @@ async function main() {
       );
     }
 
-    const { rows: tenants } = await client.query<{ id: string }>(`SELECT id FROM "Tenant"`);
+    const { rows: tenants } = await client.query<{ id: string }>(
+      `SELECT id FROM "Tenant"`,
+    );
     let totalRows = 0;
 
     for (const tenant of tenants) {
@@ -655,7 +717,9 @@ async function main() {
         [tenant.id],
       );
       if ((existingHead.rowCount ?? 0) > 0) {
-        console.log(`tenant ${tenant.id}: AuditChainHead already exists, skipping`);
+        console.log(
+          `tenant ${tenant.id}: AuditChainHead already exists, skipping`,
+        );
         continue;
       }
 
@@ -708,7 +772,9 @@ async function main() {
       totalRows += rows.length;
     }
 
-    console.log(`Backfill complete. ${totalRows} rows across ${tenants.length} tenants.`);
+    console.log(
+      `Backfill complete. ${totalRows} rows across ${tenants.length} tenants.`,
+    );
   } finally {
     await client.end();
   }
@@ -761,11 +827,13 @@ git commit -m "feat(audit): one-off backfill script for pre-existing AuditLog ro
 ### Task 6: Immutability rules and `db:verify`
 
 **Files:**
+
 - Create: `prisma/sql/070_audit_log_immutability.sql` (numbered after Task 4 of the RLS plan's `070_rls_policies.sql`; if that file does not exist because the RLS spike failed and Task 8's fallback ran, use `070_audit_log_immutability.sql` regardless — the number is about manifest ordering, not a hard dependency on RLS)
 - Modify: `prisma/sql/manifest.ts` (`SQL_MANIFEST`, `REQUIRED_OBJECTS` gains a `rules` key)
 - Modify: `scripts/db-verify.ts`
 
 **Interfaces:**
+
 - Consumes: nothing new.
 - Produces: `REQUIRED_OBJECTS.rules: readonly string[]` (`["audit_log_no_update", "audit_log_no_delete"]`), checked by `db:verify`.
 
@@ -776,20 +844,25 @@ git commit -m "feat(audit): one-off backfill script for pre-existing AuditLog ro
 Add to `scripts/db-verify.ts`, after the RLS-policy block Plan 1's Task 4 added (or after the role check if that plan's spike failed):
 
 ```ts
-    const rules = await client.query<{ rulename: string }>(
-      `SELECT rulename FROM pg_rewrite WHERE rulename IN ('audit_log_no_update', 'audit_log_no_delete')`,
-    );
-    const haveRules = new Set(rules.rows.map((r) => r.rulename));
-    for (const rule of REQUIRED_OBJECTS.rules) {
-      if (!haveRules.has(rule)) missing.push(`rule ${rule}`);
-    }
+const rules = await client.query<{ rulename: string }>(
+  `SELECT rulename FROM pg_rewrite WHERE rulename IN ('audit_log_no_update', 'audit_log_no_delete')`,
+);
+const haveRules = new Set(rules.rows.map((r) => r.rulename));
+for (const rule of REQUIRED_OBJECTS.rules) {
+  if (!haveRules.has(rule)) missing.push(`rule ${rule}`);
+}
 
-    const revoked = await client.query<{ has_update: boolean; has_delete: boolean }>(
-      `SELECT has_table_privilege('aegis_app', '"AuditLog"', 'UPDATE') AS has_update,
+const revoked = await client.query<{
+  has_update: boolean;
+  has_delete: boolean;
+}>(
+  `SELECT has_table_privilege('aegis_app', '"AuditLog"', 'UPDATE') AS has_update,
               has_table_privilege('aegis_app', '"AuditLog"', 'DELETE') AS has_delete`,
-    );
-    if (revoked.rows[0]?.has_update) missing.push("aegis_app must not have UPDATE on AuditLog");
-    if (revoked.rows[0]?.has_delete) missing.push("aegis_app must not have DELETE on AuditLog");
+);
+if (revoked.rows[0]?.has_update)
+  missing.push("aegis_app must not have UPDATE on AuditLog");
+if (revoked.rows[0]?.has_delete)
+  missing.push("aegis_app must not have DELETE on AuditLog");
 ```
 
 - [ ] **Step 2: Run verify to see it fail**
@@ -865,14 +938,18 @@ git commit -m "feat(audit): DO INSTEAD NOTHING rules block UPDATE/DELETE on Audi
 ### Task 7: Nightly verify job and the CRITICAL notification
 
 **Files:**
+
 - Create: `src/jobs/verify-audit-chain.ts`
 - Create: `src/jobs/__tests__/verify-audit-chain.test.ts`
 - Modify: `src/lib/job-queue.ts` (`JOB_NAMES`, `createQueue`, `schedule`)
 - Modify: `src/jobs/index.ts` (`JOBS`, `registerJobs`)
 
 **Interfaces:**
-- Consumes: `verifyChain` from `src/lib/audit-chain.ts`; `withAuditedMutation`, `systemActor` from `src/data-access/audited-mutation.ts`.
-- Produces: `verifyAuditChain(): Promise<void>`, exported for the job registration and for Task 8's run-now action to call directly.
+
+- Consumes: `verifyChain`, `GENESIS_HASH` from `src/lib/audit-chain.ts`; `withAuditedMutation`, `systemActor` from `src/data-access/audited-mutation.ts`; `AuditChainHead.lastVerifiedSequence`/`lastVerifiedHash` (Task 1).
+- Produces: `verifyAuditChain(options?: { full?: boolean }): Promise<void>`, exported for the job registration and for Task 8's run-now action to call directly.
+
+**Design note — incremental, not a full re-walk every night:** `AuditLog` is a 10-year-retention append-only table. A job that loads and rehashes every historical row for every tenant, every night, grows unboundedly with the tenant's lifetime write volume — after a couple of years of real bank traffic that's a full-table scan and a full SHA-256 rechain every night, forever, for data that was already proven clean the night before. Instead, the nightly run only fetches rows written since the last clean checkpoint (`sequenceNumber > lastVerifiedSequence`) and chains them onto `lastVerifiedHash` instead of `GENESIS_HASH`; on a clean result it advances the checkpoint, so nightly cost is O(one day's writes), not O(lifetime writes). The checkpoint only advances on `ok: true` — a broken chain leaves it where it was, so the next run keeps reporting the same break instead of silently skipping past it. `options.full` bypasses the checkpoint and walks from genesis; Task 8's manual "run verification now" button passes `{ full: true }` since an admin invoking it on demand wants the whole-chain guarantee, not just "nothing broke today" — this is the one path expected to be slow and is rare/human-triggered, not nightly-automatic.
 
 - [ ] **Step 1: Write the failing unit test**
 
@@ -882,6 +959,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const mockFindMany = vi.fn();
 const mockTenantFindMany = vi.fn();
+const mockHeadFindUnique = vi.fn();
+const mockHeadUpdate = vi.fn();
 const mockCreate = vi.fn();
 const mockUserFindMany = vi.fn();
 
@@ -889,16 +968,25 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     tenant: { findMany: (...args: unknown[]) => mockTenantFindMany(...args) },
     auditLog: { findMany: (...args: unknown[]) => mockFindMany(...args) },
+    auditChainHead: {
+      findUnique: (...args: unknown[]) => mockHeadFindUnique(...args),
+    },
     user: { findMany: (...args: unknown[]) => mockUserFindMany(...args) },
   },
 }));
 
 vi.mock("@/data-access/audited-mutation", () => ({
-  withAuditedMutation: vi.fn(async (_actor: unknown, _action: unknown, fn: (tx: unknown) => unknown) =>
-    fn({
-      auditChainVerification: { create: (...args: unknown[]) => mockCreate(...args) },
-      notificationQueue: { create: vi.fn() },
-    }),
+  withAuditedMutation: vi.fn(
+    async (_actor: unknown, _action: unknown, fn: (tx: unknown) => unknown) =>
+      fn({
+        auditChainVerification: {
+          create: (...args: unknown[]) => mockCreate(...args),
+        },
+        auditChainHead: {
+          update: (...args: unknown[]) => mockHeadUpdate(...args),
+        },
+        notificationQueue: { create: vi.fn() },
+      }),
   ),
   systemActor: (tenantId: string) => ({ kind: "system", tenantId }),
 }));
@@ -907,34 +995,85 @@ describe("verifyAuditChain", () => {
   beforeEach(() => {
     mockFindMany.mockReset();
     mockTenantFindMany.mockReset();
+    mockHeadFindUnique.mockReset();
+    mockHeadUpdate.mockReset();
     mockCreate.mockReset();
     mockUserFindMany.mockReset();
   });
 
-  it("writes ok:true for a tenant with a clean chain", async () => {
+  it("only queries rows after the last verified checkpoint, and advances it on a clean result", async () => {
     mockTenantFindMany.mockResolvedValue([{ id: "t1" }]);
+    mockHeadFindUnique.mockResolvedValue({
+      lastVerifiedSequence: 5n,
+      lastVerifiedHash: Buffer.alloc(32, 7),
+    });
     mockFindMany.mockResolvedValue([]);
     const { verifyAuditChain } = await import("@/jobs/verify-audit-chain");
     await verifyAuditChain();
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ sequenceNumber: { gt: 5n } }),
+      }),
+    );
     expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ tenantId: "t1", ok: true }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ tenantId: "t1", ok: true }),
+      }),
+    );
+    expect(mockHeadUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ lastVerifiedSequence: 5n }),
+      }),
     );
   });
 
-  it("writes ok:false with firstBadSequence and queues a CRITICAL notification on a broken chain", async () => {
+  it("writes ok:false with firstBadSequence, queues a CRITICAL notification, and does not advance the checkpoint", async () => {
     mockTenantFindMany.mockResolvedValue([{ id: "t1" }]);
+    mockHeadFindUnique.mockResolvedValue({
+      lastVerifiedSequence: 0n,
+      lastVerifiedHash: null,
+    });
     mockFindMany.mockResolvedValue([
       {
-        tenantId: "t1", sequenceNumber: 1n, tableName: "Branch", recordId: "r1", operation: "INSERT",
-        userId: null, createdAt: new Date("2026-01-01T00:00:00.000Z"), oldData: null, newData: { a: 1 },
-        prevHash: Buffer.alloc(32), rowHash: Buffer.from("wrong-hash-not-32-bytes-padded00", "utf8"),
+        tenantId: "t1",
+        sequenceNumber: 1n,
+        tableName: "Branch",
+        recordId: "r1",
+        operation: "INSERT",
+        userId: null,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        oldData: null,
+        newData: { a: 1 },
+        prevHash: Buffer.alloc(32),
+        rowHash: Buffer.from("wrong-hash-not-32-bytes-padded00", "utf8"),
       },
     ]);
     mockUserFindMany.mockResolvedValue([{ id: "u1" }]);
     const { verifyAuditChain } = await import("@/jobs/verify-audit-chain");
     await verifyAuditChain();
     expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ tenantId: "t1", ok: false, firstBadSequence: 1n }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tenantId: "t1",
+          ok: false,
+          firstBadSequence: 1n,
+        }),
+      }),
+    );
+    expect(mockHeadUpdate).not.toHaveBeenCalled();
+  });
+
+  it("options.full ignores the checkpoint and verifies from genesis", async () => {
+    mockTenantFindMany.mockResolvedValue([{ id: "t1" }]);
+    mockHeadFindUnique.mockResolvedValue({
+      lastVerifiedSequence: 5n,
+      lastVerifiedHash: Buffer.alloc(32, 7),
+    });
+    mockFindMany.mockResolvedValue([]);
+    const { verifyAuditChain } = await import("@/jobs/verify-audit-chain");
+    await verifyAuditChain({ full: true });
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { tenantId: "t1" } }),
     );
   });
 });
@@ -951,24 +1090,56 @@ Expected: FAIL, `Cannot find module '@/jobs/verify-audit-chain'`.
 // src/jobs/verify-audit-chain.ts
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
-import { withAuditedMutation, systemActor } from "@/data-access/audited-mutation";
-import { verifyChain, type LinkedRow } from "@/lib/audit-chain";
+import {
+  withAuditedMutation,
+  systemActor,
+} from "@/data-access/audited-mutation";
+import { verifyChain, GENESIS_HASH, type LinkedRow } from "@/lib/audit-chain";
 
 /**
- * Nightly (02:00 IST): walk every tenant's AuditLog chain, record the
- * verdict, and raise a CRITICAL notification to CAE/SYSTEM_ADMIN on the
- * first tenant where it breaks. Spec §5.
+ * Nightly (02:00 IST): walk each tenant's AuditLog chain FORWARD FROM THE
+ * LAST CLEAN CHECKPOINT (AuditChainHead.lastVerifiedSequence/lastVerifiedHash),
+ * record the verdict, and raise a CRITICAL notification to CAE/SYSTEM_ADMIN
+ * on the first tenant where it breaks. Spec §5.
+ *
+ * options.full re-verifies the entire chain from genesis, ignoring the
+ * checkpoint — for Task 8's manual "run verification now" and for the
+ * attestation export, where a human explicitly wants the whole-chain
+ * guarantee. Not used by the nightly schedule.
  */
-export async function verifyAuditChain(): Promise<void> {
+export async function verifyAuditChain(options?: {
+  full?: boolean;
+}): Promise<void> {
   const tenants = await prisma.tenant.findMany({ select: { id: true } });
 
   for (const tenant of tenants) {
+    const head = options?.full
+      ? null
+      : await prisma.auditChainHead.findUnique({
+          where: { tenantId: tenant.id },
+          select: { lastVerifiedSequence: true, lastVerifiedHash: true },
+        });
+    const sinceSequence = head?.lastVerifiedSequence ?? 0n;
+    const genesisPrevHash =
+      (head?.lastVerifiedHash as Buffer | null) ?? GENESIS_HASH;
+
     const rows = await prisma.auditLog.findMany({
-      where: { tenantId: tenant.id },
+      where: options?.full
+        ? { tenantId: tenant.id }
+        : { tenantId: tenant.id, sequenceNumber: { gt: sinceSequence } },
       orderBy: { sequenceNumber: "asc" },
       select: {
-        tenantId: true, sequenceNumber: true, tableName: true, recordId: true, operation: true,
-        userId: true, createdAt: true, oldData: true, newData: true, prevHash: true, rowHash: true,
+        tenantId: true,
+        sequenceNumber: true,
+        tableName: true,
+        recordId: true,
+        operation: true,
+        userId: true,
+        createdAt: true,
+        oldData: true,
+        newData: true,
+        prevHash: true,
+        rowHash: true,
       },
     });
 
@@ -986,39 +1157,73 @@ export async function verifyAuditChain(): Promise<void> {
       rowHash: r.rowHash as Buffer,
     }));
 
-    const verdict = verifyChain(linked);
+    const verdict = verifyChain(linked, genesisPrevHash);
 
-    await withAuditedMutation(systemActor(tenant.id), "audit_chain.verified", async (tx) => {
-      await tx.auditChainVerification.create({
-        data: {
-          tenantId: tenant.id,
-          ok: verdict.ok,
-          firstBadSequence: verdict.ok ? null : verdict.firstBadSequence,
-        },
-      });
-
-      if (!verdict.ok) {
-        const recipients = await prisma.user.findMany({
-          where: { tenantId: tenant.id, roles: { hasSome: ["CAE", "SYSTEM_ADMIN"] as never } },
-          select: { id: true },
+    await withAuditedMutation(
+      systemActor(tenant.id),
+      "audit_chain.verified",
+      async (tx) => {
+        await tx.auditChainVerification.create({
+          data: {
+            tenantId: tenant.id,
+            ok: verdict.ok,
+            firstBadSequence: verdict.ok ? null : verdict.firstBadSequence,
+          },
         });
-        for (const recipient of recipients) {
-          await tx.notificationQueue.create({
+
+        if (verdict.ok) {
+          const newCheckpointSequence =
+            linked.length > 0
+              ? linked[linked.length - 1].sequenceNumber
+              : sinceSequence;
+          const newCheckpointHash =
+            linked.length > 0
+              ? linked[linked.length - 1].rowHash
+              : genesisPrevHash;
+          await tx.auditChainHead.update({
+            where: { tenantId: tenant.id },
             data: {
-              tenantId: tenant.id,
-              recipientId: recipient.id,
-              type: "AUDIT_CHAIN_TAMPER_DETECTED",
-              status: "PENDING",
-              payload: { firstBadSequence: verdict.firstBadSequence.toString() },
+              lastVerifiedSequence: newCheckpointSequence,
+              lastVerifiedHash: newCheckpointHash,
             },
           });
+        } else {
+          // Checkpoint deliberately NOT advanced — the next run (nightly or
+          // manual) reports the same break instead of silently moving past it.
+          const recipients = await prisma.user.findMany({
+            where: {
+              tenantId: tenant.id,
+              roles: { hasSome: ["CAE", "SYSTEM_ADMIN"] as never },
+            },
+            select: { id: true },
+          });
+          for (const recipient of recipients) {
+            await tx.notificationQueue.create({
+              data: {
+                tenantId: tenant.id,
+                recipientId: recipient.id,
+                type: "AUDIT_CHAIN_TAMPER_DETECTED",
+                status: "PENDING",
+                payload: {
+                  firstBadSequence: verdict.firstBadSequence.toString(),
+                },
+              },
+            });
+          }
         }
-      }
-    });
+      },
+    );
 
     logger.info(
-      { action: "audit_chain_verified", tenantId: tenant.id, ok: verdict.ok },
-      verdict.ok ? "Audit chain verified clean" : "Audit chain verification FAILED",
+      {
+        action: "audit_chain_verified",
+        tenantId: tenant.id,
+        ok: verdict.ok,
+        checkedFrom: sinceSequence.toString(),
+      },
+      verdict.ok
+        ? "Audit chain verified clean"
+        : "Audit chain verification FAILED",
     );
   }
 }
@@ -1027,7 +1232,7 @@ export async function verifyAuditChain(): Promise<void> {
 - [ ] **Step 4: Run the unit test**
 
 Run: `pnpm vitest run src/jobs/__tests__/verify-audit-chain.test.ts`
-Expected: PASS (2 tests).
+Expected: PASS (3 tests).
 
 - [ ] **Step 5: Register and schedule**
 
@@ -1040,21 +1245,29 @@ In `src/lib/job-queue.ts`, add to `JOB_NAMES`:
 In `startWorkers()`, add a queue and its schedule (02:00 IST = 20:30 UTC the previous day):
 
 ```ts
-  await queue.createQueue(JOB_NAMES.VERIFY_AUDIT_CHAIN, QUEUE_OPTIONS);
-  // …
-  await queue.schedule(JOB_NAMES.VERIFY_AUDIT_CHAIN, "30 20 * * *"); // daily 20:30 UTC = 02:00 IST
+await queue.createQueue(JOB_NAMES.VERIFY_AUDIT_CHAIN, QUEUE_OPTIONS);
+// …
+await queue.schedule(JOB_NAMES.VERIFY_AUDIT_CHAIN, "30 20 * * *"); // daily 20:30 UTC = 02:00 IST
 ```
 
 In `src/jobs/index.ts`, import and register:
 
 ```ts
 import { verifyAuditChain } from "./verify-audit-chain";
-// … in JOBS:
-  VERIFY_AUDIT_CHAIN: "verify-audit-chain",
-// … in registerJobs():
-  await boss.work(JOBS.VERIFY_AUDIT_CHAIN, async () => {
-    await verifyAuditChain();
-  });
+```
+
+Add to the `JOBS` object:
+
+```ts
+VERIFY_AUDIT_CHAIN: "verify-audit-chain",
+```
+
+Add inside `registerJobs()`:
+
+```ts
+await boss.work(JOBS.VERIFY_AUDIT_CHAIN, async () => {
+  await verifyAuditChain();
+});
 ```
 
 - [ ] **Step 6: Typecheck and unit suite**
@@ -1074,6 +1287,7 @@ git commit -m "feat(audit): nightly verify-audit-chain job, CRITICAL notificatio
 ### Task 8: Admin page — verification history, run-now, attestation export
 
 **Files:**
+
 - Create: `src/data-access/audit-chain-admin.ts`
 - Create: `src/actions/admin/run-audit-chain-verification.ts`
 - Create: `src/actions/admin/export-chain-attestation.ts`
@@ -1082,6 +1296,7 @@ git commit -m "feat(audit): nightly verify-audit-chain job, CRITICAL notificatio
 - Create: `src/components/admin/audit-chain-panel.tsx`
 
 **Interfaces:**
+
 - Consumes: `verifyAuditChain` from `src/jobs/verify-audit-chain.ts`; `requirePermission` from `src/lib/guards.ts`; the `"admin:system"` permission (already granted to `SYSTEM_ADMIN` in `src/lib/permissions.ts`).
 - Produces: `getChainVerifications(tenantId): Promise<AuditChainVerification[]>`, `getChainHead(tenantId): Promise<{ lastSequence: bigint; lastHash: Buffer } | null>`.
 
@@ -1099,7 +1314,9 @@ export interface ChainVerificationRow {
   firstBadSequence: bigint | null;
 }
 
-export async function getChainVerifications(tenantId: string): Promise<ChainVerificationRow[]> {
+export async function getChainVerifications(
+  tenantId: string,
+): Promise<ChainVerificationRow[]> {
   const db = prismaForTenant(tenantId);
   return db.auditChainVerification.findMany({
     where: { tenantId },
@@ -1114,7 +1331,13 @@ export async function getChainHead(
 ): Promise<{ lastSequence: bigint; lastHash: Buffer; updatedAt: Date } | null> {
   const db = prismaForTenant(tenantId);
   const head = await db.auditChainHead.findUnique({ where: { tenantId } });
-  return head ? { lastSequence: head.lastSequence, lastHash: head.lastHash as Buffer, updatedAt: head.updatedAt } : null;
+  return head
+    ? {
+        lastSequence: head.lastSequence,
+        lastHash: head.lastHash as Buffer,
+        updatedAt: head.updatedAt,
+      }
+    : null;
 }
 ```
 
@@ -1131,18 +1354,29 @@ import { getChainVerifications } from "@/data-access/audit-chain-admin";
 import type { ActionResult } from "@/types";
 
 export async function runAuditChainVerification(): Promise<
-  ActionResult<{ latest: Awaited<ReturnType<typeof getChainVerifications>>[number] }>
+  ActionResult<{
+    latest: Awaited<ReturnType<typeof getChainVerifications>>[number];
+  }>
 > {
   await requirePermission("admin:system");
   const session = await getRequiredSession();
 
   try {
-    await verifyAuditChain();
+    // full: true — an admin invoking this on demand wants the whole-chain
+    // guarantee, not just "nothing broke since the last nightly checkpoint".
+    await verifyAuditChain({ full: true });
     const [latest] = await getChainVerifications(session.user.tenantId);
-    if (!latest) return { success: false, error: "Verification ran but produced no record" };
+    if (!latest)
+      return {
+        success: false,
+        error: "Verification ran but produced no record",
+      };
     return { success: true, data: { latest } };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Verification failed" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Verification failed",
+    };
   }
 }
 ```
@@ -1158,10 +1392,19 @@ import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 11, fontFamily: "Helvetica" },
   title: { fontSize: 18, marginBottom: 16 },
-  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
   label: { color: "#555" },
   section: { marginTop: 20 },
-  historyRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#ddd", paddingVertical: 4 },
+  historyRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+    paddingVertical: 4,
+  },
 });
 
 export interface ChainAttestationProps {
@@ -1171,7 +1414,12 @@ export interface ChainAttestationProps {
   history: { verifiedAt: Date; ok: boolean; firstBadSequence: bigint | null }[];
 }
 
-export function ChainAttestation({ tenantName, generatedAt, head, history }: ChainAttestationProps) {
+export function ChainAttestation({
+  tenantName,
+  generatedAt,
+  head,
+  history,
+}: ChainAttestationProps) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -1193,11 +1441,15 @@ export function ChainAttestation({ tenantName, generatedAt, head, history }: Cha
           <Text>{head ? head.lastHash.toString("hex") : "—"}</Text>
         </View>
         <View style={styles.section}>
-          <Text style={{ marginBottom: 8, fontSize: 13 }}>Recent verifications</Text>
+          <Text style={{ marginBottom: 8, fontSize: 13 }}>
+            Recent verifications
+          </Text>
           {history.map((h) => (
             <View key={h.verifiedAt.toISOString()} style={styles.historyRow}>
               <Text style={{ flex: 1 }}>{h.verifiedAt.toISOString()}</Text>
-              <Text style={{ flex: 1 }}>{h.ok ? "OK" : `FAILED at #${h.firstBadSequence}`}</Text>
+              <Text style={{ flex: 1 }}>
+                {h.ok ? "OK" : `FAILED at #${h.firstBadSequence}`}
+              </Text>
             </View>
           ))}
         </View>
@@ -1219,11 +1471,15 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { getRequiredSession } from "@/lib/session";
 import { requirePermission } from "@/lib/guards";
 import { prismaForTenant } from "@/lib/prisma";
-import { getChainHead, getChainVerifications } from "@/data-access/audit-chain-admin";
+import {
+  getChainHead,
+  getChainVerifications,
+} from "@/data-access/audit-chain-admin";
 import { ChainAttestation } from "@/components/pdf-report/chain-attestation";
 
 export async function exportChainAttestation(): Promise<
-  { success: true; data: { base64: string; filename: string } } | { success: false; error: string }
+  | { success: true; data: { base64: string; filename: string } }
+  | { success: false; error: string }
 > {
   await requirePermission("admin:system");
   const session = await getRequiredSession();
@@ -1231,19 +1487,36 @@ export async function exportChainAttestation(): Promise<
 
   try {
     const db = prismaForTenant(tenantId);
-    const tenant = await db.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { name: true } });
-    const [head, history] = await Promise.all([getChainHead(tenantId), getChainVerifications(tenantId)]);
+    const tenant = await db.tenant.findUniqueOrThrow({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+    const [head, history] = await Promise.all([
+      getChainHead(tenantId),
+      getChainVerifications(tenantId),
+    ]);
 
     const buffer = await renderToBuffer(
-      ChainAttestation({ tenantName: tenant.name, generatedAt: new Date(), head, history }),
+      ChainAttestation({
+        tenantName: tenant.name,
+        generatedAt: new Date(),
+        head,
+        history,
+      }),
     );
 
     return {
       success: true,
-      data: { base64: buffer.toString("base64"), filename: `audit-chain-attestation-${tenantId}.pdf` },
+      data: {
+        base64: buffer.toString("base64"),
+        filename: `audit-chain-attestation-${tenantId}.pdf`,
+      },
     };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Export failed" };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Export failed",
+    };
   }
 }
 ```
@@ -1254,7 +1527,10 @@ export async function exportChainAttestation(): Promise<
 // src/app/(dashboard)/admin/audit-chain/page.tsx
 import { requirePermission } from "@/lib/guards";
 import { getRequiredSession } from "@/lib/session";
-import { getChainHead, getChainVerifications } from "@/data-access/audit-chain-admin";
+import {
+  getChainHead,
+  getChainVerifications,
+} from "@/data-access/audit-chain-admin";
 import { AuditChainPanel } from "@/components/admin/audit-chain-panel";
 
 export default async function AuditChainAdminPage() {
@@ -1268,13 +1544,23 @@ export default async function AuditChainAdminPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold tracking-tight md:text-2xl">Audit Chain</h1>
+        <h1 className="text-lg font-semibold tracking-tight md:text-2xl">
+          Audit Chain
+        </h1>
         <p className="text-muted-foreground">
-          Every audited write is chained by hash. Verification runs nightly at 02:00 IST.
+          Every audited write is chained by hash. Verification runs nightly at
+          02:00 IST.
         </p>
       </div>
       <AuditChainPanel
-        head={head ? { lastSequence: head.lastSequence.toString(), lastHash: head.lastHash.toString("hex") } : null}
+        head={
+          head
+            ? {
+                lastSequence: head.lastSequence.toString(),
+                lastHash: head.lastHash.toString("hex"),
+              }
+            : null
+        }
         history={history.map((h) => ({
           id: h.id,
           verifiedAt: h.verifiedAt.toISOString(),
@@ -1298,7 +1584,12 @@ import { exportChainAttestation } from "@/actions/admin/export-chain-attestation
 
 interface AuditChainPanelProps {
   head: { lastSequence: string; lastHash: string } | null;
-  history: { id: string; verifiedAt: string; ok: boolean; firstBadSequence: string | null }[];
+  history: {
+    id: string;
+    verifiedAt: string;
+    ok: boolean;
+    firstBadSequence: string | null;
+  }[];
 }
 
 export function AuditChainPanel({ head, history }: AuditChainPanelProps) {
@@ -1324,7 +1615,8 @@ export function AuditChainPanel({ head, history }: AuditChainPanelProps) {
       }
       const byteCharacters = atob(result.data.base64);
       const bytes = new Uint8Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) bytes[i] = byteCharacters.charCodeAt(i);
+      for (let i = 0; i < byteCharacters.length; i++)
+        bytes[i] = byteCharacters.charCodeAt(i);
       const blob = new Blob([bytes], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -1345,15 +1637,15 @@ export function AuditChainPanel({ head, history }: AuditChainPanelProps) {
           Export attestation
         </Button>
       </div>
-      {error && <p className="text-destructive text-sm">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
       {head && (
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           Chain length {head.lastSequence} · head {head.lastHash.slice(0, 16)}…
         </p>
       )}
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-muted-foreground text-left">
+          <tr className="text-left text-muted-foreground">
             <th className="py-2">Verified</th>
             <th className="py-2">Result</th>
           </tr>
@@ -1361,8 +1653,12 @@ export function AuditChainPanel({ head, history }: AuditChainPanelProps) {
         <tbody>
           {history.map((h) => (
             <tr key={h.id} className="border-t">
-              <td className="py-2">{new Date(h.verifiedAt).toLocaleString()}</td>
-              <td className="py-2">{h.ok ? "OK" : `Failed at #${h.firstBadSequence}`}</td>
+              <td className="py-2">
+                {new Date(h.verifiedAt).toLocaleString()}
+              </td>
+              <td className="py-2">
+                {h.ok ? "OK" : `Failed at #${h.firstBadSequence}`}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -1391,9 +1687,11 @@ git commit -m "feat(audit): admin page for chain verification history, run-now, 
 ### Task 9: Integration tamper tests
 
 **Files:**
+
 - Create: `src/data-access/__integration__/audit-chain.test.ts`
 
 **Interfaces:**
+
 - Consumes: `integrationOwner`, `integrationPrisma`, `createTenant`, `createUser`, `withFixtures`, `resetDatabase` from `tests/integration/harness.ts` (the RLS plan's Task 5 split; if that plan's spike failed, `integrationOwner` still exists as introduced there — its Task 5 runs regardless of the ADR verdict per that plan's own fallback notes) — `verifyChain` from `src/lib/audit-chain.ts`.
 - Produces: the three tests spec §10 names verbatim: "three audited writes verify clean," "a superuser `UPDATE` of a middle row is reported by row," "a superuser `DELETE` is reported by both gap and chain."
 
@@ -1471,18 +1769,25 @@ describe("audit chain tamper detection", () => {
     // targets (a superuser willing to alter the rule itself), matching
     // "070_audit_log_immutability.sql"'s own documented scope: the rule
     // stops ordinary privilege paths, the hash chain catches the rest.
-    await integrationOwner.$executeRawUnsafe(`ALTER TABLE "AuditLog" DISABLE RULE audit_log_no_update`);
+    await integrationOwner.$executeRawUnsafe(
+      `ALTER TABLE "AuditLog" DISABLE RULE audit_log_no_update`,
+    );
     try {
       await integrationOwner.$executeRaw`
         UPDATE "AuditLog" SET "actionType" = 'tampered-by-superuser'
         WHERE "sequenceNumber" = ${middle.sequenceNumber} AND "tenantId" = ${tenantId}::uuid`;
     } finally {
-      await integrationOwner.$executeRawUnsafe(`ALTER TABLE "AuditLog" ENABLE RULE audit_log_no_update`);
+      await integrationOwner.$executeRawUnsafe(
+        `ALTER TABLE "AuditLog" ENABLE RULE audit_log_no_update`,
+      );
     }
 
     const after = await linkedRows();
     const verdict = verifyChain(after);
-    expect(verdict).toEqual({ ok: false, firstBadSequence: middle.sequenceNumber });
+    expect(verdict).toEqual({
+      ok: false,
+      firstBadSequence: middle.sequenceNumber,
+    });
   });
 
   it("a superuser DELETE of a middle row is reported by both a sequence gap and the chain", async () => {
@@ -1492,8 +1797,12 @@ describe("audit chain tamper detection", () => {
       localTenantId = (await createTenant("Delete Test Bank")).id;
       await createUser(localTenantId, ["CAE"]);
       await integrationOwner.$executeRaw`SELECT set_config('app.current_tenant_id', ${localTenantId}, true)`;
-      await integrationOwner.branch.create({ data: { tenantId: localTenantId, name: "B1", code: "D001" } });
-      await integrationOwner.branch.create({ data: { tenantId: localTenantId, name: "B2", code: "D002" } });
+      await integrationOwner.branch.create({
+        data: { tenantId: localTenantId, name: "B1", code: "D001" },
+      });
+      await integrationOwner.branch.create({
+        data: { tenantId: localTenantId, name: "B2", code: "D002" },
+      });
     });
 
     const before = await integrationOwner.auditLog.findMany({
@@ -1502,12 +1811,16 @@ describe("audit chain tamper detection", () => {
     });
     const middle = before[Math.floor(before.length / 2)];
 
-    await integrationOwner.$executeRawUnsafe(`ALTER TABLE "AuditLog" DISABLE RULE audit_log_no_delete`);
+    await integrationOwner.$executeRawUnsafe(
+      `ALTER TABLE "AuditLog" DISABLE RULE audit_log_no_delete`,
+    );
     try {
       await integrationOwner.$executeRaw`
         DELETE FROM "AuditLog" WHERE "sequenceNumber" = ${middle.sequenceNumber} AND "tenantId" = ${localTenantId}::uuid`;
     } finally {
-      await integrationOwner.$executeRawUnsafe(`ALTER TABLE "AuditLog" ENABLE RULE audit_log_no_delete`);
+      await integrationOwner.$executeRawUnsafe(
+        `ALTER TABLE "AuditLog" ENABLE RULE audit_log_no_delete`,
+      );
     }
 
     const gaps = await detectAuditGaps(localTenantId);
@@ -1518,12 +1831,23 @@ describe("audit chain tamper detection", () => {
       orderBy: { sequenceNumber: "asc" },
     });
     const linked: LinkedRow[] = rows.map((r) => ({
-      tenantId: r.tenantId, sequenceNumber: r.sequenceNumber, tableName: r.tableName, recordId: r.recordId,
-      operation: r.operation, actorUserId: r.userId, changedAt: r.createdAt, oldData: r.oldData, newData: r.newData,
-      prevHash: r.prevHash as Buffer, rowHash: r.rowHash as Buffer,
+      tenantId: r.tenantId,
+      sequenceNumber: r.sequenceNumber,
+      tableName: r.tableName,
+      recordId: r.recordId,
+      operation: r.operation,
+      actorUserId: r.userId,
+      changedAt: r.createdAt,
+      oldData: r.oldData,
+      newData: r.newData,
+      prevHash: r.prevHash as Buffer,
+      rowHash: r.rowHash as Buffer,
     }));
     const verdict = verifyChain(linked);
-    expect(verdict).toEqual({ ok: false, firstBadSequence: middle.sequenceNumber + 1n });
+    expect(verdict).toEqual({
+      ok: false,
+      firstBadSequence: middle.sequenceNumber + 1n,
+    });
   });
 });
 ```
@@ -1552,12 +1876,13 @@ git commit -m "test(audit): tamper detection integration tests — clean chain, 
 ## Self-review
 
 **Spec coverage (§5, relevant §10/§12 lines, §11 weeks 4-5):**
+
 - `AuditLog` gains `prevHash`/`rowHash`; `AuditChainHead(tenantId PK, lastSequence, lastHash)` → Task 1.
 - Trigger takes `SELECT … FOR UPDATE` on the head row, computes `rowHash` from the exact spec formula, advances the head; genesis `prevHash` is 32 zero bytes → Task 3.
 - `sequenceNumber` becomes per tenant; `detectAuditGaps()` rewritten against it, called by the verify job → Task 3 (schema/trigger), Task 4 (function correctness note), Task 7 (job — note: the job's own tamper-detection uses `verifyChain` over the full row set, not `detectAuditGaps`; `detectAuditGaps` is exercised directly in Task 9's delete test, matching how the spec lists "detectAuditGaps... called by the verify job" as a capability that exists, which it now correctly does via `src/data-access/audit-trail.ts`, even though `verifyAuditChain()` itself calls `verifyChain` for the hash proof and would rather not duplicate work — see the discrepancy note below).
 - Immutability: `DO INSTEAD NOTHING` rules plus `REVOKE UPDATE, DELETE` from `aegis_app` → Task 6 (rules) + the tenant-isolation plan's Task 3 (revoke, already landed by the time this plan runs).
 - `src/lib/audit-chain.ts` pure module: `hashRow`, `verifyChain`, unit-tested → Task 2.
-- Nightly `verify-audit-chain` at 02:00 IST, `AuditChainVerification`, CRITICAL notification to CAE and platform admin on first mismatch → Task 7.
+- Nightly `verify-audit-chain` at 02:00 IST, `AuditChainVerification`, CRITICAL notification to CAE and platform admin on first mismatch → Task 7. **Revised during planning review:** the nightly run is incremental (checks only rows since `AuditChainHead.lastVerifiedSequence`, advances the checkpoint on success, never on failure) rather than rewalking the full chain from genesis every night — the latter is O(lifetime writes) against a 10-year-retention append-only table and gets slower forever. A full genesis walk still exists (`{ full: true }`), used only by Task 8's manual run-now button.
 - Admin page: last verification per tenant, run-now, export chain head + attestation PDF → Task 8.
 - One-off backfill script → Task 5.
 - Integration tests: three clean writes, superuser UPDATE reported by row, superuser DELETE reported by gap and chain → Task 9.
@@ -1566,9 +1891,10 @@ git commit -m "test(audit): tamper detection integration tests — clean chain, 
 - §12 risk ("per-tenant chain lock… not measurable at UCB scale; if it ever is, batch inserts per transaction") — the trigger design note in Task 3 states the same non-contention property; no batching work is scoped here, matching the spec's own "if it ever is" framing.
 
 **Discrepancies found between the spec and the actual repo (documented here rather than guessed past):**
+
 1. Spec §5 says "Immutability is unchanged," implying `DO INSTEAD NOTHING` rules and the `REVOKE` already exist. Neither exists anywhere in this repo — confirmed by grepping `prisma/`, `src/` for `INSTEAD NOTHING`, `CREATE RULE`, `REVOKE`. The only related artifact is a `REVOKE UPDATE, DELETE ON "AuditLog" FROM aegis_app` that the tenant-isolation plan's Task 3 adds as part of `grantAppRole()` — written independently of this plan, before this plan existed, but it satisfies half of what §5 assumed was already there. This plan's Task 6 builds the other half (the rules) as new work, not a no-op.
 2. `src/lib/session-context.ts`'s doc comment references `prisma/migrations/add_rls_policies.sql` as an existing file — it does not exist in this repo (same discrepancy the tenant-isolation plan found independently for the same phantom file). Not corrected here since it is outside this plan's file list; flagged for whoever next touches that file.
-3. The current `detectAuditGaps` (pre-this-plan) has a real, verified bug: it computes gaps over `MIN`/`MAX` of a column that was, until Task 3, a single Postgres sequence shared across every tenant, so concurrent multi-tenant writes produce false-positive gaps. This was not a spec claim to correct — the spec simply says the function "is rewritten"; this plan documents *why* the rewrite (which Task 3's schema change alone accomplishes) is not cosmetic.
+3. The current `detectAuditGaps` (pre-this-plan) has a real, verified bug: it computes gaps over `MIN`/`MAX` of a column that was, until Task 3, a single Postgres sequence shared across every tenant, so concurrent multi-tenant writes produce false-positive gaps. This was not a spec claim to correct — the spec simply says the function "is rewritten"; this plan documents _why_ the rewrite (which Task 3's schema change alone accomplishes) is not cosmetic.
 4. The attestation PDF's "signed" requirement (spec §5: "a signed attestation PDF for an examiner") is only partially built: Task 8 renders the PDF but does not cryptographically sign it, because the Ed25519 signing key spec §8 (licensing) introduces does not exist yet in this repo and that plan has not run. Flagged in Task 8's own text as a follow-up once the licensing plan lands, rather than inventing a key here.
 
 **Placeholder scan:** no TBD/TODO. Task 3's migration SQL comment explaining the superuser-bypass boundary is a real design statement, not a placeholder — it says plainly what the rule does and does not defend against, and Task 9's tests exercise exactly that boundary.

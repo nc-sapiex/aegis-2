@@ -6,6 +6,8 @@ export const RLS_TABLES = [
   "ApplicationInventory",
   "AuditArea",
   "AuditCalendar",
+  "AuditChainHead",
+  "AuditChainVerification",
   "AuditEngagement",
   "AuditLog",
   "AuditModule",

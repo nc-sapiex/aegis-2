@@ -180,10 +180,16 @@ export async function getAuditActionTypes(tenantId: string): Promise<string[]> {
 }
 
 /**
- * Detect gaps in sequence numbers for tampering detection.
+ * Detect gaps in a tenant's sequence number, for tamper detection.
+ *
+ * sequenceNumber is assigned per tenant by the audit trigger (spec §5,
+ * prisma/sql/010_audit_trigger_function.sql), starting at 1 with no gaps
+ * from other tenants' concurrent writes. Unlike the single shared Postgres
+ * sequence this column used before the hash chain, a gap reported here means
+ * a row was deleted or a sequenceNumber was written out of band, not
+ * ordinary multi-tenant interleaving.
  *
  * Uses raw SQL to generate series and find missing numbers.
- * Only checks within the tenant's own sequence space.
  */
 export async function detectAuditGaps(
   tenantId: string,

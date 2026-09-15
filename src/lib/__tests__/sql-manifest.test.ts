@@ -58,6 +58,52 @@ describe("SQL manifest", () => {
   });
 });
 
+describe("audit chain", () => {
+  it("010 computes rowHash with pgcrypto digest(...,'sha256') under a head-row lock", () => {
+    const sql = readFileSync(
+      join(process.cwd(), "prisma/sql/010_audit_trigger_function.sql"),
+      "utf8",
+    );
+    expect(sql).toContain("digest(");
+    expect(sql).toContain("'sha256'");
+    expect(sql).toContain("FOR UPDATE");
+    expect(sql).toContain("FUNCTION audit_chain_insert(");
+    expect(sql).toContain("FUNCTION audit_chain_field(");
+    expect(sql).toContain("FUNCTION audit_chain_row_hash(");
+  });
+
+  it("010 backfills pre-chain rows, excluding the sentinel tenant, and never rebuilds a chain once the immutability rules exist", () => {
+    const sql = readFileSync(
+      join(process.cwd(), "prisma/sql/010_audit_trigger_function.sql"),
+      "utf8",
+    );
+    expect(sql).toContain('"rowHash" IS NULL AND "tenantId" <> _sentinel');
+    expect(sql).toContain("'00000000-0000-0000-0000-000000000000'");
+    expect(sql).toContain("audit_log_no_update");
+    expect(sql).toContain("Treat as possible tampering");
+    // Telling an operator to drop the rules and re-bootstrap launders tampering.
+    expect(sql).not.toMatch(/drop both rules/i);
+  });
+
+  it("db:verify requires every chain function", () => {
+    expect(REQUIRED_OBJECTS.functions).toContain("audit_chain_insert");
+    expect(REQUIRED_OBJECTS.functions).toContain("audit_chain_field");
+    expect(REQUIRED_OBJECTS.functions).toContain("audit_chain_row_hash");
+  });
+
+  it("090 immutability rules apply after 010's backfill, and db:verify requires them", () => {
+    const at = (file: string) =>
+      (SQL_MANIFEST as readonly string[]).indexOf(file);
+    expect(at("prisma/sql/090_audit_log_immutability.sql")).toBeGreaterThan(
+      at("prisma/sql/010_audit_trigger_function.sql"),
+    );
+    expect(REQUIRED_OBJECTS.rules).toEqual([
+      "audit_log_no_update",
+      "audit_log_no_delete",
+    ]);
+  });
+});
+
 import { RLS_TABLES } from "../../../prisma/sql/manifest";
 
 const REFERENCE_TABLES = new Set([

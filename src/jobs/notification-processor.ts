@@ -34,6 +34,7 @@ const TEMPLATE_MAP: Record<string, string> = {
   BULK_DIGEST: "bulk-digest",
   INVITATION: "invitation",
   BM_BATCH_OVERDUE: "bm-batch-overdue",
+  AUDIT_CHAIN_TAMPER_DETECTED: "audit-chain-tamper",
 };
 
 // ─── Email rendering ────────────────────────────────────────────────────────
