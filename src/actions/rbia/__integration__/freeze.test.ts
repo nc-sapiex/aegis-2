@@ -1,4 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { materializeEngagementStatements } from "@/data-access/engagement-statements";
+import { SCORE_VALUES } from "@/lib/rbia-scoring-engine";
+import {
+  addModuleSelection,
+  autoSelectModules,
+} from "@/data-access/rbia-examination";
 import {
   resetDatabase,
   createTenant,
@@ -147,7 +153,7 @@ async function score(
   tenantId: string,
   engagementId: string,
   nodeId: string,
-  label: "FULLY_COMPLIANT" | null,
+  label: "FULLY_COMPLIANT" | "NON_COMPLIANT" | null,
   notApplicable = false,
 ) {
   // ExaminationResponse now carries an audit trigger, so this fixture write
@@ -159,12 +165,37 @@ async function score(
         tenantId,
         engagementId,
         nodeId,
-        score: label ? 1.0 : null,
+        score: label ? SCORE_VALUES[label] : null,
         scoreLabel: label,
         isNotApplicable: notApplicable,
       },
     }),
   );
+}
+
+/** A bank statement added to OPS after the engagement's snapshot was taken. */
+function addLateOpsLeaf(tenantId: string, opsNodeId: string) {
+  return withFixtures(async () => {
+    const opsNode = await integrationOwner.examinationNode.findUniqueOrThrow({
+      where: { id: opsNodeId },
+      select: { moduleId: true },
+    });
+    return integrationOwner.examinationNode.create({
+      data: {
+        tenantId,
+        moduleId: opsNode.moduleId,
+        code: "OPS-B01",
+        name: "Late bank statement",
+        path: "ROOT/OPS/OPS-B01",
+        depth: 2,
+        isLeaf: true,
+        parentId: opsNodeId,
+        weight: 1,
+        isActive: true,
+      },
+      select: { id: true },
+    });
+  });
 }
 
 describe("freezeRbiaScore completeness", () => {
@@ -331,5 +362,261 @@ describe("freezeRbiaScore completeness", () => {
       });
     expect(creditResponse.isNotApplicable).toBe(true);
     expect(creditResponse.scoreLabel).toBeNull();
+  });
+
+  it("does not require a live leaf added after the engagement snapshot", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+
+    await addLateOpsLeaf(tenant.id, seed.ops.id);
+
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(true);
+  });
+
+  it("still requires a snapshotted leaf after the catalogue row is turned off", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+    await withFixtures(() =>
+      integrationOwner.examinationNode.update({
+        where: { id: seed.opsB.id },
+        data: { isActive: false },
+      }),
+    );
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const blocked = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(blocked.success).toBe(false);
+    if (!blocked.success) {
+      expect(blocked.code).toBe("INCOMPLETE_EXAMINATION");
+      expect(blocked.error).toContain("OPS-002");
+    }
+  });
+
+  it("snapshots only the added module's statements when a module is added after create", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+    const late = await addLateOpsLeaf(tenant.id, seed.ops.id);
+
+    await addModuleSelection(
+      fakeSession({
+        id: cae.id,
+        tenantId: tenant.id,
+        roles: ["CAE"],
+      }) as never,
+      seed.engagementId,
+      seed.creditModule.id,
+      "Branch also books gold loans",
+    );
+
+    const extra = await integrationOwner.engagementStatement.findFirst({
+      where: { engagementId: seed.engagementId, nodeId: seed.creditLeaf.id },
+    });
+    expect(extra).not.toBeNull();
+    // OPS was already snapshotted: its later bank statement stays out.
+    const lateRow = await integrationOwner.engagementStatement.findFirst({
+      where: { engagementId: seed.engagementId, nodeId: late.id },
+    });
+    expect(lateRow).toBeNull();
+  });
+
+  it("auto-select snapshots only newly selected modules and is safe to repeat", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+    const late = await addLateOpsLeaf(tenant.id, seed.ops.id);
+    const session = fakeSession({
+      id: cae.id,
+      tenantId: tenant.id,
+      roles: ["CAE"],
+    }) as never;
+
+    await autoSelectModules(session, seed.engagementId);
+    await autoSelectModules(session, seed.engagementId);
+
+    const selected = await integrationOwner.engagementModule.count({
+      where: { engagementId: seed.engagementId },
+    });
+    expect(selected).toBe(2);
+    const rows = await integrationOwner.engagementStatement.findMany({
+      where: { engagementId: seed.engagementId },
+      select: { nodeId: true },
+    });
+    expect(rows.map((r) => r.nodeId).sort()).toEqual(
+      [seed.opsA.id, seed.opsB.id, seed.creditLeaf.id].sort(),
+    );
+    expect(rows.some((r) => r.nodeId === late.id)).toBe(false);
+  });
+
+  it("freezes an engagement with no snapshot without requiring turned-off leaves", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await withFixtures(() =>
+      integrationOwner.examinationNode.update({
+        where: { id: seed.opsB.id },
+        data: { isActive: false },
+      }),
+    );
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.compositeScore).toBe(1);
+  });
+
+  it("scores with the snapshot's weight and critical flag, not later catalogue edits", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await withFixtures(() =>
+      integrationOwner.examinationNode.update({
+        where: { id: seed.opsA.id },
+        data: { weight: 3 },
+      }),
+    );
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+    // After the snapshot: OPS-001 drops to weight 1 and OPS-002 turns critical.
+    await withFixtures(async () => {
+      await integrationOwner.examinationNode.update({
+        where: { id: seed.opsA.id },
+        data: { weight: 1 },
+      });
+      await integrationOwner.examinationNode.update({
+        where: { id: seed.opsB.id },
+        data: { isCritical: true },
+      });
+    });
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "NON_COMPLIANT");
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    // Snapshot: (3 × 1.0 + 1 × 0.0) / 4 = 0.75, no critical cap.
+    // Live weights would give 0.5; the live critical flag would cap at 0.5.
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.compositeScore).toBeCloseTo(0.75);
+  });
+
+  it("freezes when a selected module snapshotted nothing because its statements are all off", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+    await withFixtures(() =>
+      integrationOwner.examinationNode.update({
+        where: { id: seed.creditLeaf.id },
+        data: { isActive: false },
+      }),
+    );
+    await addModuleSelection(
+      fakeSession({
+        id: cae.id,
+        tenantId: tenant.id,
+        roles: ["CAE"],
+      }) as never,
+      seed.engagementId,
+      seed.creditModule.id,
+      "Branch also books gold loans",
+    );
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.compositeScore).toBe(1);
+  });
+
+  it("refuses to freeze a selected module that has no statement snapshot", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+    // CREDIT selected the old way: an EngagementModule row, no snapshot rows.
+    await withFixtures(() =>
+      integrationOwner.engagementModule.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: seed.creditModule.id,
+        },
+      }),
+    );
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe("INCOMPLETE_EXAMINATION");
+      expect(result.error).toContain("CREDIT");
+    }
   });
 });
