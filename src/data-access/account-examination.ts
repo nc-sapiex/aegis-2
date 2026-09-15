@@ -1,5 +1,6 @@
 import "server-only";
 import { prismaForTenant } from "./prisma";
+import { getModuleIdByCode } from "./audit-modules";
 import type { AuthSession as Session } from "@/lib/auth";
 
 /**
@@ -90,62 +91,70 @@ export async function getAccountsWithProgress(
 ): Promise<AccountWithProgress[]> {
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
 
   const [accounts, questionCount, violationCounts, responseCounts] =
     await Promise.all([
       // Sampled accounts with total response count
-      db.loanAccount.findMany({
-        where: { engagementId, moduleCode, isSampled: true, tenantId },
-        select: {
-          id: true,
-          accountNo: true,
-          borrowerName: true,
-          outstandingAmount: true,
-          dpd: true,
-          assetClass: true,
-          _count: { select: { accountExamResponses: true } },
-        },
-        orderBy: { accountNo: "asc" },
-      }),
+      moduleId
+        ? db.populationRecord.findMany({
+            where: { engagementId, moduleId, isSampled: true, tenantId },
+            select: {
+              id: true,
+              recordKey: true,
+              displayName: true,
+              amount: true,
+              classification: true,
+              metadata: true,
+              _count: { select: { accountExamResponses: true } },
+            },
+            orderBy: { recordKey: "asc" },
+          })
+        : [],
       // Total active questions for the module (same count for all accounts)
-      db.examinationQuestion.count({
-        where: { tenantId, moduleCode, isActive: true },
-      }),
+      moduleId
+        ? db.examinationQuestion.count({
+            where: { tenantId, moduleId, isActive: true },
+          })
+        : 0,
       // Per-account VIOLATION count
       db.accountExamResponse.groupBy({
-        by: ["loanAccountId"],
+        by: ["recordId"],
         where: { engagementId, tenantId, status: "VIOLATION" },
         _count: true,
       }),
       // Per-account total response count (for accuracy over _count include)
       db.accountExamResponse.groupBy({
-        by: ["loanAccountId"],
+        by: ["recordId"],
         where: { engagementId, tenantId },
         _count: true,
       }),
     ]);
 
-  // Build violation lookup map: loanAccountId → violation count
+  // Build violation lookup map: recordId → violation count
   const violationMap = new Map<string, number>(
-    violationCounts.map((v) => [v.loanAccountId, v._count]),
+    violationCounts.map((v) => [v.recordId, v._count]),
   );
 
-  // Build response count lookup map: loanAccountId → total answered count
+  // Build response count lookup map: recordId → total answered count
   const responseMap = new Map<string, number>(
-    responseCounts.map((r) => [r.loanAccountId, r._count]),
+    responseCounts.map((r) => [r.recordId, r._count]),
   );
 
-  return accounts.map((account) => ({
-    id: account.id,
-    accountNo: account.accountNo,
-    borrowerName: account.borrowerName,
-    outstandingAmount: Number(account.outstandingAmount),
-    dpd: account.dpd,
-    assetClass: account.assetClass,
-    totalQuestions: questionCount,
-    answeredQuestions: responseMap.get(account.id) ?? 0,
-    violationCount: violationMap.get(account.id) ?? 0,
-  }));
+  return accounts.map((account) => {
+    const metadata = (account.metadata as Record<string, unknown>) ?? {};
+    return {
+      id: account.id,
+      accountNo: account.recordKey,
+      borrowerName: account.displayName,
+      outstandingAmount: Number(account.amount),
+      dpd: typeof metadata.dpd === "number" ? metadata.dpd : 0,
+      assetClass: account.classification,
+      totalQuestions: questionCount,
+      answeredQuestions: responseMap.get(account.id) ?? 0,
+      violationCount: violationMap.get(account.id) ?? 0,
+    };
+  });
 }
 
 // ─── getQuestionsForAccount ───────────────────────────────────────────────────
@@ -163,22 +172,24 @@ export async function getAccountsWithProgress(
  * @param session - Authenticated session (provides tenantId)
  * @param engagementId - UUID of the AuditEngagement
  * @param moduleCode - Credit module code (e.g., "CRD-HLN")
- * @param loanAccountId - UUID of the specific LoanAccount being examined
+ * @param recordId - UUID of the specific PopulationRecord being examined
  */
 export async function getQuestionsForAccount(
   session: Session,
   engagementId: string,
   moduleCode: string,
-  loanAccountId: string,
+  recordId: string,
 ): Promise<QuestionWithResponse[]> {
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+  if (!moduleId) return [];
 
   const questions = await db.examinationQuestion.findMany({
-    where: { tenantId, moduleCode, isActive: true },
+    where: { tenantId, moduleId, isActive: true },
     include: {
       accountExamResponses: {
-        where: { loanAccountId, engagementId },
+        where: { recordId, engagementId },
         select: {
           id: true,
           status: true,
@@ -235,15 +246,17 @@ export async function getViolationSummary(
 ): Promise<ViolationSummary[]> {
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+  if (!moduleId) return [];
 
   // Count total sampled accounts for the module
-  const totalAccounts = await db.loanAccount.count({
-    where: { engagementId, tenantId, moduleCode, isSampled: true },
+  const totalAccounts = await db.populationRecord.count({
+    where: { engagementId, tenantId, moduleId, isSampled: true },
   });
 
   // Get all active questions for the module
   const questions = await db.examinationQuestion.findMany({
-    where: { tenantId, moduleCode, isActive: true },
+    where: { tenantId, moduleId, isActive: true },
     select: { id: true, text: true },
     orderBy: { displayOrder: "asc" },
   });
@@ -312,16 +325,21 @@ export async function getExaminationProgress(
 ): Promise<ExaminationProgress> {
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
 
   const [totalAccounts, totalQuestions, responseStats] = await Promise.all([
-    db.loanAccount.count({
-      where: { engagementId, tenantId, moduleCode, isSampled: true },
-    }),
-    db.examinationQuestion.count({
-      where: { tenantId, moduleCode, isActive: true },
-    }),
+    moduleId
+      ? db.populationRecord.count({
+          where: { engagementId, tenantId, moduleId, isSampled: true },
+        })
+      : 0,
+    moduleId
+      ? db.examinationQuestion.count({
+          where: { tenantId, moduleId, isActive: true },
+        })
+      : 0,
     db.accountExamResponse.groupBy({
-      by: ["loanAccountId"],
+      by: ["recordId"],
       where: { engagementId, tenantId },
       _count: true,
     }),

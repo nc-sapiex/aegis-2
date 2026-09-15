@@ -51,6 +51,19 @@ enum ObservationStatus {
   CLOSED
 }
 
+enum ObservationPertainsTo {
+  FINANCE
+  OPERATIONS
+  LEGAL_RECOVERY
+  HR
+  IT
+}
+
+enum ActionPointKind {
+  FINDING
+  POSITIVE
+}
+
 enum ComplianceStatus {
   COMPLIANT
   PARTIAL
@@ -97,21 +110,6 @@ enum RamAssessmentStatus {
   APPROVED
 }
 
-enum ExaminationStatus {
-  PENDING
-  COMPLIANT
-  NON_COMPLIANT
-  PARTIAL
-  NOT_APPLICABLE
-}
-
-enum AuditSectionStatus {
-  NOT_STARTED
-  IN_PROGRESS
-  COMPLETED
-  REVIEWED
-}
-
 enum AuditPlanStatus {
   PLANNED
   IN_PROGRESS
@@ -137,7 +135,32 @@ enum ScoreLabel {
   FULLY_COMPLIANT
   LARGELY_COMPLIANT
   PARTIALLY_COMPLIANT
+  MARGINALLY_COMPLIANT
   NON_COMPLIANT
+}
+
+enum ModuleDomain {
+  CREDIT
+  DEPOSITS
+  FOREX
+  CASH
+  KYC
+  IT
+  HR
+  ADMIN
+  GOVT
+  TREASURY
+  OTHER
+}
+
+enum ExaminationKind {
+  CHECKLIST
+  POPULATION_SAMPLE
+}
+
+enum ContentOrigin {
+  PACK
+  BANK
 }
 
 enum ActionPointStatus {
@@ -272,13 +295,7 @@ model Tenant {
   auditTeamMembers       AuditTeamMember[]
   ramParameterConfigs    RamParameterConfig[]
   ramAssessments         RamAssessment[]
-  examinationAreas           ExaminationArea[]
-  examinationItems           ExaminationItem[]
-  auditExaminationResponses  AuditExaminationResponse[]
-  auditSectionInstances      AuditSectionInstance[]
   cashChecks                 CashCheck[]
-  loanReviews                LoanReview[]
-  smaNpaEntries              SmaNpaEntry[]
   complianceItems            ComplianceItem[]
   reportTemplates            ReportTemplate[]
   auditCalendarEvents        AuditCalendar[]
@@ -309,11 +326,13 @@ model Tenant {
   auditPlans             AuditPlan[]
   auditEngagements       AuditEngagement[]
   // v6.0 RBIA relations
+  auditModules           AuditModule[]
+  contentPackInstalls    ContentPackInstall[]
   examinationNodes       ExaminationNode[]
-  positiveObservations   PositiveObservation[]
   // v7.0 Sample-Based Examination relations
   examinationQuestions    ExaminationQuestion[]
-  loanAccounts           LoanAccount[]
+  populationRecords      PopulationRecord[]
+  populationSchemas      PopulationSchema[]
   samplingConfigs        SamplingConfig[]
   userBranchAssignments   UserBranchAssignment[]
   auditeeResponses        AuditeeResponse[]
@@ -372,6 +391,7 @@ model User {
   notifications        NotificationQueue[]   @relation("NotificationRecipient")
   notificationPreference NotificationPreference? @relation("NotificationPreference")
   generatedReports     BoardReport[]         @relation("ReportGeneratedBy")
+  installedPacks       ContentPackInstall[]
   auditTeamMemberships AuditTeamMember[]
   committeeMemberships CommitteeMember[]
   verifiedActionPlans  ActionPlan[]      @relation("ActionPlanVerifier")
@@ -440,14 +460,20 @@ model Observation {
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   title          String
-  condition      String   @db.Text
-  criteria       String   @db.Text
-  cause          String   @db.Text
-  effect         String   @db.Text
+  description    String   @db.Text
   recommendation String   @db.Text
 
-  severity Severity
-  status   ObservationStatus @default(DRAFT)
+  severity     Severity
+  status       ObservationStatus @default(DRAFT)
+  pertainsTo   ObservationPertainsTo
+  amountInvolved Decimal? @db.Decimal(15, 2)
+  branchComments String? @db.Text
+
+  moduleId String      @db.Uuid
+  module   AuditModule @relation(fields: [moduleId], references: [id])
+
+  sourceResponseId String?              @db.Uuid
+  sourceResponse   ExaminationResponse? @relation(fields: [sourceResponseId], references: [id])
 
   assignedToId String? @db.Uuid
   assignedTo   User?   @relation("AssignedTo", fields: [assignedToId], references: [id])
@@ -479,11 +505,9 @@ model Observation {
   // Risk categorization
   riskCategory String?
 
-  // v6.0: discriminator for observation type
-  observationType String @default("AUTO_LEGACY") // "FORMAL" or "AUTO_LEGACY"
-
   // v6.0: link back to the ActionPoint that was promoted to this Observation (Phase 20)
-  sourceActionPointId String? @db.Uuid
+  sourceActionPointId String?      @db.Uuid
+  sourceActionPoint   ActionPoint? @relation("PromotedFromActionPoint", fields: [sourceActionPointId], references: [id])
 
   // Engagement tracking (Phase 12 — links observation to audit engagement)
   engagementId String?          @db.Uuid
@@ -502,7 +526,6 @@ model Observation {
   evidence          Evidence[]
   auditeeResponses  AuditeeResponse[]
   rbiCirculars           ObservationRbiCircular[]
-  examinationResponses   AuditExaminationResponse[]
   complianceItem         ComplianceItem?
   issues                 Issue[]
 
@@ -557,12 +580,8 @@ model Evidence {
   id            String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   // Polymorphic evidence attachment (R27: generalized evidence)
-  // Exactly one of observationId or examinationResponseId should be set
   observationId           String?                    @db.Uuid
   observation             Observation?               @relation(fields: [observationId], references: [id], onDelete: Cascade)
-
-  examinationResponseId   String?                    @db.Uuid
-  examinationResponse     AuditExaminationResponse?  @relation(fields: [examinationResponseId], references: [id], onDelete: Cascade)
 
   tenantId String @db.Uuid
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -593,7 +612,6 @@ model Evidence {
 
   @@index([tenantId])
   @@index([observationId])
-  @@index([examinationResponseId])
   @@index([newExaminationResponseId])
   @@index([actionPointId])
   @@index([accountExamResponseId])
@@ -704,6 +722,14 @@ model Branch {
   auditFrequency  Int?      // Derived audit frequency in months
   lastAuditDate   DateTime?
   lastAuditRating String?   // "VERY_GOOD", "GOOD", "SATISFACTORY", "MODERATE", "POOR"
+
+  // Module applicability profile (spec §6.2)
+  hasForex         Boolean  @default(false)
+  hasCurrencyChest Boolean  @default(false)
+  hasGovtBusiness  Boolean  @default(false)
+  hasLockers       Boolean  @default(false)
+  hasAtm           Boolean  @default(false)
+  loanProducts     String[] @default([])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -854,11 +880,7 @@ model AuditEngagement {
   // Relations
   observations Observation[]
   teamMembers          AuditTeamMember[]
-  examinationResponses AuditExaminationResponse[]
-  sectionInstances     AuditSectionInstance[]
   cashChecks           CashCheck[]
-  loanReviews          LoanReview[]
-  smaNpaEntries        SmaNpaEntry[]
   complianceItems      ComplianceItem[]
   calendarEvents       AuditCalendar[]
   workProgramItems     WorkProgramItem[]
@@ -867,14 +889,15 @@ model AuditEngagement {
   // v6.0 RBIA relations
   examinationResponsesV2  ExaminationResponse[]
   branchRbiaScore         BranchRbiaScore?
-  moduleSelections        EngagementModuleSelection[]
+  engagementModules       EngagementModule[]
+  engagementStatements    EngagementStatement[]
+  sectionVisits           EngagementSectionVisit[]
   sectionNaMarks          EngagementSectionNa[]
   meetings                EngagementMeeting[]
   actionPointsV2          ActionPoint[]
   bmResponseBatch         BmResponseBatch?
-  positiveObservations    PositiveObservation[]
   // v7.0 Sample-Based Examination relations
-  loanAccounts           LoanAccount[]
+  populationRecords      PopulationRecord[]
   samplingConfigs        SamplingConfig[]
   accountExamResponses   AccountExamResponse[]
 
@@ -993,122 +1016,6 @@ model RamAssessmentScore {
   @@index([assessmentId])
 }
 
-// ─── Examination Area (Phase 1 — R14: functional audit areas) ────────────
-
-model ExaminationArea {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId String @db.Uuid
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  code         String   // e.g., "CASH", "ATM", "CLEARING"
-  name         String   // e.g., "Cash", "ATM"
-  description  String?  @db.Text
-  riskWeight   Decimal  @db.Decimal(5, 2) @default(1.0)
-  displayOrder Int
-  isActive     Boolean  @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  items ExaminationItem[]
-
-  @@unique([tenantId, code])
-  @@index([tenantId])
-}
-
-// ─── Examination Item (Phase 1 — R15: value statement items) ─────────────
-
-model ExaminationItem {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId String @db.Uuid
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  areaId        String @db.Uuid
-  area          ExaminationArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
-
-  itemNumber    String   // e.g., "1.1.1", "5.3.2"
-  particulars   String   @db.Text // The examination statement/question
-  riskCategory  String?  // e.g., "Operational Risk", "Credit Risk"
-  regulatoryRef String?  // RBI circular reference if applicable
-  displayOrder  Int
-  isActive      Boolean  @default(true)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  responses AuditExaminationResponse[]
-
-  @@unique([tenantId, areaId, itemNumber])
-  @@index([tenantId])
-  @@index([areaId])
-}
-
-// ─── Audit Examination Response (Phase 1 — R16: per-item audit response) ───
-
-model AuditExaminationResponse {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId String @db.Uuid
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  engagementId  String @db.Uuid
-  engagement    AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-
-  itemId        String @db.Uuid
-  item          ExaminationItem @relation(fields: [itemId], references: [id])
-
-  status        ExaminationStatus @default(PENDING)
-  observation   String?  @db.Text  // Auditor's observation text
-  riskRating    String?            // Severity: "LOW", "MEDIUM", "HIGH", "CRITICAL"
-
-  respondedById String?  @db.Uuid
-  respondedAt   DateTime?
-
-  // Auto-created observation reference (R17)
-  observationId       String?      @db.Uuid
-  linkedObservation   Observation? @relation(fields: [observationId], references: [id])
-
-  // Evidence attachments
-  evidence          Evidence[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([engagementId, itemId])
-  @@index([tenantId])
-  @@index([engagementId])
-  @@index([observationId])
-}
-
-// ─── Audit Section Instance (Phase 1 — R18: per-engagement section tracking) ─
-
-model AuditSectionInstance {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId String @db.Uuid
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  engagementId String @db.Uuid
-  engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-
-  sectionCode  String  // Matches ExaminationArea.code
-  sectionName  String  // Denormalized for display
-  status       AuditSectionStatus @default(NOT_STARTED)
-
-  sectionData  Json?   // Flexible JSONB for section-specific structured data
-
-  assignedToId String?  @db.Uuid
-  completedAt  DateTime?
-  reviewedAt   DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([engagementId, sectionCode])
-  @@index([tenantId])
-  @@index([engagementId])
-}
-
 // ─── Cash Check (Phase 1 — R19: cash verification per engagement) ──────────
 
 model CashCheck {
@@ -1135,55 +1042,6 @@ model CashCheck {
   updatedAt DateTime @updatedAt
 
   @@unique([engagementId])
-  @@index([tenantId])
-}
-
-// ─── Loan Review (Phase 1 — R20: individual loan account review) ───────────
-
-model LoanReview {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId String @db.Uuid
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  engagementId String @db.Uuid
-  engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-
-  accountNo         String
-  borrowerName      String
-  productType       String   // "Term Loan", "CC", "OD", "Gold Loan"
-  sanctionAmount    Decimal  @db.Decimal(15, 2)
-  outstandingAmount Decimal  @db.Decimal(15, 2)
-  assetClass        String   // "STANDARD", "SMA0", "SMA1", "SMA2", "NPA_SUB", "NPA_DOUBTFUL", "NPA_LOSS"
-  dpd               Int      @default(0)
-  auditObservation  String?  @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([tenantId])
-  @@index([engagementId])
-  @@index([engagementId, assetClass])
-}
-
-// ─── SMA/NPA Entry (Phase 1 — R21: category-wise summary per audit) ────────
-
-model SmaNpaEntry {
-  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId String @db.Uuid
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  engagementId String @db.Uuid
-  engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-
-  category     String   // "SMA0", "SMA1", "SMA2", "NPA_SUB_STANDARD", "NPA_DOUBTFUL", "NPA_LOSS"
-  accountCount Int
-  totalAmount  Decimal  @db.Decimal(15, 2)
-  remarks      String?  @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([engagementId, category])
   @@index([tenantId])
 }
 
@@ -2163,6 +2021,69 @@ model OnboardingProgress {
 // v6.0: RBIA Redesign Models
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ─── Audit Module (v6.0 — module-native content, replaces moduleCode strings) ─
+
+model AuditModule {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  code   String
+  name   String
+  domain ModuleDomain
+  kinds  ExaminationKind[]
+
+  // JSON predicate over the branch profile, e.g. {"hasForex": true} or
+  // {"loanProducts": {"contains": "GOLD"}}; {} means always applicable.
+  applicability Json @default("{}")
+
+  weight Decimal @default(1.0) @db.Decimal(5, 4) // bank-editable, used in the composite
+
+  packId      String?             @db.Uuid // null for bank-authored modules
+  packInstall ContentPackInstall? @relation(fields: [packId], references: [id])
+  packVersion String? // denormalized copy of packInstall.version at the time this module was installed/upgraded
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  nodes             ExaminationNode[]
+  questions         ExaminationQuestion[]
+  samplingConfigs   SamplingConfig[]
+  sectionNaMarks    EngagementSectionNa[]
+  populationRecords PopulationRecord[]
+  populationSchema  PopulationSchema?
+  engagementModules EngagementModule[]
+  observations      Observation[]
+  actionPoints      ActionPoint[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+}
+
+model ContentPackInstall {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  packCode String // the manifest's `id`, e.g. "core", "example-forex"
+  version  String // semver, e.g. "1.0.0"
+
+  contentHash String // sha256 hex, from the installed manifest
+
+  installedAt   DateTime  @default(now())
+  installedById String    @db.Uuid
+  installedBy   User      @relation(fields: [installedById], references: [id])
+  uninstalledAt DateTime? // set on uninstall (§7.3: deactivates, never deletes)
+
+  modules AuditModule[]
+
+  @@unique([tenantId, packCode])
+  @@index([tenantId])
+}
+
 // ─── Examination Node (v6.0 — hierarchical examination framework) ──────────
 // Replaces ExaminationArea + ExaminationItem with variable-depth tree.
 // Leaf nodes (isLeaf=true) are value statements that get scored.
@@ -2172,6 +2093,15 @@ model ExaminationNode {
   id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId String @db.Uuid
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Permanently nullable, not a backfill-in-progress artifact: depth 0 (root
+  // area) spans multiple modules and never has a single owning AuditModule.
+  // depth >= 1 nodes get one via the module-native backfill
+  // (scripts/backfill/module-native.ts), whose own orphan check treats only
+  // depth >= 1 as backfill candidates.
+  moduleId String?       @db.Uuid
+  module   AuditModule?  @relation(fields: [moduleId], references: [id])
+  origin   ContentOrigin @default(BANK)
 
   code     String   // e.g., "OPS", "OPS-KYC", "OPS-KYC-001"
   name     String   // Display name e.g., "KYC/AML Compliance"
@@ -2199,14 +2129,13 @@ model ExaminationNode {
 
   // Relations
   responses            ExaminationResponse[]
-  moduleSelections     EngagementModuleSelection[]
-  sectionNaMarks       EngagementSectionNa[]
 
   @@unique([tenantId, code])
   @@index([tenantId])
   @@index([tenantId, path])
   @@index([parentId])
   @@index([tenantId, depth, isActive])
+  @@index([tenantId, moduleId])
 }
 
 // ─── Examination Response (v6.0 — per-item audit response with 4-point scoring) ─
@@ -2230,7 +2159,8 @@ model ExaminationResponse {
   isNotApplicable      Boolean @default(false)
   notApplicableReason  String? @db.Text
 
-  workingNotes       String?  @db.Text  // Auditor's detailed notes
+  remarks            String?  @db.Text  // Auditor's detailed notes (spec §6.5: required below LARGELY_COMPLIANT)
+  version            Int      @default(1) // Optimistic concurrency for the register's compare-and-set save (D8)
   flagForObservation Boolean  @default(false) // Flag for promotion to formal 5C Observation
   flagForActionPoint Boolean  @default(false) // Flag for promotion to Action Point
 
@@ -2245,6 +2175,7 @@ model ExaminationResponse {
 
   // Relations to findings
   actionPoints ActionPoint[]
+  observations Observation[]
 
   @@unique([engagementId, nodeId])
   @@index([tenantId])
@@ -2282,26 +2213,67 @@ model BranchRbiaScore {
   @@index([branchId, frozenAt])
 }
 
-// ─── Engagement Module Selection (v6.0 — dynamic module selection per engagement) ─
+// ─── Engagement Module (v6.0 — dynamic module selection per engagement) ─
 
-model EngagementModuleSelection {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId       String @db.Uuid
+model EngagementModule {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId String @db.Uuid
 
-  engagementId   String          @db.Uuid
-  engagement     AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  engagementId String          @db.Uuid
+  engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
 
-  moduleNodeId   String          @db.Uuid
-  moduleNode     ExaminationNode @relation(fields: [moduleNodeId], references: [id])
+  moduleId String      @db.Uuid
+  module   AuditModule @relation(fields: [moduleId], references: [id])
+
+  packVersion String? // the module's packVersion in force when added to this engagement
 
   isAutoSelected  Boolean @default(false)
-  selectionReason String?  // e.g., "Branch type: LARGE", "Manual addition by Lead Auditor"
-  removalReason   String? @db.Text  // Documented reason for manual removal (ENGG-06 audit trail)
+  selectionReason String? // e.g., "Branch type: LARGE", "Manual addition by Lead Auditor"
+  removalReason   String? @db.Text // Documented reason for manual removal (ENGG-06 audit trail)
 
   createdAt DateTime @default(now())
 
-  @@unique([engagementId, moduleNodeId])
+  @@unique([engagementId, moduleId])
   @@index([tenantId])
+  @@index([engagementId])
+}
+
+model EngagementStatement {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId String @db.Uuid
+
+  engagementId String          @db.Uuid
+  engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+
+  // Exactly one of nodeId/questionId is set, matching the module's kind.
+  nodeId     String? @db.Uuid
+  questionId String? @db.Uuid
+
+  text      String  @db.Text
+  reference String?
+  weight    Decimal @db.Decimal(5, 4)
+  isCritical Boolean
+  origin    ContentOrigin
+
+  createdAt DateTime @default(now())
+
+  @@unique([engagementId, nodeId])
+  @@unique([engagementId, questionId])
+  @@index([tenantId])
+  @@index([engagementId])
+}
+
+// Not tenant-scoped: no independent existence outside its engagement, reads
+// always join through engagementId (already tenant-checked by its own FK).
+// Not audited, per spec §6.5a — a UX convenience, not a compliance record.
+model EngagementSectionVisit {
+  engagementId String          @db.Uuid
+  engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
+  userId       String          @db.Uuid
+  sectionId    String          @db.Uuid // an ExaminationNode id (depth 1, the module/section boundary)
+  visitedAt    DateTime        @updatedAt
+
+  @@id([engagementId, userId])
   @@index([engagementId])
 }
 
@@ -2312,9 +2284,9 @@ model EngagementSectionNa {
   engagementId String          @db.Uuid
   engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
 
-  moduleId String          @db.Uuid
-  module   ExaminationNode @relation(fields: [moduleId], references: [id])
-  reason   String          @db.Text
+  moduleId String      @db.Uuid
+  module   AuditModule @relation(fields: [moduleId], references: [id])
+  reason   String      @db.Text
 
   markedById String   @db.Uuid
   markedAt   DateTime @default(now())
@@ -2363,7 +2335,10 @@ model ActionPoint {
   title        String
   description  String          @db.Text
   severity     Severity
-  moduleCode   String          // ExaminationNode code for traceability
+  kind         ActionPointKind @default(FINDING)
+
+  moduleId String      @db.Uuid
+  module   AuditModule @relation(fields: [moduleId], references: [id])
 
   // Source traceability
   sourceResponseId String?             @db.Uuid
@@ -2387,6 +2362,9 @@ model ActionPoint {
 
   // v6.0: Evidence attachments from BM responses
   evidence        Evidence[]    @relation("ActionPointEvidence")
+
+  // v6.0 Phase 20: promotion of an ActionPoint to a formal Observation
+  promotedObservations Observation[] @relation("PromotedFromActionPoint")
 
   createdById String @db.Uuid
   createdAt   DateTime @default(now())
@@ -2420,28 +2398,6 @@ model BmResponseBatch {
   @@index([status, deadline])
 }
 
-// ─── Positive Observation (v6.0 — commendable practices per engagement) ─────
-
-model PositiveObservation {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId       String @db.Uuid
-  tenant         Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  engagementId   String          @db.Uuid
-  engagement     AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
-
-  title          String
-  description    String @db.Text
-  moduleCode     String // ExaminationNode code
-
-  createdById    String @db.Uuid
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@index([tenantId])
-  @@index([engagementId])
-}
-
 // ─── v7.0 Examination Question (account-level question library per credit module) ──
 
 model ExaminationQuestion {
@@ -2449,7 +2405,10 @@ model ExaminationQuestion {
   tenantId String @db.Uuid
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  moduleCode      String   // ExaminationNode code (e.g., "CRD-HLN") — decoupled linkage
+  moduleId String        @db.Uuid
+  module   AuditModule   @relation(fields: [moduleId], references: [id])
+  origin   ContentOrigin @default(BANK)
+
   text            String   @db.Text // Question text
   rbiReference    String?  // RBI regulation area (e.g., "Master Direction on Housing Finance")
   bestPracticeTip String?  @db.Text // 1-2 sentence practical guidance
@@ -2468,15 +2427,17 @@ model ExaminationQuestion {
   // Relations
   accountExamResponses AccountExamResponse[]
 
-  @@unique([tenantId, moduleCode, text])
+  @@unique([tenantId, moduleId, text])
   @@index([tenantId])
-  @@index([tenantId, moduleCode, isActive])
-  @@index([tenantId, moduleCode, displayOrder])
+  @@index([tenantId, moduleId, isActive])
+  @@index([tenantId, moduleId, displayOrder])
 }
 
 // ─── v7.0 Loan Account (uploaded branch loan portfolio for sample-based examination) ──
 
-model LoanAccount {
+// ─── v8.0 Population Record (generalises LoanAccount beyond credit modules) ──
+
+model PopulationRecord {
   id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId String @db.Uuid
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -2484,21 +2445,19 @@ model LoanAccount {
   engagementId String          @db.Uuid
   engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
 
-  branchId   String @db.Uuid
-  moduleCode String // Credit module code (e.g., "CRD-HLN")
+  moduleId String      @db.Uuid
+  module   AuditModule @relation(fields: [moduleId], references: [id])
 
-  // Core mandatory fields
-  accountNo         String
-  borrowerName      String
-  productType       String  // "Housing Loan", "Gold Loan", "Vehicle Loan", etc.
-  sanctionAmount    Decimal @db.Decimal(15, 2)
-  sanctionDate      DateTime // For "newly sanctioned" sampling criteria
-  outstandingAmount Decimal @db.Decimal(15, 2)
-  assetClass        String  // "STANDARD", "SMA0", "SMA1", "SMA2", "NPA_SUB", "NPA_DOUBTFUL", "NPA_LOSS"
-  dpd               Int     @default(0) // Days Past Due
+  branchId String @db.Uuid
 
-  // JSONB for module-specific fields
-  metadata Json? // Flexible per-module fields
+  // Canonical columns every PopulationSchema maps a bank export onto.
+  recordKey      String // e.g. account number, deal reference
+  displayName    String // e.g. borrower name, counterparty name
+  amount         Decimal @db.Decimal(15, 2)
+  date           DateTime // e.g. sanction date, deal date
+  classification String // e.g. asset class, deal status
+
+  metadata Json? // module-specific fields the mapping doesn't canonicalise (e.g. productType, sanctionAmount, dpd)
 
   // Sampling state
   isSampled Boolean   @default(false)
@@ -2510,13 +2469,33 @@ model LoanAccount {
   // Relations
   accountExamResponses AccountExamResponse[]
 
-  @@unique([engagementId, accountNo])
+  @@unique([engagementId, moduleId, recordKey])
   @@index([tenantId])
   @@index([engagementId])
-  @@index([engagementId, moduleCode])
+  @@index([engagementId, moduleId])
   @@index([engagementId, isSampled])
-  @@index([engagementId, assetClass])
-  @@index([engagementId, dpd])
+  @@index([engagementId, classification])
+}
+
+model PopulationSchema {
+  id       String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId String @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  moduleId String      @unique @db.Uuid
+  module   AuditModule @relation(fields: [moduleId], references: [id])
+
+  // Column mapping from the bank's export to the five canonical columns,
+  // e.g. { "recordKey": "Account No", "displayName": "Borrower Name",
+  //        "amount": "Outstanding", "date": "Sanction Date",
+  //        "classification": "Asset Class" }. The import template UI (content
+  // packs plan) generates its header row from this.
+  columnMapping Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
 }
 
 // ─── v7.0 Sampling Config (HIA-defined sampling criteria per engagement/module) ──
@@ -2529,7 +2508,9 @@ model SamplingConfig {
   engagementId String          @db.Uuid
   engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
 
-  moduleCode    String  // Credit module code (e.g., "CRD-HLN")
+  moduleId String      @db.Uuid
+  module   AuditModule @relation(fields: [moduleId], references: [id])
+
   sampleSizePct Decimal @db.Decimal(5, 2) // Overall sample size % (e.g., 10.00)
 
   // Criteria bucket allocations — JSONB array of { bucket, pct, description }
@@ -2548,7 +2529,7 @@ model SamplingConfig {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@unique([engagementId, moduleCode])
+  @@unique([engagementId, moduleId])
   @@index([tenantId])
   @@index([engagementId])
 }
@@ -2562,8 +2543,8 @@ model AccountExamResponse {
   engagementId String          @db.Uuid
   engagement   AuditEngagement @relation(fields: [engagementId], references: [id], onDelete: Cascade)
 
-  loanAccountId String      @db.Uuid
-  loanAccount   LoanAccount @relation(fields: [loanAccountId], references: [id], onDelete: Cascade)
+  recordId String           @db.Uuid
+  record   PopulationRecord @relation(fields: [recordId], references: [id], onDelete: Cascade)
 
   questionId String              @db.Uuid
   question   ExaminationQuestion @relation(fields: [questionId], references: [id])
@@ -2584,11 +2565,11 @@ model AccountExamResponse {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([engagementId, loanAccountId, questionId])
+  @@unique([engagementId, recordId, questionId])
   @@index([tenantId])
   @@index([engagementId])
   @@index([engagementId, questionId])
-  @@index([loanAccountId])
+  @@index([recordId])
 }
 
 // ─── Failed Login Attempt Tracking (Phase 11 — account lockout) ─────────────

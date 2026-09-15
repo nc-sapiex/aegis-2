@@ -17,11 +17,6 @@ releases nothing.
 - Non-core modules (concurrent audit, IS audit, governance, regulatory hub,
   investments, housekeeping, QA, issues, work program, risk register, control
   library) stay in AEGIS 1.x until ported behind feature flags.
-- The v5 Excel-section examination tables and pages
-  (`AuditSectionInstance`, `LoanReview`, `SmaNpaEntry`, `AuditExaminationResponse`,
-  `ExaminationArea`, `ExaminationItem`) still exist in `prisma/schema.prisma`
-  but have no pages or actions. Removing them from the schema is a planned
-  task; do not build on them.
 - next-intl and Sentry. English strings live in `src/lib/strings.ts`, which
   keeps the old `useTranslations(ns)` call shape over `strings.en.json`.
 - The hand-coded RBIA PDF document. `generatePdfReport` returns an error for
@@ -43,7 +38,7 @@ releases nothing.
 ## Commands
 
 ```bash
-pnpm db:generate && pnpm db:push && pnpm db:bootstrap && pnpm db:verify && pnpm db:seed
+pnpm db:generate && pnpm db:migrate && pnpm db:seed
 pnpm dev
 pnpm tsc --noEmit          # typecheck; CI runs exactly this
 pnpm lint                  # eslint (docs:check runs in CI's lint job)
@@ -52,7 +47,7 @@ pnpm test:integration      # resets the DATABASE_URL database — never aim it a
 pnpm test:e2e:smoke
 pnpm docs:reference        # regenerate docs/reference/ after schema or action changes
 SKIP_ENV_VALIDATION=1 pnpm build
-SESSION_COOKIE='...' ENGAGEMENT_ID=<uuid> pnpm spike:rls  # load check before each release, spec §10
+SESSION_COOKIE='...' ENGAGEMENT_ID=<uuid> pnpm spike:rls  # load check before each release, spec §10 (measures the live rls client; the TENANT_CLIENT toggle is gone)
 ```
 
 ## Git & PR Workflow
@@ -106,14 +101,34 @@ SESSION_COOKIE='...' ENGAGEMENT_ID=<uuid> pnpm spike:rls  # load check before ea
   with `withAuditedMutation` → page with guard → permission entry →
   `pnpm docs:reference`
 
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues in `nc-sapiex/aegis-2` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
 ## Gotchas
 
-- `prisma db push` alone leaves no triggers, views or guards. Run
-  `pnpm db:bootstrap` after it. `prisma/CLAUDE.md` has the detail.
+- `prisma db push` alone leaves no triggers, views, RLS policies or
+  composite FKs. Run `pnpm db:bootstrap` after it. `prisma/CLAUDE.md` has
+  the detail.
+- Queries as `aegis_app` without `app.current_tenant_id` return zero rows
+  (`FORCE ROW LEVEL SECURITY`). `psql "$DATABASE_URL"` count queries after
+  a seed look empty; use `DATABASE_OWNER_URL` for ad-hoc SQL.
 - No `postinstall`: run `pnpm db:generate` after a clone or schema change.
 - `src/env.ts` requires `DATABASE_URL`, `BETTER_AUTH_SECRET` (min 32),
-  `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`. AWS vars are optional and the
-  features that need them fail loudly, they do not fall back.
+  `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`. After RLS, local `.env` also
+  needs `DATABASE_OWNER_URL` (owner: `db:push`, `db:bootstrap`, `db:verify`,
+  `db:seed`, integration harness) and `DATABASE_SYSTEM_URL` (`aegis_system`,
+  BYPASSRLS, for `prismaSystem`). Jobs that enumerate tenants fail loudly
+  without the system URL. `DATABASE_URL` is the `aegis_app` connection the
+  running app uses — no SUPERUSER, no BYPASSRLS. AWS vars are optional and
+  the features that need them fail loudly, they do not fall back. See
+  `.env.example`.
 - Inside `withAuditedMutation`, use the `tx` argument. Calling
   `prismaForTenant` from that callback opens a second transaction on another
   pooled connection and drops the actor GUCs the audit trigger needs.

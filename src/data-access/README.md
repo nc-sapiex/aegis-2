@@ -1,24 +1,27 @@
 # Data Access Layer (DAL)
 
 Server-only modules holding the tenant-scoped queries. Tenant isolation is
-enforced **here, in application code** — see the warning below.
+enforced **here in application `WHERE` clauses and in PostgreSQL RLS** —
+see the contract below.
 
 For how this layer fits the rest of the system, see
 [`docs/architecture.md`](../../docs/architecture.md).
 
 ---
 
-## There is no row-level security yet
+## Two walls: `WHERE tenantId` and RLS
 
 `prismaForTenant(tenantId)` validates that the tenant id is a well-formed UUID
 and returns a per-tenant client (`src/lib/tenant-client.ts`) that sets
-`app.current_tenant_id` once per transaction. That GUC is what Task 4's RLS
-policies will read. It still adds **no row filtering of its own**.
+`app.current_tenant_id` once per transaction. RLS policies
+(`prisma/sql/070_rls_policies.sql`) read that GUC. The client still adds **no
+row filtering of its own**.
 
-**Every `WHERE tenantId` in this directory is load-bearing.** Removing one does
-not fall back to a database guarantee, because there isn't one yet. The GUC
-contract, the removed per-query `SET LOCAL` wrapping, and the P2028 history
-are in
+**Every `WHERE tenantId` in this directory is load-bearing.** RLS is the
+second wall (spec §4.3), not a reason to drop the predicate. A query on the
+bare singleton returns zero rows because `aegis_app` has `FORCE ROW LEVEL
+SECURITY` and no tenant GUC. The GUC contract, the removed per-query
+`SET LOCAL` wrapping, and the P2028 history are in
 [`docs/architecture.md`](../../docs/architecture.md#invariant-1--tenant-isolation).
 
 ### Tenant-client constraints
@@ -30,9 +33,10 @@ are in
 - **`$transaction` already sets the GUC.** Standalone operations are wrapped
   as `[set_config, op]`. Operations already inside a transaction are left
   alone. Do not re-wrap them.
-- **`TENANT_CLIENT=singleton` is spike-only.** `src/lib/prisma.ts` honours it
-  only when `NODE_ENV !== "production"`, so a stray value cannot strip
-  tenant scoping in a deployed environment. Do not use it in app code.
+- **`prismaSystem` is not a shortcut.** It connects as `aegis_system`
+  (`BYPASSRLS`) for the handful of pre-tenant or cross-tenant reads. New
+  imports must join the shrink-only allowlist in
+  `src/data-access/__tests__/bare-prisma-import.test.ts`.
 
 ---
 
@@ -41,9 +45,8 @@ are in
 Every **new** DAL function must follow these five steps (source comments cite
 this as "the canonical DAL 5-step pattern"). Be honest about the existing
 stock: steps 0–3 are near-universal, but the step-4 runtime assertion exists in
-only ~8 of the 51 modules today (and some of those return `null` instead of
-throwing) — treat it as required going forward, not as a net already in place
-behind older code.
+only two of the 44 modules today (`settings.ts`, `audit-trail.ts`) — treat it
+as required going forward, not as a net already in place behind older code.
 
 ```typescript
 import "server-only"; // 0. cannot be imported client-side
@@ -58,7 +61,7 @@ export async function getSomething() {
   // 2. tenant-scoped client (validates the UUID, sets the tenant GUC)
   const db = prismaForTenant(tenantId);
 
-  // 3. explicit WHERE — this is still the actual isolation control
+  // 3. explicit WHERE — RLS is the second wall, not a substitute
   const result = await db.someModel.findFirst({ where: { tenantId } });
 
   // 4. assert on the way out
@@ -89,12 +92,11 @@ Two rules the pattern cannot show:
 - **Raw SQL passes `tenantId` explicitly** — `$queryRaw` / `$executeRaw` are
   invisible to steps 3 and 4, so they must carry the predicate themselves.
 - **Know what is machine-checked.** `__tests__/tenant-isolation.test.ts`
-  fails the build on a `findMany` with no `where` clause at all (shrink-only
-  allowlist for the global RBI reference tables) and on a module missing
-  `server-only`. Everything else — a `where` that lacks `tenantId`,
-  `findFirst`/`count`/aggregates, raw SQL, and every query in `src/actions/` —
-  is caught by code review or nothing, so review each query in a diff for the
-  tenant predicate.
+  fails the build on a DAL **or** action `findMany` / `findFirst` / `count` /
+  `aggregate` / `groupBy` whose args name no `tenantId` (shrink-only
+  allowlists for global RBI reference tables and two pre-tenant lookups), on
+  raw SQL without a tenant predicate, and on a module missing `server-only`.
+  `$executeRaw`, writes, and a `tenantId` taken from a URL still need review.
 
 ---
 
@@ -112,8 +114,8 @@ await withAuditedMutation(userActor(session), "observation.created", async (tx) 
 });
 ```
 
-A hand-rolled `prisma.$transaction` that mutates an audited table writes an
-`AuditLog` row with no attribution. `__tests__/audited-mutation-discipline.test.ts`
+A hand-rolled `prisma.$transaction` that mutates an audited table **fails** at
+the trigger (`AuditLog.tenantId` is `NOT NULL`). `__tests__/audited-mutation-discipline.test.ts`
 fails the build when one appears. The rest of the contract — the four
 justification-required actions, `systemActor` for scheduled work,
 one-transaction-one-tenant, and the legacy `setAuditContext` allowlist — lives
@@ -128,7 +130,10 @@ under
   for types only.
 - `$queryRaw` / `$executeRaw` without an explicit tenant predicate.
 - Taking `tenantId` as a function argument from a caller that got it from a URL.
-- Using `prisma` directly instead of `prismaForTenant(tenantId)`.
+- Using `prisma` directly instead of `prismaForTenant(tenantId)` — the bare
+  client is `aegis_app` with no GUC, so tenant tables come back empty.
+- Adding a new `prismaSystem` import without updating the bare-import
+  allowlist. That role bypasses RLS.
 - Calling `prismaForTenant` from inside `withAuditedMutation` instead of using
   the `tx` that wrapper already opened.
 - Skipping the runtime assertion because "the `WHERE` already covers it" — the
@@ -158,6 +163,7 @@ domain (`observations.ts`, `rbia-scoring.ts`, `compliance.ts`, …).
 
 Most server actions call `prismaForTenant()` directly rather than routing
 through a function here, so this layer is a **shared-query library, not a
-strict gateway** — and the tenant-isolation test never reads `src/actions/`,
-so those direct queries have no static check at all. Review them by hand. When
-a query is used by more than one caller, it belongs here.
+strict gateway**. The tenant-isolation test _does_ scan `src/actions/` for the
+common query verbs; it still cannot see `$executeRaw` argument-building or a
+`tenantId` that originated in a URL. Review those by hand. When a query is
+used by more than one caller, it belongs here.

@@ -30,9 +30,10 @@ prettier --write .    # Format files
 
 ```bash
 pnpm db:generate      # Generate Prisma client
-pnpm db:push          # Sync schema to local database
-pnpm db:migrate       # Create/apply local Prisma migration
-pnpm db:apply <path>  # Apply one loose .sql from prisma/migrations/ (CI rehearses this)
+pnpm db:push          # Sync schema to local database (fast local iteration)
+pnpm db:migrate       # prisma migrate deploy && db:bootstrap && db:verify (production/CI)
+pnpm db:migrate:dev   # Create a new migration from a schema.prisma change
+pnpm db:apply <path>  # Apply one prisma/sql/*.sql file by hand
 pnpm db:bootstrap     # Apply prisma/sql/manifest.ts: triggers, views, functions, composite FKs
 pnpm db:verify        # Assert every bootstrap object landed
 pnpm db:seed          # Seed database via prisma/seed.ts
@@ -141,13 +142,17 @@ scripts/              # Database bootstrap/verify, seeds, doc generation
 
 - Tenant ID must come from the authenticated session
 - Server actions should use `getRequiredSession()`
-- DAL queries must scope by tenant explicitly
+- DAL queries must scope by tenant explicitly (`where: { tenantId }`)
+- RLS (`FORCE ROW LEVEL SECURITY` on `aegis_app`) is the second wall, not a
+  substitute. Connect as `aegis_app` (`DATABASE_URL`) at runtime; use
+  `DATABASE_OWNER_URL` for push/bootstrap/seed and `DATABASE_SYSTEM_URL`
+  only for the shrink-listed `prismaSystem` reads
 
 ### Multi-Language Support
 
-- Supported locales: English, Hindi, Marathi, Gujarati
-- Banking terminology changes should stay domain-accurate across all
-  locales
+- English only (`src/lib/strings.ts`). next-intl was removed in the 2.0 seed
+  (design decision D7). Do not reintroduce locale packs or Hindi/Marathi/Gujarati
+  UI strings.
 
 ### Deployment
 

@@ -268,6 +268,10 @@ export const SCORE_BUTTON_STYLES: Record<
     active: "bg-orange-500 text-white hover:bg-orange-600 border-orange-500",
     label: "PC",
   },
+  MARGINALLY_COMPLIANT: {
+    active: "bg-red-400 text-white hover:bg-red-500 border-red-400",
+    label: "MC",
+  },
   NON_COMPLIANT: {
     active: "bg-red-600 text-white hover:bg-red-700 border-red-600",
     label: "NC",

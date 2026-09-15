@@ -61,6 +61,7 @@ export const SaveExaminationResponseSchema = z
         "FULLY_COMPLIANT",
         "LARGELY_COMPLIANT",
         "PARTIALLY_COMPLIANT",
+        "MARGINALLY_COMPLIANT",
         "NON_COMPLIANT",
       ])
       .optional(),
@@ -112,9 +113,11 @@ export const SaveExaminationResponseSchema = z
       return;
     }
 
-    const requiresNotes = ["PARTIALLY_COMPLIANT", "NON_COMPLIANT"].includes(
-      data.scoreLabel,
-    );
+    const requiresNotes = [
+      "PARTIALLY_COMPLIANT",
+      "MARGINALLY_COMPLIANT",
+      "NON_COMPLIANT",
+    ].includes(data.scoreLabel);
     if (
       requiresNotes &&
       (!data.workingNotes || data.workingNotes.length < 500)
@@ -136,7 +139,7 @@ export type SaveExaminationResponseInput = z.infer<
 
 export const AddModuleSelectionSchema = z.object({
   engagementId: z.string().uuid(),
-  moduleNodeId: z.string().uuid(),
+  moduleId: z.string().uuid(),
   reason: z.string().min(1, "Selection reason is required").max(500),
 });
 
@@ -144,7 +147,7 @@ export type AddModuleSelectionInput = z.infer<typeof AddModuleSelectionSchema>;
 
 export const RemoveModuleSelectionSchema = z.object({
   engagementId: z.string().uuid(),
-  moduleNodeId: z.string().uuid(),
+  moduleId: z.string().uuid(),
   reason: z.string().min(1, "Removal reason is required").max(500),
 });
 
@@ -154,7 +157,6 @@ export type RemoveModuleSelectionInput = z.infer<
 
 export const AutoSelectModulesSchema = z.object({
   engagementId: z.string().uuid(),
-  branchCategory: z.string().nullable(),
 });
 
 export type AutoSelectModulesInput = z.infer<typeof AutoSelectModulesSchema>;
@@ -195,7 +197,7 @@ export const CreateActionPointSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(200),
   description: z.string().min(10, "Description must be at least 10 characters"),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
-  moduleCode: z.string().min(1),
+  moduleId: z.string().uuid(),
   sourceResponseId: z.string().uuid().optional(),
 });
 
@@ -222,12 +224,12 @@ export const PromoteToObservationSchema = z.object({
   actionPointId: z.string().uuid(),
   engagementId: z.string().uuid(),
   title: z.string().min(5).max(200),
-  condition: z.string().min(10),
-  criteria: z.string().min(10),
-  cause: z.string().min(10),
-  effect: z.string().min(10),
+  description: z.string().min(10),
   recommendation: z.string().min(10),
   severity: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
+  pertainsTo: z.enum(["FINANCE", "OPERATIONS", "LEGAL_RECOVERY", "HR", "IT"]),
+  amountInvolved: z.number().positive().optional(),
+  branchComments: z.string().optional(),
 });
 
 export type PromoteToObservationInput = z.infer<

@@ -58,12 +58,12 @@ export function RemoveModuleAlertDialog({
     startTransition(async () => {
       const result = await removeModuleSelectionAction({
         engagementId,
-        moduleNodeId: module.moduleNodeId,
+        moduleId: module.moduleId,
         reason: reason.trim(),
       });
 
       if (result.success) {
-        toast.success(`"${module.moduleNode.name}" removed from examination.`);
+        toast.success(`"${module.module.name}" removed from examination.`);
         handleOpenChange(false);
         router.refresh();
       } else {
@@ -85,8 +85,8 @@ export function RemoveModuleAlertDialog({
           <AlertDialogTitle>Remove Module</AlertDialogTitle>
           <AlertDialogDescription>
             {isAutoSelected
-              ? `"${module.moduleNode.name}" was automatically selected based on branch risk profile. Removing a risk-selected module requires documented justification.`
-              : `Remove "${module.moduleNode.name}" from this examination?`}
+              ? `"${module.module.name}" was automatically selected based on branch risk profile. Removing a risk-selected module requires documented justification.`
+              : `Remove "${module.module.name}" from this examination?`}
           </AlertDialogDescription>
         </AlertDialogHeader>
 

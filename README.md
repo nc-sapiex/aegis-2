@@ -18,9 +18,10 @@ release pipeline or cloud environment is configured in-repo.
 ## What is here
 
 The core cycle: onboarding and invitations, RAM risk assessment, annual audit
-plans, engagements, RBIA examination tree with sample-based account
-examination, findings (action points and observations), compliance tracking
-and escalation, board and summary reports, dashboards, audit trail.
+plans, engagements, RBIA examination tree plus binary sample register
+(`ExaminationRegister` + `AccountRail`), findings (action points and
+observations), compliance tracking and escalation, board and summary reports,
+dashboards, audit trail.
 
 What stayed in AEGIS 1.x and will be ported later behind feature flags:
 concurrent audit, IS audit, governance, regulatory hub, investments,
@@ -33,31 +34,25 @@ string table), Sentry, the hand-coded RBIA PDF document.
 
 ## Development status
 
-_Last verified 2026-09-14 against `main` plus the active `tenant-isolation-rls`
-and `module-framework/foundation` branches._
+_Last verified 2026-09-14 against `main`._
 
 Seven implementation plans (78 tasks total) carry the rest of the design to
 first-customer readiness (`docs/superpowers/plans/`), tracked as GitHub issues
-numbered per plan. Plan 1 gates the rest: several Plan 2-7 tasks were attempted
-by an autonomous agent ahead of schedule, but every one of those PRs was closed
-unmerged — Plan 1's RLS work has to close out first so later plans aren't built
-on tenant-isolation assumptions it hasn't settled yet.
+numbered per plan.
 
-| Plan                               | Scope                                                                         | Status                                                                                                                                                                               |
-| ---------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1. Tenant isolation (RLS)          | Per-tenant Prisma client, load spike, RLS policies, static/integration suites | In progress — 1/8 tasks on `main` (tenant-bound client), Task 2 (load spike + ADR) done on branch, Task 3 (DB roles) underway                                                        |
-| 2. Audit chain                     | Hash-chained `AuditLog`, nightly verification, attestation export             | Not started on `main`; draft attempts closed pending Plan 1                                                                                                                          |
-| 3. Adapters, migrations, licensing | Storage/mail adapters, `prisma migrate`, signed license file                  | Not started on `main`; draft attempts closed pending Plan 1                                                                                                                          |
-| 4. Module-native framework         | `AuditModule`, five-point scale, statement snapshots, register UI             | In progress — 3/21 tasks already on `main` (permissions, sample-account register, score revision), 3 more committed on `module-framework/foundation` (unmerged), 1 in progress there |
-| 5. Content packs                   | Signed `.aegispack` format, CLI, the `core` pack                              | Not started                                                                                                                                                                          |
-| 6. Module admin & reporting        | Weight editor, pack install UI, data-driven PDF/XLSX reports                  | Not started on `main`; draft attempts closed pending Plan 1                                                                                                                          |
-| 7. E2E, deployment drills, runbook | Full-cycle E2E, on-prem installer, backup/restore drills                      | Not started on `main`; draft attempts closed pending Plan 1                                                                                                                          |
+| Plan                               | Scope                                                                         | Status                                                                                                                                                          |
+| ---------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Tenant isolation (RLS)          | Per-tenant Prisma client, load spike, RLS policies, static/integration suites | **Done on `main`** — tenant client, ADR 0001, `aegis_app`/`aegis_system`, `FORCE ROW LEVEL SECURITY`, harness split, `TENANT_CLIENT` toggle removed (#128)      |
+| 2. Audit chain                     | Hash-chained `AuditLog`, nightly verification, attestation export             | Not started on `main`                                                                                                                                           |
+| 3. Adapters, migrations, licensing | Storage/mail adapters, `prisma migrate`, signed license file                  | Not started on `main`                                                                                                                                           |
+| 4. Module-native framework         | `AuditModule`, five-point scale, statement snapshots, register UI             | In progress on `main` — permissions, binary `ExaminationRegister` + `AccountRail` (#94), score revision + section N/A (#93). Remaining tasks unmerged           |
+| 5. Content packs                   | Signed `.aegispack` format, CLI, the `core` pack                              | Not started                                                                                                                                                     |
+| 6. Module admin & reporting        | Weight editor, pack install UI, data-driven PDF/XLSX reports                  | Not started on `main`                                                                                                                                           |
+| 7. E2E, deployment drills, runbook | Full-cycle E2E, on-prem installer, backup/restore drills                      | Not started on `main`                                                                                                                                           |
 
-None of the in-progress work above is merged to `main` yet — `main` still
-reflects only the original kernel plus routine maintenance PRs. Branches for
-closed, pending-Plan-1 attempts still exist on the remote
+Parked branches for closed, pending-Plan-1 attempts still exist on the remote
 (`copilot/plan-<N>-task-<M>-*`) and can be reopened once the source issue is
-relabelled `ready-for-agent`; they're parked, not discarded.
+relabelled `ready-for-agent`.
 
 ## Tech stack
 
@@ -66,6 +61,9 @@ shadcn/ui, Tailwind 4, pg-boss, ExcelJS, @react-pdf/renderer, Vitest,
 Playwright.
 
 ## Quick start
+
+Copy `.env.example` to `.env`. `DATABASE_URL` is the `aegis_app` connection;
+`DATABASE_OWNER_URL` is required for `db:push` / `db:bootstrap` / `db:seed`.
 
 ```bash
 pnpm install
@@ -85,7 +83,7 @@ Local PostgreSQL via Docker: `docker compose -f docker-compose.yml -f docker-com
 pnpm tsc --noEmit        # typecheck (what CI runs)
 pnpm lint                # eslint + docs:check
 pnpm test:unit           # unit and discipline suites
-pnpm test:integration    # live PostgreSQL; resets DATABASE_URL's database
+pnpm test:integration    # live PostgreSQL; resets the owner-URL database
 pnpm test:e2e:smoke      # Playwright subset that gates merges
 pnpm docs:reference      # regenerate docs/reference/ after schema or action changes
 ```

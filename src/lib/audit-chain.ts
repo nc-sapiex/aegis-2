@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
  *
  * Canonical string covers every "AuditLog" column except "rowHash" itself,
  * in this exact order — the SQL trigger in
- * prisma/migrations/20260913_audit_chain.sql builds the identical string so
+ * prisma/sql/010_audit_trigger_function.sql builds the identical string so
  * the nightly verify job can recompute it without touching the database:
  *
  *   prevHash, id, tenantId, sequenceNumber, tableName, recordId, operation,

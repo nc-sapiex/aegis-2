@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `5dc2a09` (worktree-plan2-audit-chain)
+> Source commit: `85105ed` (worktree-plan2-audit-chain)
 
 Which processes read and write which tables.
 
@@ -19,19 +19,19 @@ reachability graph.
 | Domain | Modules | Tables touched directly |
 |---|---|---|
 | `(root)` | 8 | `Account`, `AuditeeResponse`, `Evidence`, `Observation`, `ObservationTimeline`, `Tenant`, `User` |
-| `account-examination` | 1 | `AccountExamResponse`, `AuditEngagement`, `ExaminationQuestion`, `LoanAccount` |
+| `account-examination` | 1 | `AccountExamResponse`, `AuditEngagement`, `ExaminationQuestion`, `PopulationRecord` |
 | `admin` | 4 | `AuditCalendar`, `Branch`, `ReportTemplate`, `Zone` |
-| `audit-execution` | 7 | `AuditEngagement`, `AuditExaminationResponse`, `AuditTeamMember`, `CashCheck`, `Evidence`, `LoanReview` |
+| `audit-execution` | 6 | `AuditEngagement`, `AuditModule`, `AuditTeamMember`, `Branch`, `CashCheck`, `EngagementModule` |
 | `audit-plans` | 3 | `AuditEngagement`, `AuditPlan`, `Branch` |
 | `compliance` | 5 | `BoardReport`, `ComplianceItem`, `NotificationQueue`, `User` |
 | `examination-questions` | 1 | `ExaminationQuestion` |
-| `loan-portfolio` | 3 | `AuditEngagement`, `LoanAccount` |
+| `loan-portfolio` | 3 | `AuditEngagement`, `AuditModule`, `PopulationRecord` |
 | `observations` | 3 | `ComplianceItem`, `Observation`, `ObservationTimeline` |
 | `ram` | 4 | `Branch`, `RamAssessment`, `RamAssessmentScore` |
-| `rbia` | 7 | `ActionPoint`, `AuditEngagement`, `BmResponseBatch`, `BranchRbiaScore`, `EngagementMeeting`, `EngagementModuleSelection`, `EngagementSectionNa`, `Evidence`, `ExaminationNode`, `ExaminationResponse`, `Observation` |
+| `rbia` | 8 | `ActionPoint`, `AuditEngagement`, `AuditModule`, `BmResponseBatch`, `BranchRbiaScore`, `EngagementMeeting`, `EngagementModule`, `EngagementSectionNa`, `Evidence`, `ExaminationNode`, `ExaminationResponse`, `Observation` |
 | `repeat-findings` | 2 | `Observation`, `ObservationTimeline` |
 | `reports` | 3 | `AuditEngagement`, `BoardReport`, `ReportTemplate` |
-| `sampling` | 2 | `LoanAccount`, `SamplingConfig` |
+| `sampling` | 2 | `PopulationRecord`, `SamplingConfig` |
 
 ## Background jobs
 
@@ -53,19 +53,19 @@ Tables reached from the greatest number of domains — the ones where a schema c
 |---|---|---|
 | `AuditEngagement` | 6 | `account-examination`, `audit-execution`, `audit-plans`, `loan-portfolio`, `rbia`, `reports` |
 | `Observation` | 5 | `(root)`, `jobs`, `observations`, `rbia`, `repeat-findings` |
-| `LoanAccount` | 3 | `account-examination`, `loan-portfolio`, `sampling` |
-| `Branch` | 3 | `admin`, `audit-plans`, `ram` |
-| `Evidence` | 3 | `(root)`, `audit-execution`, `rbia` |
+| `Branch` | 4 | `admin`, `audit-execution`, `audit-plans`, `ram` |
+| `PopulationRecord` | 3 | `account-examination`, `loan-portfolio`, `sampling` |
+| `AuditModule` | 3 | `audit-execution`, `loan-portfolio`, `rbia` |
 | `ObservationTimeline` | 3 | `(root)`, `observations`, `repeat-findings` |
 | `User` | 3 | `(root)`, `compliance`, `jobs` |
 | `ExaminationQuestion` | 2 | `account-examination`, `examination-questions` |
 | `ReportTemplate` | 2 | `admin`, `reports` |
+| `EngagementModule` | 2 | `audit-execution`, `rbia` |
+| `Evidence` | 2 | `(root)`, `rbia` |
 | `BoardReport` | 2 | `compliance`, `reports` |
 | `ComplianceItem` | 2 | `compliance`, `observations` |
 | `NotificationQueue` | 2 | `compliance`, `jobs` |
 | `BmResponseBatch` | 2 | `jobs`, `rbia` |
-| `AccountExamResponse` | 1 | `account-examination` |
-| `AuditCalendar` | 1 | `admin` |
 
 ### Domain access graph
 
@@ -76,9 +76,9 @@ flowchart LR
     subgraph hubs [Shared tables]
         T_AuditEngagement["AuditEngagement"]
         T_Observation["Observation"]
-        T_LoanAccount["LoanAccount"]
         T_Branch["Branch"]
-        T_Evidence["Evidence"]
+        T_PopulationRecord["PopulationRecord"]
+        T_AuditModule["AuditModule"]
         T_ObservationTimeline["ObservationTimeline"]
     end
     D_account_examination["account-examination"]
@@ -102,18 +102,19 @@ flowchart LR
     D_rbia --> T_Observation
     D_repeat_findings["repeat-findings"]
     D_repeat_findings --> T_Observation
-    D_account_examination --> T_LoanAccount
-    D_loan_portfolio --> T_LoanAccount
-    D_sampling["sampling"]
-    D_sampling --> T_LoanAccount
     D_admin["admin"]
     D_admin --> T_Branch
+    D_audit_execution --> T_Branch
     D_audit_plans --> T_Branch
     D_ram["ram"]
     D_ram --> T_Branch
-    D__root_ --> T_Evidence
-    D_audit_execution --> T_Evidence
-    D_rbia --> T_Evidence
+    D_account_examination --> T_PopulationRecord
+    D_loan_portfolio --> T_PopulationRecord
+    D_sampling["sampling"]
+    D_sampling --> T_PopulationRecord
+    D_audit_execution --> T_AuditModule
+    D_loan_portfolio --> T_AuditModule
+    D_rbia --> T_AuditModule
     D__root_ --> T_ObservationTimeline
     D_observations --> T_ObservationTimeline
     D_repeat_findings --> T_ObservationTimeline

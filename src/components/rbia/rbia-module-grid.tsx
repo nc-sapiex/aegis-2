@@ -14,14 +14,14 @@ import { RemoveModuleAlertDialog } from "./remove-module-alert-dialog";
 
 /**
  * Matches the return shape of `getModuleSelections()` from rbia-examination DAL.
- * Prisma include on moduleNode gives { id, code, name }.
+ * Prisma include on module gives { id, code, name }.
  */
 export type ModuleSelectionRow = {
   id: string;
-  moduleNodeId: string;
+  moduleId: string;
   isAutoSelected: boolean;
   selectionReason: string | null;
-  moduleNode: {
+  module: {
     id: string;
     code: string;
     name: string;
@@ -82,21 +82,21 @@ export function RbiaModuleGrid({
   allModules,
   canManageModules,
 }: RbiaModuleGridProps) {
-  // Build a lookup: moduleNodeId -> isAutoSelected
+  // Build a lookup: moduleId -> isAutoSelected
   const selectionMap = new Map<string, boolean>();
   for (const sel of moduleSelections) {
-    selectionMap.set(sel.moduleNodeId, sel.isAutoSelected);
+    selectionMap.set(sel.moduleId, sel.isAutoSelected);
   }
 
-  // Set of currently selected moduleNodeIds for add dialog
-  const currentSelectionNodeIds = useMemo(
-    () => new Set(moduleSelections.map((s) => s.moduleNodeId)),
+  // Set of currently selected moduleIds for add dialog
+  const currentSelectionModuleIds = useMemo(
+    () => new Set(moduleSelections.map((s) => s.moduleId)),
     [moduleSelections],
   );
 
-  // Map of moduleNodeId -> ModuleSelectionRow for remove dialog lookup
+  // Map of moduleId -> ModuleSelectionRow for remove dialog lookup
   const selectionLookup = useMemo(
-    () => new Map(moduleSelections.map((s) => [s.moduleNodeId, s])),
+    () => new Map(moduleSelections.map((s) => [s.moduleId, s])),
     [moduleSelections],
   );
 
@@ -116,7 +116,7 @@ export function RbiaModuleGrid({
             <AddModuleDialog
               engagementId={engagementId}
               allModules={allModules}
-              currentSelectionNodeIds={currentSelectionNodeIds}
+              currentSelectionModuleIds={currentSelectionModuleIds}
             />
           )}
         </div>
@@ -138,7 +138,7 @@ export function RbiaModuleGrid({
           <AddModuleDialog
             engagementId={engagementId}
             allModules={allModules}
-            currentSelectionNodeIds={currentSelectionNodeIds}
+            currentSelectionModuleIds={currentSelectionModuleIds}
           />
         )}
       </div>
@@ -151,7 +151,7 @@ export function RbiaModuleGrid({
             mod.totalLeafCount > 0
               ? Math.round((mod.scoredCount / mod.totalLeafCount) * 100)
               : 0;
-          const isAuto = selectionMap.get(mod.nodeId);
+          const isAuto = selectionMap.get(mod.moduleId ?? "");
 
           return (
             <Link
@@ -167,7 +167,7 @@ export function RbiaModuleGrid({
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    const sel = selectionLookup.get(mod.nodeId);
+                    const sel = selectionLookup.get(mod.moduleId ?? "");
                     if (sel) {
                       setRemoveTarget({
                         selection: sel,

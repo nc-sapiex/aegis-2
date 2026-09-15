@@ -25,15 +25,18 @@ before recreating them.
 ## Prerequisites
 
 - A local PostgreSQL 16 — `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d`
-- `DATABASE_URL` set in `.env`. Use `127.0.0.1`, not a Docker DNS hostname
+- `.env` matches `.env.example`: `DATABASE_URL` is `aegis_app`;
+  `DATABASE_OWNER_URL` is the owner used by seed scripts; `DATABASE_SYSTEM_URL`
+  is `aegis_system`. Use `127.0.0.1` (or `localhost`), not a Docker DNS hostname
 - Schema pushed and bootstrapped: `pnpm db:push && pnpm db:bootstrap && pnpm db:verify`
 - Prisma client generated: `pnpm db:generate`
 
-`db:push` alone leaves a database with no audit triggers, no dashboard
-views and no composite foreign keys. Seeding against it will not behave as
-documented here. Both `prisma/seed.ts` and `scripts/seed-full-audit-lifecycle.ts`
-wrap the run in `withTriggersDetached` because there is no app session to
-attribute writes to.
+`db:push` alone leaves a database with no audit triggers, no RLS policies, no
+dashboard views and no composite foreign keys. Seeding against it will not
+behave as documented here. Both `prisma/seed.ts` and
+`scripts/seed-full-audit-lifecycle.ts` connect as the owner
+(`DATABASE_OWNER_URL`) and wrap the run in `withTriggersDetached` because
+there is no app session to attribute writes to.
 
 ## Seed Pipeline
 
@@ -139,7 +142,7 @@ If you get **unique constraint errors** on `RamAssessmentScore`, clean
 orphan records first:
 
 ```bash
-psql "$DATABASE_URL" -c \
+psql "$DATABASE_OWNER_URL" -c \
   'DELETE FROM "RamAssessmentScore" WHERE "assessmentId" NOT IN (SELECT id FROM "RamAssessment");'
 ```
 
@@ -153,6 +156,12 @@ Step 4 ran against an empty database. Run steps 1–3 first.
 
 Steps 2 or 3 were skipped, or step 1 was re-run afterwards and wiped them.
 Re-run `pnpm seed:rbia-housing` then `pnpm seed:exam-questions`.
+
+### Counts look empty after a successful seed
+
+You queried as `aegis_app` (`DATABASE_URL`) with no
+`app.current_tenant_id`. RLS returns zero rows. Re-run the verification SQL
+against `DATABASE_OWNER_URL`, or start the app and look at the UI.
 
 ### "client password must be a string"
 
@@ -192,7 +201,7 @@ then `pnpm install && pnpm db:generate`.
 After seeding, verify record counts:
 
 ```sql
-psql "$DATABASE_URL" -c "
+psql "$DATABASE_OWNER_URL" -c "
 SELECT 'RamAssessment' as tbl, COUNT(*) FROM \"RamAssessment\"
 UNION ALL SELECT 'AuditEngagement', COUNT(*) FROM \"AuditEngagement\"
 UNION ALL SELECT 'LoanAccount', COUNT(*) FROM \"LoanAccount\"
@@ -204,6 +213,10 @@ UNION ALL SELECT 'BranchRbiaScore', COUNT(*) FROM \"BranchRbiaScore\"
 ORDER BY 1;
 "
 ```
+
+Use `DATABASE_OWNER_URL`, not `DATABASE_URL`. The app role (`aegis_app`) has
+`FORCE ROW LEVEL SECURITY` and no tenant GUC in an interactive `psql`
+session, so the same counts against `DATABASE_URL` come back as zero.
 
 **Expected minimums after the full pipeline:** RamAssessment ≥ 1,
 AuditEngagement ≥ 9 (7 from the base seed + 2 lifecycle), LoanAccount ≥ 50,

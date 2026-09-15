@@ -5,12 +5,17 @@ cross-cutting rules (audit triggers, tenant scoping) stay in the root `CLAUDE.md
 
 ## Applying migrations
 
-- `prisma/migrations/` mixes Prisma migration directories with bare `.sql`
-  files, and Prisma never discovers the loose ones. Apply those with
-  `pnpm db:apply <path>` — the same path CI rehearses — not by hand with `psql`.
-  Timestamped directories apply only under an explicit Prisma migration command
-- A fresh database needs `pnpm db:bootstrap` after `db:push`; `db:push` alone
-  leaves it with no audit triggers, dashboard views, or composite FKs
+- `prisma/migrations/` is a real Prisma migrations directory: `pnpm db:migrate`
+  (`prisma migrate deploy`) is the production/CI path. `pnpm db:migrate:dev`
+  (`prisma migrate dev`) creates a new migration from a `schema.prisma`
+  change. Local iteration still uses `pnpm db:push` for speed; the
+  integration harness resets with `prisma db push --force-reset`.
+- Everything Prisma can't express from `schema.prisma` — functions, views,
+  triggers, composite FKs, RLS policies — lives in `prisma/sql/*.sql`, applied
+  in the numbered order in `prisma/sql/manifest.ts` by `pnpm db:bootstrap`.
+  Apply one file by hand with `pnpm db:apply <path>`, not raw `psql`.
+- A fresh database needs `pnpm db:bootstrap` after `db:push`/`db:migrate`;
+  neither alone creates audit triggers, dashboard views, or composite FKs.
 
 ## Row Level Security is live
 
@@ -34,9 +39,12 @@ shrink-only allowlist.
 
 `WHERE tenantId` stays on every query (spec §4.3). RLS is the second wall.
 
+Ad-hoc `psql "$DATABASE_URL"` after a seed looks empty: `aegis_app` has no
+tenant GUC in that session. Use `DATABASE_OWNER_URL` for operator SQL.
+
 ## Session GUCs read back as `''`, not NULL
 
 On a pooled connection that has previously set them, `current_setting(...)`
 returns `''`, and `''::UUID` throws. Always wrap reads in
 `NULLIF(current_setting(...), '')` — see
-`prisma/migrations/20260826_audit_trigger_null_safe.sql`.
+`prisma/sql/010_audit_trigger_function.sql`.

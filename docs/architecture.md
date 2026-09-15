@@ -113,9 +113,11 @@ Reading left to right:
 
 1. **Planning** scores each branch (`RamAssessment`), builds the annual
    `AuditPlan`, and opens an `AuditEngagement` per visit.
-2. **Execution** attaches the team and meetings, runs RBIA examination and
-   sample-based account work, and raises formal `Observation` records (plus
-   lighter `ActionPoint`s). Evidence lands in S3; the row points at the key.
+2. **Execution** attaches the team and meetings, runs RBIA examination
+   (checklist tree plus the binary sample register at
+   `.../rbia/examination/[moduleCode]`) and raises formal `Observation`
+   records (plus lighter `ActionPoint`s). Evidence lands in S3; the row
+   points at the key.
 3. **Follow-up** appends an immutable `ObservationTimeline`, tracks remediation
    on `ComplianceItem`, and escalates through `NotificationQueue` → SES. Board
    packs and other exports read the same observations and engagements.
@@ -155,14 +157,17 @@ The rules, in order of how much damage breaking them does:
    plain data down as props; client components receive props and call server
    actions. There is no data fetching inside a client component.
 4. **Mutations go through server actions, not API routes.** The HTTP
-   endpoints under `src/app/api/` (inventoried in
-   [`reference/routes.md`](reference/routes.md)) exist for things that fit HTTP
-   better: Better Auth's handler, health, file downloads, streamed XLSX/PDF
-   exports, an external cron trigger, and two authenticated JSON endpoints the
-   client fetches (`/api/dashboard`, `/api/is-audit/checklist`). Exception:
-   `POST /api/reports/board-report` mutates through an API route (PDF → S3 →
-   audit row), so report-permission changes must cover it, not just
-   `src/actions/`.
+  endpoints under `src/app/api/` (inventoried in
+  [`reference/routes.md`](reference/routes.md)) exist for things that fit HTTP
+  better: Better Auth's handler, health, file downloads, streamed XLSX/PDF
+  exports, and two authenticated JSON endpoints the client fetches
+  (`/api/dashboard`, `/api/is-audit/checklist`). `/api/dashboard` intersects
+  `?widgets=` with the caller's role allowlist
+  (`allowedDashboardWidgetIds` in `src/lib/dashboard-config.ts`) — naming a
+  CAE widget in the query string must not fetch CAE aggregates for an
+  `AUDITOR`. Exception: `POST /api/reports/board-report` mutates through an
+  API route (PDF → S3 → audit row), so report-permission changes must cover
+  it, not just `src/actions/`.
 
 ## One request, end to end
 
@@ -213,14 +218,29 @@ convention exists.
 
 ## Invariant 1 — tenant isolation
 
-**Tenant isolation is enforced in application code. PostgreSQL row-level
-security is not enabled yet.** This repo carries no RLS policies — no
-`ENABLE ROW LEVEL SECURITY`, no policy file; those arrive in Task 4 (spec §4,
-gated by a spike; see the implementation plans under
-[`superpowers/plans/`](superpowers/plans/)). `prismaForTenant(tenantId)`
-validates that the tenant id is a well-formed UUID and returns a per-tenant
-client that sets the `app.current_tenant_id` session GUC, so the policies will
-see the tenant once they land. It adds no filtering of its own.
+**Two walls, both load-bearing.** Application queries still carry
+`where: { tenantId }`. PostgreSQL also enforces it: every model with a
+`tenantId` column has `FORCE ROW LEVEL SECURITY` and a `tenant_isolation`
+policy keyed to `app.current_tenant_id`
+(`prisma/sql/070_rls_policies.sql`, generated from the schema by
+`pnpm docs:reference`; `db:verify` asserts every policy). Spec §4.3 is
+explicit that RLS does not replace the `WHERE` clauses.
+
+The running app connects as `aegis_app` (`DATABASE_URL`): `NOSUPERUSER`,
+`NOBYPASSRLS`. A query on the bare Prisma singleton therefore returns **zero
+rows**, by design — there is no tenant GUC. `DATABASE_OWNER_URL` is for
+`db:push`, `db:bootstrap`, `db:verify`, `db:seed` and the integration harness
+only. A third role, `aegis_system` (`DATABASE_SYSTEM_URL`, `BYPASSRLS`,
+otherwise the same grants), exists only for the handful of reads that must
+cross tenants or run before any tenant context exists (job tenant
+enumeration, the pre-auth invite-token lookup) — `prismaSystem` in
+`src/lib/prisma.ts`, on the same shrink-only bare-import allowlist.
+
+`prismaForTenant(tenantId)` validates that the tenant id is a well-formed UUID
+and returns a per-tenant client that sets `app.current_tenant_id` once per
+transaction. That GUC is what the RLS policy reads. It still adds **no row
+filtering of its own**; drop the `WHERE` and RLS is the remaining wall, not a
+reason to stop writing the predicate.
 
 An earlier version wrapped every _query_ in its own transaction with
 `SET LOCAL`, which was a no-op without policies _and_ caused P2028 transaction
@@ -230,33 +250,39 @@ instead: an operation already inside one is left alone, and `$transaction` sets
 it as its own first statement, so an action's writes stay in a single
 transaction on a single connection. That matters beyond performance — an
 operation re-wrapped onto a second connection would not roll back with its
-caller, and the GUCs `setAuditContext` sets on `tx` would never reach the
+caller, and the GUCs `setSessionContext` writes on `tx` would never reach the
 write, leaving an `AuditLog` row with a null `actionType` and `userId`. The
-P2028 risk is reduced, not eliminated; the Task 2 load spike gates it.
+Task 2 load spike (ADR 0001) measured this wrapping at pool size 25 and
+cleared the P2028 / 2× p95 bar; `scripts/load/rls-spike.mjs` still measures
+the live `rls` configuration before each release.
 
 What actually keeps tenants apart:
 
 1. `tenantId` comes from `getRequiredSession()` and **nowhere else** — never
    from a URL parameter, request body or query string.
-2. Every query carries an explicit `where: { tenantId }`. **This is the whole
-   control.** Know exactly what backs it up:
+2. Every query carries an explicit `where: { tenantId }`. RLS is the second
+   wall, not a substitute. Know exactly what backs the first:
    - `src/data-access/__tests__/tenant-isolation.test.ts` **fails the build**
-     on two things: a DAL `findMany` with no `where` clause at all (the shape
-     `getUsers()` once shipped — a one-file, shrink-only allowlist covers the
-     global RBI reference tables), and a DAL module missing `server-only`. Its
-     older checks — a filtered `findMany` whose `where` lacks `tenantId`, raw
-     `prisma` imports — only `console.warn`, and nothing static covers
-     `findFirst`/`count`/aggregates or any query in `src/actions/`.
+     on a DAL or action `findMany` / `findFirst` / `count` / `aggregate` /
+     `groupBy` whose args name no `tenantId` (shrink-only allowlists cover
+     global RBI reference tables and two pre-tenant lookups), on raw SQL
+     without a tenant predicate, and on a DAL module missing `server-only`.
+   - `src/data-access/__tests__/bare-prisma-import.test.ts` fails the build
+     on a new bare `prisma` / `prismaSystem` import outside its shrink-only
+     allowlist.
    - The read-side assertion ("throw if a returned row's `tenantId` doesn't
-     match") exists in only ~8 of 43 DAL modules, some returning `null`
-     instead of throwing.
+     match") exists in only two DAL modules (`settings.ts`, `audit-trail.ts`).
+     Treat it as required on new code, not as a net already in place.
 
-Outside the two enforced checks, a dropped `WHERE tenantId` is caught by code
-review or nothing — review every query in a DAL or action diff for the tenant
-predicate.
+A dropped `WHERE tenantId` on a tenant-scoped table is now a failed unit
+test in most query shapes, **and** an empty result at the database if the
+GUC is unset. Review every new query anyway: `$executeRaw`, writes, and
+callers that take `tenantId` as an argument can still smuggle a URL value.
 
 The full pattern, with examples, is in
-[`src/data-access/README.md`](../src/data-access/README.md).
+[`src/data-access/README.md`](../src/data-access/README.md). Roles and
+policies: [`prisma/CLAUDE.md`](../prisma/CLAUDE.md),
+[`adr/0001-rls-enforcement.md`](adr/0001-rls-enforcement.md).
 
 ### Using the tenant client
 
@@ -271,14 +297,12 @@ data. Three constraints that are easy to miss:
 - **The GUC is set once per transaction, not once per query.** `$transaction`
   on the tenant client prepends `set_config('app.current_tenant_id', …)`. An
   operation already inside a transaction is left alone on purpose.
-- **`TENANT_CLIENT=singleton` is for the Task 2 load spike only.** It is
-  ignored when `NODE_ENV=production`. Do not set it in `.env` for ordinary
-  development — you would be measuring the unwrapped baseline, not the client
-  the app actually uses.
+- **Do not add `prismaSystem` call sites casually.** It bypasses RLS. Every
+  new import must update the bare-import allowlist, with a reviewer
+  sign-off that the read cannot carry a tenant GUC.
 
-> If RLS is ever switched on, it consumes the same `app.current_tenant_id`
-> setting the audit trigger already reads — it would be an additional layer, not
-> a replacement for the `WHERE` clauses.
+Ad-hoc `psql "$DATABASE_URL"` looks empty after a seed: `aegis_app` plus
+no GUC is zero rows. Use `DATABASE_OWNER_URL` for operator SQL.
 
 ### The connection-pool trap
 
@@ -325,33 +349,35 @@ Three details that matter:
 - **Session GUCs read back as `''`, not NULL,** on a pooled connection that has
   previously set them, and `''::UUID` throws. Any SQL that reads one must wrap
   it in `NULLIF(current_setting(...), '')` — see
-  `prisma/migrations/20260826_audit_trigger_null_safe.sql`.
+  `prisma/sql/010_audit_trigger_function.sql`.
 
 A mutation made outside the wrapper does not produce an unattributed row — it
 **fails**. The trigger normalises an unset tenant to `NULL`, and
 `AuditLog.tenantId` is `NOT NULL`, so the audit insert aborts and takes the
-business write down with it (`prisma/migrations/20260826_audit_trigger_null_safe.sql`
+business write down with it (`prisma/sql/010_audit_trigger_function.sql`
 explains why that is deliberate). Historically the failure went unnoticed
 because callers wrap side effects in catch-alls.
 `src/data-access/__tests__/audited-mutation-discipline.test.ts` therefore scans
 the source and fails the build on any unwrapped write to an audited table,
 before it can reach a database.
 
-**Legacy call sites.** 28 action files predate the wrapper and set the context
-by hand via `setAuditContext` from `src/data-access/audit-context.ts`. They
-work, and the discipline test computes its allowlist directly from which files
-still call `setAuditContext` — a separate, empty `KNOWN_UNAUDITED` set may only
-ever shrink. New code must use `withAuditedMutation`; touching one of the 28
-is a good opportunity to migrate it off `setAuditContext` entirely.
+**Legacy call sites.** Some action files predate the wrapper and set the
+context by hand via `setAuditContext` from `src/data-access/audit-context.ts`.
+They work, and the discipline test computes its allowlist directly from which
+files still call `setAuditContext` — a separate, empty `KNOWN_UNAUDITED` set
+may only ever shrink. New code must use `withAuditedMutation`; touching a
+legacy file is a good opportunity to migrate it off `setAuditContext`
+entirely.
 
 **Which tables are audited** is declared in three places that must agree:
 `AUDITED_TABLES` in `src/lib/audit-triggers.ts`, the `audited` array in
 `prisma/sql/020_attach_audit_triggers.sql`, and `AUDIT_TRIGGER_TABLES` in
 `prisma/sql/manifest.ts`; `src/lib/__tests__/sql-manifest.test.ts` fails the
-build if they drift. 24 tables carry the trigger, including the eight RBIA/GRC
+build if they drift. 25 tables carry the trigger, including the eight RBIA/GRC
 scoring tables an examiner would ask for a change history on (`RamAssessment`,
 `RamAssessmentScore`, `ExaminationResponse`, `AuditExaminationResponse`,
-`AccountExamResponse`, `ActionPoint`, `BranchRbiaScore`, `LoanAccount`).
+`AccountExamResponse`, `ActionPoint`, `BranchRbiaScore`, `LoanAccount`) plus
+`EngagementSectionNa`.
 `src/lib/__tests__/audit-coverage.test.ts` pins that set: a regulated table
 leaving the list fails the build, and its exemption set is empty and may only
 shrink. Because the trigger fails an un-contexted write, a table can only join
@@ -365,7 +391,7 @@ attach script is idempotent.
 
 ## Invariant 3 — authorization
 
-Roles are a Prisma enum (17 of them); permissions are a TypeScript union (78) in
+Roles are a Prisma enum (17 of them); permissions are a TypeScript union (80) in
 `src/lib/permissions.ts`. Users hold an _array_ of roles, and their effective
 permissions are the **union** across all of them, so every check is
 `roles.includes(...)`-shaped, never `role === ...`.
@@ -386,7 +412,7 @@ the clearest example: `AUDIT_MANAGER` may close LOW/MEDIUM observations,
 `CAE` is required for HIGH/CRITICAL. That is a property of the transition, not
 of the page, so it lives in `src/lib/state-machine.ts`.
 
-> **Coverage is uneven.** 15 of 46 pages call a permission guard. The rest rely
+> **Coverage is uneven.** 14 of 46 pages call a permission guard. The rest rely
 > on the layout's session check plus action-level and DAL-level enforcement — so
 > a user without permission cannot _do_ anything, but may be able to _load_ a
 > page. See [Where the map is thin](#where-the-map-is-thin).
@@ -400,7 +426,7 @@ and reviewed against RBI policy without reading Prisma code.
 | --------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `lib/ram-engine.ts`               | Branch risk composite score              | Weighted average of 1–5 parameter scores, normalised by total weight. HIGH >3.5 → 12mo, MEDIUM 2.5–3.5 → 18mo, LOW <2.5 → 24mo audit frequency. Repeat findings apply a 1.5× uplift. |
 | `lib/rbia-scoring-engine.ts`      | RBIA node → module roll-up               | 4-point scale (1.0 / 0.75 / 0.5 / 0.0). A critical item scored NON_COMPLIANT **caps** the module at 0.5 — a ceiling, not a floor.                                                    |
-| `lib/instance-scoring.ts`         | Per-question compliance % → `ScoreLabel` | Bridges sample-based account responses into the RBIA scoring engine.                                                                                                                 |
+| `lib/instance-scoring.ts`         | Per-question compliance % → `ScoreLabel` | Bridges sample-based account responses into the RBIA scoring engine. A register that is complete and exclusively N/A is examined-N/A, not unfinished (`isCompleteExclusiveNotApplicable`). |
 | `lib/sampling-engine.ts`          | Deterministic sample selection           | Bucket-fill across five criteria buckets whose percentages must sum to 100.                                                                                                          |
 | `lib/escalation-engine.ts`        | Overdue → escalation level               | L1 +15d, L2 +30d, L3 +90d, L4 +180d; L0 is within grace.                                                                                                                             |
 | `lib/escalation-router.ts`        | Escalation level → recipients            | L1 Branch+IAD, L2 Zonal Auditor, L3 ACE Officer, L4 ACB Member + CAE.                                                                                                                |
@@ -526,9 +552,12 @@ over a plain object instead of `messages/<locale>.json` (see
 
 - **Environment** is a single Zod schema in `src/env.ts`, imported by
   `next.config.ts` so validation runs at build time (`SKIP_ENV_VALIDATION=1`
-  bypasses it for Docker builds). The variable contract — which four are
-  required, what degrades without the rest — lives in
-  [`CLAUDE.md`](../CLAUDE.md#gotchas), not here.
+  bypasses it for Docker builds). The four required at boot are
+  `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`,
+  `NEXT_PUBLIC_APP_URL`. After RLS, local development also needs
+  `DATABASE_OWNER_URL` (scripts and harness) and `DATABASE_SYSTEM_URL`
+  (`prismaSystem`). The rest of the contract lives in
+  [`CLAUDE.md`](../CLAUDE.md#gotchas).
 - **`NEXT_PUBLIC_*` variables are baked at build time**, so changing one
   requires a rebuild, not a restart.
 - **Security headers** — CSP, HSTS, `X-Frame-Options: DENY`, `nosniff`,
@@ -552,14 +581,14 @@ over a plain object instead of `messages/<locale>.json` (see
 | Unit        | Vitest                  | `src/**/__tests__/`                                        | Concentrated on the pure engines and state machines, plus route handlers with their I/O mocked                                       |
 | Discipline  | Vitest, static analysis | `src/data-access/__tests__/`, `src/lib/__tests__/`         | Suites that read source text, no database — see below                                                                                |
 | Integration | Vitest, live PostgreSQL | `src/**/__integration__/`, harness in `tests/integration/` | `pnpm test:integration`: real transactions, real triggers. Global setup **resets** the `DATABASE_URL` database                       |
-| E2E         | Playwright              | `tests/e2e/`                                               | 3 spec files (observation lifecycle, permission guards, smoke), replayed under 5 role projects (auditor, manager, cae, cco, auditee) |
+| E2E         | Playwright              | `tests/e2e/`                                               | 4 spec files (observation lifecycle, permission guards, smoke, RBIA sample register), replayed under 5 role projects (auditor, manager, cae, cco, auditee) |
 
 The discipline suites enforce different amounts.
 `audited-mutation-discipline.test.ts` fails the build on any unwrapped write to
 an audited table, with a shrink-only allowlist for legacy `setAuditContext`
-sites. `tenant-isolation.test.ts` fails the build on a DAL `findMany` with no
-`where` clause and on a DAL module missing `server-only`; its remaining checks
-only warn — the precise boundary is under
+sites. `tenant-isolation.test.ts` fails the build on DAL **and** action queries
+whose args name no `tenantId`, on raw SQL without a tenant predicate, and on a
+DAL module missing `server-only` — the precise boundary is under
 [Invariant 1](#invariant-1--tenant-isolation). `sql-manifest.test.ts` and
 `audit-coverage.test.ts` hold the three audited-table declarations in sync and
 keep the regulated tables on the list —
@@ -581,22 +610,26 @@ the section that owns the detail; the numbers live there, once.
 - **Permission-guard coverage is not uniform** — most pages rely on the layout
   session check plus action- and DAL-level enforcement
   → [Invariant 3](#invariant-3--authorization).
-- **Legacy audit writes** — 28 action files still hand-roll `setAuditContext`
-  under a shrink-only allowlist → [Invariant 2](#invariant-2--audit-attribution).
-- **`prisma db push` alone produces an incomplete database** — triggers, views
-  and guards come from loose `.sql` files applied by hand, and they do not ride
-  along with a deploy → [Invariant 2](#invariant-2--audit-attribution).
-- **RLS is not implemented, not dead code.** This repo carries no RLS SQL at
-  all — no policy files, no `ENABLE ROW LEVEL SECURITY` anywhere in `prisma/`.
-  It is planned per spec §4, gated by a spike →
-  [Invariant 1](#invariant-1--tenant-isolation).
-- **`WHERE tenantId` is only partially machine-checked** — the no-`where`
-  `findMany` shape is enforced; everything else is code review
-  → [Invariant 1](#invariant-1--tenant-isolation).
+- **Legacy audit writes** — some action files still hand-roll `setAuditContext`
+  under a shrink-only allowlist the discipline test derives from remaining
+  call sites → [Invariant 2](#invariant-2--audit-attribution).
+- **`prisma db push` alone produces an incomplete database** — triggers, views,
+  RLS policies and composite FKs come from loose `.sql` files applied by
+  `pnpm db:bootstrap`, and they do not ride along with a deploy →
+  [Invariant 2](#invariant-2--audit-attribution).
+- **RLS is live, and `WHERE tenantId` stays.** Policies live in
+  `prisma/sql/070_rls_policies.sql`. A new `tenantId` column needs
+  `pnpm docs:reference` (regenerates the policy file) then `pnpm db:bootstrap`.
+  `prismaSystem` bypasses RLS — new call sites need a reviewer on the
+  bare-import allowlist → [Invariant 1](#invariant-1--tenant-isolation).
+- **`WHERE tenantId` is machine-checked on the common query verbs** across
+  DAL and actions; `$executeRaw`, writes, and `tenantId` function arguments
+  are still review → [Invariant 1](#invariant-1--tenant-isolation).
 - **The DAL is a shared-query library, not a strict gateway** — most actions
   query directly → [`src/data-access/README.md`](../src/data-access/README.md).
-- **E2E coverage is three spec files** — lifecycle, permission guards and a
-  smoke pass; most modules have none → [Testing strategy](#testing-strategy).
+- **E2E coverage is four spec files** — lifecycle, permission guards, smoke,
+  and the RBIA sample register; most modules have none →
+  [Testing strategy](#testing-strategy).
 - **Dead demo JSON.** `src/data/index.ts` still exports DEPRECATED seed JSON
   (`findings`, `auditPlans`, `bankProfile`, …), but the chain is orphaned: its
   consumers have no importers, and the live dashboard reads the database
@@ -607,9 +640,11 @@ the section that owns the detail; the numbers live there, once.
 The path of least resistance, which is also the one the discipline tests expect:
 
 1. **Schema** — edit `prisma/schema.prisma`, then `pnpm db:generate` and
-   `pnpm db:push`. If the table should be audited, first make sure every write
-   to it will go through `withAuditedMutation` (the trigger fails un-contexted
-   writes), then add it to the three declarations under
+   `pnpm db:push`. If the table has `tenantId`, regenerate RLS policies with
+   `pnpm docs:reference` and re-run `pnpm db:bootstrap` so `070_rls_policies.sql`
+   and `db:verify` see it. If the table should be audited, first make sure every
+   write to it will go through `withAuditedMutation` (the trigger fails
+   un-contexted writes), then add it to the three declarations under
    [Invariant 2](#invariant-2--audit-attribution) — no trigger migration is
    needed. If it holds regulated scoring data, add it to `REGULATED_MODELS` in
    `src/lib/__tests__/audit-coverage.test.ts` so it cannot slip off the list.

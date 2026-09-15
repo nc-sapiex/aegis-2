@@ -20,12 +20,13 @@ import type { ScoreLabel } from "@/generated/prisma/enums";
 
 /**
  * Maps ScoreLabel enum values to their decimal score equivalents.
- * Source: RBIA Policy 2020, 4-point scoring scale.
+ * Source: RBIA Policy 2020, 5-point scoring scale.
  */
 export const SCORE_VALUES: Record<ScoreLabel, number> = {
   FULLY_COMPLIANT: 1.0,
   LARGELY_COMPLIANT: 0.75,
   PARTIALLY_COMPLIANT: 0.5,
+  MARGINALLY_COMPLIANT: 0.25,
   NON_COMPLIANT: 0.0,
 };
 

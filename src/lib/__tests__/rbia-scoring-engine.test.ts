@@ -59,6 +59,10 @@ describe("SCORE_VALUES", () => {
   it("NON_COMPLIANT = 0.0", () => {
     expect(SCORE_VALUES.NON_COMPLIANT).toBe(0.0);
   });
+
+  it("includes the fifth band, MARGINALLY_COMPLIANT, at 0.25", () => {
+    expect(SCORE_VALUES.MARGINALLY_COMPLIANT).toBe(0.25);
+  });
 });
 
 // ─── CRITICAL_ITEM_CAP constant ──────────────────────────────────────────────

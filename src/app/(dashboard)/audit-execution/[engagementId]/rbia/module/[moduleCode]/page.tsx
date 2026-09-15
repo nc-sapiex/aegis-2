@@ -1,122 +1,78 @@
-import { Suspense } from "react";
 import Link from "next/link";
 import { getRequiredSession } from "@/data-access/session";
 import {
-  getExaminationTree,
-  type ExaminationTreeNode,
-} from "@/data-access/rbia-examination";
+  getModuleRegister,
+  getModuleRailData,
+} from "@/data-access/engagement-statements";
 import { getEngagementModuleScores } from "@/data-access/rbia-scoring";
 import {
   getViolationSummary,
   getExaminationProgress,
 } from "@/data-access/account-examination";
-import { RbiaExaminationTree } from "@/components/rbia/rbia-examination-tree";
+import {
+  ExaminationRegister,
+  type RegisterStatement,
+  type RegisterResponse,
+} from "@/components/rbia/examination-register";
+import { ModuleRail } from "@/components/rbia/module-rail";
 import { ComplianceSummary } from "@/components/rbia/compliance-summary";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "@/lib/icons";
 import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface PageProps {
   params: Promise<{ engagementId: string; moduleCode: string }>;
-  searchParams: Promise<{ expanded?: string }>;
-}
-
-// ── Loading skeleton for the tree table ──────────────────────────────────────
-
-function TreeSkeleton() {
-  const depths = [0, 1, 1, 2, 2, 2, 1, 2, 2, 1];
-  return (
-    <Card className="overflow-hidden">
-      {/* Sticky header skeleton */}
-      <div className="border-b px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-          <div className="w-48">
-            <Skeleton className="h-2.5 w-full" />
-            <Skeleton className="mt-1 ml-auto h-3 w-16" />
-          </div>
-        </div>
-      </div>
-      {/* Filter bar skeleton */}
-      <div className="flex items-center gap-2 border-b px-4 py-2">
-        <Skeleton className="h-4 w-4" />
-        <Skeleton className="h-7 w-20" />
-        <Skeleton className="h-7 w-24" />
-        <Skeleton className="h-7 w-24" />
-      </div>
-      {/* Tree rows skeleton */}
-      <div className="space-y-0">
-        {depths.map((depth, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-2 border-b px-4 py-2.5"
-            style={{ paddingLeft: `${16 + depth * 20}px` }}
-          >
-            <Skeleton className="h-4 w-4 shrink-0" />
-            <Skeleton
-              className="h-4 shrink-0"
-              style={{ width: `${180 - depth * 20}px` }}
-            />
-            <div className="ml-auto flex items-center gap-2">
-              <Skeleton className="h-4 w-10" />
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-4 w-12" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
 }
 
 /**
- * Per-module RBIA examination tree page.
- *
- * This page is the primary auditor workspace. It renders the hierarchical
- * examination tree for a single module, with inline scoring buttons,
- * filter toggles, and working notes panels.
+ * Per-module RBIA examination register page.
  *
  * Route: /audit-execution/[engagementId]/rbia/module/[moduleCode]
  *
  * The parent RBIA layout provides back link, stepper, transition control,
  * and tab navigation. This page adds a breadcrumb back to the examination
- * tab and renders the tree component with module-specific data.
+ * tab and renders the flat statement register for this module's leaves.
  */
-export default async function ModuleExaminationPage({
-  params,
-  searchParams,
-}: PageProps) {
+export default async function ModuleExaminationPage({ params }: PageProps) {
   const { engagementId, moduleCode } = await params;
-  const { expanded: initialExpanded = "" } = await searchParams;
   const session = await getRequiredSession();
+  const tenantId = session.user.tenantId;
 
-  // Fetch full tree, module scores, and examination progress in parallel
-  const [tree, moduleScores, examProgress] = await Promise.all([
-    getExaminationTree(session, engagementId),
+  const [register, moduleScores, examProgress, rail] = await Promise.all([
+    getModuleRegister(tenantId, engagementId, moduleCode),
     getEngagementModuleScores(session, engagementId),
     getExaminationProgress(session, engagementId, moduleCode),
+    getModuleRailData(tenantId, engagementId),
   ]);
 
-  // Find the module node by code (depth-1 nodes are modules)
-  const moduleNode = findModuleByCode(tree, moduleCode);
-  if (!moduleNode) {
-    notFound();
-  }
-
-  // Extract per-module score data
   const moduleScoreRow = moduleScores.find(
     (ms) => ms.moduleCode === moduleCode,
   );
+  if (!moduleScoreRow && register.length === 0) {
+    notFound();
+  }
 
-  const moduleScore = {
-    scoredCount: moduleScoreRow?.scoredCount ?? 0,
-    totalLeafCount: moduleScoreRow?.totalLeafCount ?? 0,
-    weightedScore: null as number | null,
-  };
+  const statements: RegisterStatement[] = register.map((row) => ({
+    id: row.id,
+    code: row.code,
+    text: row.text,
+    isCritical: row.isCritical,
+    origin: row.origin,
+  }));
+
+  const initialResponses: Record<string, RegisterResponse> = Object.fromEntries(
+    register.map((row) => [
+      row.id,
+      {
+        value: row.scoreLabel,
+        remarks: row.remarks,
+        isNotApplicable: row.isNotApplicable,
+        notApplicableReason: row.notApplicableReason,
+        version: row.version,
+        respondedByName: row.respondedByName,
+      },
+    ]),
+  );
 
   // Conditionally fetch violation summary for credit modules with sampled data
   const hasInstanceData = examProgress.totalAccounts > 0;
@@ -148,18 +104,31 @@ export default async function ModuleExaminationPage({
         Back to Examination
       </Link>
 
-      {/* Examination tree with Suspense for client-side useSearchParams */}
-      <Card className="overflow-hidden">
-        <Suspense fallback={<TreeSkeleton />}>
-          <RbiaExaminationTree
-            tree={moduleNode.children}
-            engagementId={engagementId}
-            initialExpanded={initialExpanded}
-            moduleName={moduleNode.name}
-            moduleScore={moduleScore}
-          />
-        </Suspense>
-      </Card>
+      <h2 className="text-xl font-semibold">
+        {moduleScoreRow?.moduleName ?? moduleCode}
+      </h2>
+
+      <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <ModuleRail
+          engagementId={engagementId}
+          modules={rail.map((m) => ({ ...m, current: m.code === moduleCode }))}
+          currentTitle={moduleScoreRow?.moduleName ?? moduleCode}
+        />
+
+        <Card className="overflow-hidden">
+          {statements.length === 0 ? (
+            <p className="text-muted-foreground p-6 text-sm">
+              No statements in this module for this engagement.
+            </p>
+          ) : (
+            <ExaminationRegister
+              engagementId={engagementId}
+              statements={statements}
+              initialResponses={initialResponses}
+            />
+          )}
+        </Card>
+      </div>
 
       {/* Compliance Summary — only shown for credit modules with sampled data */}
       {complianceSummaryData && (
@@ -170,26 +139,4 @@ export default async function ModuleExaminationPage({
       )}
     </div>
   );
-}
-
-// ── Helper: find module node by code in the full tree ────────────────────────
-
-function findModuleByCode(
-  tree: ExaminationTreeNode[],
-  moduleCode: string,
-): ExaminationTreeNode | null {
-  // Module nodes are at depth 1, which are children of the root (depth 0)
-  for (const root of tree) {
-    // Check root itself (if depth 0 has modules as children)
-    if (root.code === moduleCode && root.depth === 1) {
-      return root;
-    }
-    // Check children (standard case: root depth=0, modules depth=1)
-    for (const child of root.children) {
-      if (child.code === moduleCode && child.depth === 1) {
-        return child;
-      }
-    }
-  }
-  return null;
 }

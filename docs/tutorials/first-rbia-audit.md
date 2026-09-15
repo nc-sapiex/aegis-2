@@ -115,17 +115,28 @@ whole examination surface:
   which accounts get examined —
   [`docs/explanation/scoring-engines.md`](../explanation/scoring-engines.md#sampling-engine)
   covers the algorithm.
-- **Account Exam** — click into a module card from the Examination tab to
-  reach its examination tree (`.../rbia/module/[moduleCode]`) and score
-  individual checklist items; the hierarchical scoring with its critical-item
-  cap is also covered in the scoring-engines doc.
+- **Account Exam** — from a module card, open
+  `.../rbia/examination/[moduleCode]`. Sampled accounts sit in an
+  `AccountRail` on the left; the selected account's questions render as a
+  binary `ExaminationRegister` (`Compliant | Violation | N/A`), not the
+  1.x card list. Generate the sample from the Sampling tab first or the
+  page is empty. Checklist scoring of the examination tree still lives at
+  `.../rbia/module/[moduleCode]`. The hierarchical scoring with its
+  critical-item cap is in the scoring-engines doc.
 - **Findings** — raise an observation directly against this engagement (same
   form as step 6 below, pre-scoped to this branch/engagement).
 - **Meetings** — record the opening and exit meetings the stepper needs.
 - **Score** — the composite score panel again, with the **freeze** control.
+  After fieldwork, holders of `rbia:revise_score` (`LEAD_AUDITOR`,
+  `AUDIT_MANAGER`, `CAE`) can change an existing leaf score with a required
+  reason (`reviseScore` → `rbia.score_revised`). Marking a whole section
+  N/A needs `module:manage` and a reason (`setSectionNotApplicable`).
 
 Work through enough modules and sampled accounts to get a composite score,
-then move to step 6 before freezing — freezing is a one-way door.
+then move to step 6 before freezing — freezing is a one-way door. A credit
+module whose sampled register is **complete and exclusively N/A** is
+examined-N/A and may freeze; a module with untouched questions still blocks
+freeze (`findUnscoredLeaves` / `isCompleteExclusiveNotApplicable`).
 
 ## 6. Raise a finding (observation)
 
@@ -164,6 +175,12 @@ level, not just in the UI — no action in the app can un-freeze it once set.
 Freezing is also the prerequisite the engagement state machine checks before
 `REPORT_DRAFT → COMPLETED` can happen, so do this before your exit meeting if
 you want to close the engagement out.
+
+Freeze refuses while any selected leaf is neither scored nor marked N/A
+(`INCOMPLETE_EXAMINATION`). It does **not** refuse a credit module whose
+binary register is complete with only N/A answers — those leaves are marked
+not-applicable during the pre-freeze instance-score sync, then excluded from
+the composite denominator like any other N/A.
 
 ## 8. Watch the finding become a compliance obligation
 

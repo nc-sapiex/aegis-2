@@ -5,6 +5,9 @@ import { prismaSystem } from "./prisma";
 import { randomUUID } from "crypto";
 import { accountLockout } from "./auth-lockout-plugin";
 import { env } from "@/env";
+import { renderEmailTemplate } from "@/emails/render";
+import { getMailer } from "@/lib/mail/mailer";
+import { logger } from "@/lib/logger";
 
 /**
  * Better Auth server configuration
@@ -36,6 +39,35 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
+    // Errors here must never surface to the client: forgetPassword's response
+    // is deliberately the same ("if an account exists...") whether or not
+    // the account exists, and a thrown error here would make a working
+    // account distinguishable from a nonexistent one.
+    sendResetPassword: async ({ user, url }) => {
+      try {
+        const { subject, html, text } = await renderEmailTemplate(
+          "password-reset",
+          { userName: user.name ?? user.email, resetUrl: url },
+        );
+        const result = await getMailer().send({
+          to: user.email,
+          subject,
+          htmlBody: html,
+          textBody: text,
+        });
+        if (!result.success) {
+          logger.error(
+            { action: "password_reset_email_failed", error: result.error },
+            "Failed to send password reset email",
+          );
+        }
+      } catch (error) {
+        logger.error(
+          { action: "password_reset_email_failed", error },
+          "Failed to send password reset email",
+        );
+      }
+    },
   },
 
   // Expose custom User columns in session so DAL functions can read tenantId/roles

@@ -1,13 +1,14 @@
 import "server-only";
 
 import { prismaForTenant } from "./prisma";
+import { getModuleIdByCode } from "./audit-modules";
 import type { AuthSession as Session } from "@/lib/auth";
 
 // ─── getLoanAccountsForEngagement ─────────────────────────────────────────────
 
 /**
- * Get all loan accounts for an engagement with optional moduleCode filter and pagination.
- * Ordered by accountNo ascending.
+ * Get all population records for an engagement with optional moduleCode filter and pagination.
+ * Ordered by recordKey ascending.
  *
  * @param session - Authenticated session (provides tenantId)
  * @param engagementId - UUID of the AuditEngagement
@@ -29,12 +30,14 @@ export async function getLoanAccountsForEngagement(
   };
 
   if (moduleCode) {
-    where.moduleCode = moduleCode;
+    const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+    if (!moduleId) return [];
+    where.moduleId = moduleId;
   }
 
-  return db.loanAccount.findMany({
+  return db.populationRecord.findMany({
     where: { tenantId, ...where },
-    orderBy: { accountNo: "asc" },
+    orderBy: { recordKey: "asc" },
     skip: options?.skip,
     take: options?.take,
   });
@@ -43,8 +46,8 @@ export async function getLoanAccountsForEngagement(
 // ─── getLoanAccountSummary ────────────────────────────────────────────────────
 
 /**
- * Get loan account summary grouped by asset class for an engagement.
- * Returns count, sum of sanctionAmount, and sum of outstandingAmount per asset class.
+ * Get population record summary grouped by classification for an engagement.
+ * Returns count and sum of amount per classification.
  *
  * @param session - Authenticated session (provides tenantId)
  * @param engagementId - UUID of the AuditEngagement
@@ -64,24 +67,58 @@ export async function getLoanAccountSummary(
   };
 
   if (moduleCode) {
-    where.moduleCode = moduleCode;
+    const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+    if (!moduleId) return [];
+    where.moduleId = moduleId;
   }
 
-  return db.loanAccount.groupBy({
-    by: ["assetClass"],
+  return db.populationRecord.groupBy({
+    by: ["classification"],
     where: { tenantId, ...where },
     _count: true,
     _sum: {
-      sanctionAmount: true,
-      outstandingAmount: true,
+      amount: true,
     },
   });
+}
+
+// ─── getSanctionAmountTotal ───────────────────────────────────────────────────
+
+/**
+ * Sum sanctionAmount out of PopulationRecord.metadata for an engagement +
+ * module. sanctionAmount has no canonical column (it's credit-loan-specific,
+ * not every module's population has one) — this is the one place that still
+ * needs it, for the loan-portfolio "Total Sanction" card, so it reads
+ * straight out of the JSONB metadata via a tenant-scoped raw aggregate.
+ *
+ * @param session - Authenticated session (provides tenantId)
+ * @param engagementId - UUID of the AuditEngagement
+ * @param moduleCode - Module code (e.g., "CRD-HLN")
+ */
+export async function getSanctionAmountTotal(
+  session: Session,
+  engagementId: string,
+  moduleCode: string,
+): Promise<number> {
+  const tenantId = session.user.tenantId;
+  const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+  if (!moduleId) return 0;
+
+  const rows = await db.$queryRaw<{ total: string | null }[]>`
+    SELECT SUM(("metadata"->>'sanctionAmount')::numeric) as total
+    FROM "PopulationRecord"
+    WHERE "tenantId" = ${tenantId}
+      AND "engagementId" = ${engagementId}
+      AND "moduleId" = ${moduleId}
+  `;
+  return Number(rows[0]?.total ?? 0);
 }
 
 // ─── countLoanAccountsForModule ───────────────────────────────────────────────
 
 /**
- * Count the number of loan accounts for the given engagement + moduleCode.
+ * Count the number of population records for the given engagement + moduleCode.
  * Used for "replace X existing accounts" confirmation dialog.
  *
  * @param session - Authenticated session (provides tenantId)
@@ -95,16 +132,18 @@ export async function countLoanAccountsForModule(
 ) {
   const tenantId = session.user.tenantId;
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+  if (!moduleId) return 0;
 
-  return db.loanAccount.count({
-    where: { engagementId, tenantId, moduleCode },
+  return db.populationRecord.count({
+    where: { engagementId, tenantId, moduleId },
   });
 }
 
 // ─── countLoanAccountsWithResponses ──────────────────────────────────────────
 
 /**
- * Count loan accounts that have at least one related AccountExamResponse.
+ * Count population records that have at least one related AccountExamResponse.
  * Used to block portfolio replacement when examination responses exist.
  *
  * Returns the count of accounts that have responses — if > 0, replacement is blocked.
@@ -120,13 +159,15 @@ export async function countLoanAccountsWithResponses(
 ): Promise<number> {
   const tenantId = session.user.tenantId;
   const db = prismaForTenant(tenantId);
+  const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+  if (!moduleId) return 0;
 
-  // Find accounts that have at least one AccountExamResponse
-  const accountsWithResponses = await db.loanAccount.findMany({
+  // Find records that have at least one AccountExamResponse
+  const accountsWithResponses = await db.populationRecord.findMany({
     where: {
       engagementId,
       tenantId,
-      moduleCode,
+      moduleId,
       accountExamResponses: {
         some: {},
       },

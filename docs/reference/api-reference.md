@@ -4,14 +4,14 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `5dc2a09` (worktree-plan2-audit-chain)
+> Source commit: `85105ed` (worktree-plan2-audit-chain)
 
 AEGIS has two callable surfaces.
 
 **HTTP endpoints** (10) are conventional routes under `/api`, used
 for file downloads, streamed exports and health checks.
 
-**Server actions** (93 exported
+**Server actions** (91 exported
 functions across 53 modules) are the primary surface. They are
 invoked directly from React components rather than over HTTP, so they have no
 URL — the function signature is the contract. Every one runs on the server and
@@ -102,7 +102,7 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 
 | Module | Audited | Exported functions | Tables touched |
 |---|---|---|---|
-| `account-examination/save-response.ts` | yes | `saveAccountExamResponse` | AccountExamResponse, AuditEngagement, ExaminationQuestion, LoanAccount |
+| `account-examination/save-response.ts` | yes | `saveAccountExamResponse` | AccountExamResponse, AuditEngagement, ExaminationQuestion, PopulationRecord |
 
 ### admin
 
@@ -120,10 +120,9 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 | `audit-execution/assign-team.ts` | — | `assignTeamMember`, `removeTeamMember` | AuditTeamMember |
 | `audit-execution/bh-certificate.ts` | — | `signBhCertificate`, `countersignBhCertificate`, `getBhCertificateStatus` | AuditEngagement |
 | `audit-execution/cash-verification.ts` | — | `saveCashVerification`, `getCashVerificationAction` | AuditEngagement, CashCheck |
-| `audit-execution/create-engagement.ts` | — | `createEngagement` | AuditEngagement |
-| `audit-execution/import-loan-csv.ts` | — | `importLoanReviewCsv` | AuditEngagement, LoanReview |
+| `audit-execution/create-engagement.ts` | — | `createEngagement` | AuditEngagement, AuditModule, Branch, EngagementModule |
+| `audit-execution/import-loan-csv.ts` | — | `importLoanReviewCsv` | AuditEngagement |
 | `audit-execution/transition-engagement-status.ts` | — | `transitionEngagementStatus` | AuditEngagement |
-| `audit-execution/upload-examination-evidence.ts` | — | `requestExaminationEvidenceUpload`, `confirmExaminationEvidenceUpload`, `getExaminationEvidenceDownloadUrl` | AuditEngagement, AuditExaminationResponse, Evidence |
 
 ### audit-plans
 
@@ -154,7 +153,7 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 | Module | Audited | Exported functions | Tables touched |
 |---|---|---|---|
 | `loan-portfolio/get-portfolio-summary.ts` | — | `getPortfolioSummary` | — |
-| `loan-portfolio/import-loan-portfolio.ts` | yes | `importLoanPortfolio` | AuditEngagement, LoanAccount |
+| `loan-portfolio/import-loan-portfolio.ts` | yes | `importLoanPortfolio` | AuditEngagement, AuditModule, PopulationRecord |
 | `loan-portfolio/parse-excel-file.ts` | — | `parseExcelFile` | — |
 
 ### observations
@@ -179,11 +178,12 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 | Module | Audited | Exported functions | Tables touched |
 |---|---|---|---|
 | `rbia/bm-evidence.ts` | — | `requestBmEvidenceUpload`, `confirmBmEvidenceUpload` | ActionPoint, Evidence |
-| `rbia/examination.ts` | yes | `saveExaminationResponse`, `autoSelectModulesAction`, `addModuleSelectionAction`, `removeModuleSelectionAction` | ActionPoint, AuditEngagement, EngagementModuleSelection, ExaminationNode, ExaminationResponse |
+| `rbia/examination.ts` | yes | `saveExaminationResponse`, `autoSelectModulesAction`, `addModuleSelectionAction`, `removeModuleSelectionAction` | ActionPoint, AuditEngagement, AuditModule, EngagementModule, ExaminationNode, ExaminationResponse |
 | `rbia/findings.ts` | yes | `createActionPoint`, `updateActionPoint`, `deleteActionPoint`, `promoteToObservation`, `submitBmResponse` | ActionPoint, AuditEngagement, BmResponseBatch, Observation |
-| `rbia/freeze.ts` | yes | `freezeRbiaScore` | ActionPoint, AuditEngagement, BmResponseBatch, BranchRbiaScore, EngagementModuleSelection, ExaminationNode, ExaminationResponse |
+| `rbia/freeze.ts` | yes | `freezeRbiaScore` | ActionPoint, AuditEngagement, BmResponseBatch, BranchRbiaScore, EngagementModule, ExaminationNode, ExaminationResponse |
 | `rbia/meetings.ts` | — | `recordMeeting`, `signOffMeeting` | AuditEngagement, EngagementMeeting |
 | `rbia/revise-score.ts` | yes | `reviseScore` | ExaminationResponse |
+| `rbia/score-statement.ts` | yes | `scoreStatement` | AuditEngagement, ExaminationResponse |
 | `rbia/section-not-applicable.ts` | yes | `setSectionNotApplicable` | EngagementSectionNa, ExaminationNode, ExaminationResponse |
 
 ### repeat-findings
@@ -205,6 +205,6 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 
 | Module | Audited | Exported functions | Tables touched |
 |---|---|---|---|
-| `sampling/generate-sample.ts` | yes | `generateSampleAction` | LoanAccount, SamplingConfig |
+| `sampling/generate-sample.ts` | yes | `generateSampleAction` | PopulationRecord, SamplingConfig |
 | `sampling/save-criteria.ts` | — | `saveSamplingCriteria` | SamplingConfig |
 

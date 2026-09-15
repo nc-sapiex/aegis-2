@@ -25,9 +25,9 @@ DECLARE
     -- path to these already sets session context, so the trigger fires
     -- cleanly. Kept in step with AUDITED_TABLES and AUDIT_TRIGGER_TABLES.
     'ActionPoint', 'RamAssessment', 'RamAssessmentScore', 'BranchRbiaScore',
-    'AuditExaminationResponse',
     -- Remaining scoring tables; their write paths now set session context.
-    'ExaminationResponse', 'EngagementSectionNa', 'AccountExamResponse', 'LoanAccount'
+    'ExaminationResponse', 'EngagementSectionNa', 'AccountExamResponse', 'PopulationRecord',
+    'ContentPackInstall'
   ];
 BEGIN
   FOREACH t IN ARRAY audited LOOP

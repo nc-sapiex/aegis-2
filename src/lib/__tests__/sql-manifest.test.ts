@@ -14,7 +14,7 @@ describe("SQL manifest", () => {
 
   it("applies the audit trigger function before attaching triggers", () => {
     const fn = SQL_MANIFEST.findIndex((p) =>
-      p.includes("audit_trigger_null_safe"),
+      p.includes("audit_trigger_function"),
     );
     const attach = SQL_MANIFEST.findIndex((p) =>
       p.includes("attach_audit_triggers"),
@@ -58,23 +58,22 @@ describe("SQL manifest", () => {
   });
 });
 
-describe("audit chain migration", () => {
-  it("is present in the manifest after the audit trigger attachment", () => {
-    const i = SQL_MANIFEST.indexOf(
-      "prisma/migrations/20260913_audit_chain.sql",
-    );
-    const j = SQL_MANIFEST.indexOf("prisma/sql/020_attach_audit_triggers.sql");
-    expect(i).toBeGreaterThan(j);
-  });
-
-  it("the migration file computes rowHash with pgcrypto digest(...,'sha256')", () => {
+describe("audit chain", () => {
+  it("010 computes rowHash with pgcrypto digest(...,'sha256') under a head-row lock", () => {
     const sql = readFileSync(
-      join(process.cwd(), "prisma/migrations/20260913_audit_chain.sql"),
+      join(process.cwd(), "prisma/sql/010_audit_trigger_function.sql"),
       "utf8",
     );
     expect(sql).toContain("digest(");
     expect(sql).toContain("'sha256'");
     expect(sql).toContain("FOR UPDATE");
+    expect(sql).toContain("FUNCTION audit_chain_insert(");
+    expect(sql).toContain("FUNCTION audit_chain_field(");
+  });
+
+  it("db:verify requires both chain functions", () => {
+    expect(REQUIRED_OBJECTS.functions).toContain("audit_chain_insert");
+    expect(REQUIRED_OBJECTS.functions).toContain("audit_chain_field");
   });
 });
 

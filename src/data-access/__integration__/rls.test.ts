@@ -8,7 +8,6 @@ import {
   getBranchRiskHeatmap,
   getComplianceAging,
   getFindingTrends,
-  getNpaMovement,
   getReportTemplates,
 } from "@/data-access/analytics";
 import {
@@ -143,7 +142,6 @@ const DAL_LIST_FUNCTIONS: Array<
   ["getAuditPlanProgress", getAuditPlanProgress],
   ["getComplianceAging", getComplianceAging],
   ["getFindingTrends", getFindingTrends],
-  ["getNpaMovement", getNpaMovement],
   ["getReportTemplates", getReportTemplates],
   ["getAuditTableNames", getAuditTableNames],
   ["getAuditActionTypes", getAuditActionTypes],

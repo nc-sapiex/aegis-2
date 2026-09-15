@@ -23,18 +23,28 @@ async function seedOverdueComplianceItem(
       select: { id: true },
     });
     const user = await createUser(tenantId, ["AUDITOR"]);
+    const auditModule = await integrationOwner.auditModule.create({
+      data: {
+        tenantId,
+        code: "CRD",
+        name: "Credit",
+        domain: "CREDIT",
+        kinds: ["CHECKLIST"],
+        applicability: {},
+      },
+      select: { id: true },
+    });
     const observation = await integrationOwner.observation.create({
       data: {
         tenantId,
         title: "Overdue item",
-        condition: "c",
-        criteria: "c",
-        cause: "c",
-        effect: "c",
+        description: "d",
+        pertainsTo: "OPERATIONS",
         recommendation: "r",
         severity: "HIGH",
         status: "ISSUED",
         branchId: branch.id,
+        moduleId: auditModule.id,
         createdById: user.id,
       },
       select: { id: true },

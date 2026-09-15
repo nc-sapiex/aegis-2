@@ -43,6 +43,10 @@ export type EngagementModuleScoreRow = {
   moduleCode: string;
   moduleName: string;
   nodeId: string;
+  // The AuditModule this depth-1 node's subtree belongs to (module-native
+  // backfill, scripts/backfill/module-native.ts). Null until that backfill
+  // has run against this tenant's data.
+  moduleId: string | null;
   responseCount: number;
   totalLeafCount: number;
   scoredCount: number;
@@ -179,7 +183,7 @@ export async function getEngagementModuleScores(
   // Q1: Module-level nodes (depth 1)
   const modules = await db.examinationNode.findMany({
     where: { tenantId, depth: 1, isActive: true },
-    select: { id: true, code: true, name: true, path: true },
+    select: { id: true, code: true, name: true, path: true, moduleId: true },
   });
 
   if (modules.length === 0) return [];
@@ -228,6 +232,7 @@ export async function getEngagementModuleScores(
       moduleCode: mod.code,
       moduleName: mod.name,
       nodeId: mod.id,
+      moduleId: mod.moduleId,
       responseCount,
       totalLeafCount,
       scoredCount,
