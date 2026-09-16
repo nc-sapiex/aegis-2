@@ -49,11 +49,14 @@ done
 # IP — which is different on every drill run. So the license, issued once
 # and committed, is bound to this fixed placeholder host rather than to
 # whatever IP Multipass hands out this time. NEXT_PUBLIC_APP_URL/
-# BETTER_AUTH_URL below use this placeholder; the smoke suite below still
-# reaches the app over the VM's real IP — Next's server doesn't route on
-# the Host header for this single-app compose, so the mismatch is harmless
-# for reachability, only the license/auth-URL construction need it to agree
-# with what drill:license issued.
+# BETTER_AUTH_URL below use this placeholder host too — and unlike plain
+# HTTP reachability, this one isn't optional for the smoke suite: Better
+# Auth's trustedOrigins (src/lib/auth.ts) is built from these same env
+# vars, and rejects sign-ins from an origin it doesn't recognize. Hitting
+# the VM over its raw IP instead of this hostname makes login silently
+# never redirect. So DRILL_HOST is mapped to DRILL_IP in /etc/hosts below
+# and the smoke suite is pointed at the hostname, not the IP — the same
+# single origin everywhere, the way a real deployment's DNS name would be.
 DRILL_HOST="aegis-install-drill.local"
 
 VM_NAME="aegis-install-drill-$(date +%s)"
@@ -87,6 +90,10 @@ cleanup() {
   # itself is what --keep is for.
   [ -n "$WORKDIR" ] && rm -rf "$WORKDIR"
   [ -n "$DRILL_TAR" ] && rm -f "$DRILL_TAR"
+  # Always drop the hosts-file mapping, --keep or not — the VM's IP is
+  # gone or about to be, and a stale mapping would silently break the next
+  # drill run (which reuses the same DRILL_HOST for a different VM/IP).
+  sudo sed -i '' "/[[:space:]]$DRILL_HOST\$/d" /etc/hosts 2>/dev/null || true
   if [ "$KEEP" = true ]; then
     echo "--keep passed: leaving drill VM $VM_NAME running. Chain restore-drill.sh onto it, then 'multipass delete $VM_NAME --purge' when done."
     return 0
@@ -106,6 +113,16 @@ DRILL_IP=$(multipass info "$VM_NAME" --format json | jq -r ".info[\"$VM_NAME\"].
   echo "Could not read $VM_NAME's IP from 'multipass info'." >&2
   exit 1
 }
+
+# Resolve DRILL_HOST to this run's VM on the host machine, so the browser,
+# the license (allowedHosts) and Better Auth (baseURL/trustedOrigins, both
+# built from this same placeholder host) all agree on one origin — the
+# way they would with a real DNS name in production. Without this, the
+# smoke suite hits the VM's raw IP, Better Auth's trustedOrigins check
+# rejects that origin as untrusted, and login silently never redirects
+# (page.waitForURL times out with no visible error).
+echo "Mapping $DRILL_HOST -> $DRILL_IP in /etc/hosts (sudo)..."
+sudo sh -c "echo '$DRILL_IP $DRILL_HOST' >> /etc/hosts"
 
 # Clean checkout, not the working tree as-is — transferring node_modules/
 # .next/.git into the VM would be slow, and .next can be stale relative to
@@ -208,7 +225,7 @@ echo "Seeding the drill database..."
 # chain below is plain POSIX `&&`, so sh -c runs it correctly.
 multipass exec "$VM_NAME" -- bash -c "cd aegis && docker compose -f docker-compose.yml -f docker-compose.onprem.yml run --rm -T -e ALLOW_DESTRUCTIVE_SEED=true migrate sh -c 'pnpm db:seed && pnpm seed:rbia-housing && pnpm seed:exam-questions && pnpm seed:lifecycle'"
 
-echo "Running smoke suite against $DRILL_IP..."
-BASE_URL="http://$DRILL_IP:3000" pnpm test:e2e:smoke
+echo "Running smoke suite against $DRILL_HOST ($DRILL_IP)..."
+BASE_URL="http://$DRILL_HOST:3000" pnpm test:e2e:smoke
 
 echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) install-drill PASSED vm=$VM_NAME" >>docs/ops/install-drill-log.md
