@@ -120,10 +120,15 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: "pnpm build && pnpm start",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  // BASE_URL set (e.g. an install drill's VM) means a server is already
+  // running there — don't also boot a local one, or tests silently run
+  // against localhost instead of the target.
+  webServer: process.env.BASE_URL
+    ? undefined
+    : {
+        command: "pnpm build && pnpm start",
+        url: "http://localhost:3000",
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+      },
 });
