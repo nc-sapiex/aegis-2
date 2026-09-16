@@ -1,0 +1,46 @@
+# AEGIS - vps-control overlay (aegis.sapiex.tech)
+# Same stack as docker-compose.onprem.yml, fronted by the Traefik instance
+# Coolify already runs on vps-control (coolify-proxy) instead of exposing
+# port 3000 on the host. No MailHog — point MAIL_DRIVER=smtp at a real relay.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.vps.yml up -d --wait
+#
+# TODO before first run: confirm the external network name and cert resolver
+# against vps-control's actual Traefik config (`docker inspect coolify-proxy`)
+# — this assumes Coolify's documented defaults (network "coolify", resolver
+# "letsencrypt") but that hasn't been verified live; SSH to vps-control was
+# unreachable when this was written.
+
+services:
+  postgres:
+    restart: always
+    # No host port — only `app` reaches it, over the compose network.
+    ports: !reset []
+    volumes:
+      - ${BACKUP_HOST_PATH:-./backups}:/backups:ro
+
+  app:
+    restart: always
+    ports: !reset []
+    networks:
+      - default
+      - coolify
+    volumes:
+      - ./license.aegis:/app/license.aegis:ro
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "coolify"
+      traefik.http.routers.aegis.rule: "Host(`aegis.sapiex.tech`)"
+      traefik.http.routers.aegis.entrypoints: "websecure"
+      traefik.http.routers.aegis.tls.certresolver: "letsencrypt"
+      traefik.http.services.aegis.loadbalancer.server.port: "3000"
+
+  minio:
+    restart: always
+    # Console/API stay internal — the app reaches minio:9000 on the compose
+    # network, nothing here is routed through Traefik.
+    ports: !reset []
+
+networks:
+  coolify:
+    external: true
