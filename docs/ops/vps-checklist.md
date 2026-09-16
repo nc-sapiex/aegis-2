@@ -40,13 +40,15 @@ and `sslh` stay stopped, per `CLAUDE.md`.
 
 - [ ] `aegis.sapiex.tech` A record points at `187.124.97.7` (done —
       `DNS_updateDNSRecordsV1`, 2026-09-16).
-- [ ] `docker-compose.vps.yml`'s Traefik labels verified against the
-      live `coolify-proxy` config (`docker inspect coolify-proxy` for the
-      actual network name and cert resolver) — written from Coolify's
-      documented defaults, **not yet confirmed live** (SSH to vps-control
-      was unreachable when this was drafted).
-- [ ] `ufw status` on vps-control: only 80, 443, 22 open publicly; DB/MinIO
-      ports never opened.
+- [x] `docker-compose.vps.yml`'s Traefik labels verified against the live
+      `coolify-proxy` config, 2026-09-16: network name `coolify` and cert
+      resolver `letsencrypt` were right; the entrypoint name was not
+      (Coolify names them `http`/`https`, not Traefik's stock
+      `web`/`websecure`) — fixed, and added the http→https redirect
+      router every other app on the box already uses.
+- [x] `ufw status` on vps-control, 2026-09-16: active, only OpenSSH, 80/tcp
+      ("coolify http-01"), 443/tcp ("sslh HTTPS+SSH mux"), and the
+      `tailscale0` interface allowed — DB/MinIO ports never opened.
 - [ ] Traefik issues a valid Let's Encrypt cert for `aegis.sapiex.tech`
       (check via browser or `curl -vI https://aegis.sapiex.tech`).
 

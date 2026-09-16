@@ -772,12 +772,11 @@ deployed. Local development only. Merging to `main` releases nothing."
   every host port binding and joins the external `coolify` Docker network so
   Coolify's existing Traefik instance (`coolify-proxy`) fronts the app with
   TLS via its `letsencrypt` cert resolver, instead of exposing port 3000
-  directly. The file's own header flags itself as unverified: the assumed
-  network name (`coolify`) and cert resolver (`letsencrypt`) are Coolify's
-  documented defaults, not yet confirmed against vps-control's actual
-  Traefik config, because SSH to vps-control was unreachable when it was
-  written. Treat it as a drafted target, not a proven one, until that's
-  checked live.
+  directly. Verified live against vps-control, 2026-09-16: network name and
+  cert resolver were right; the entrypoint name was not (Coolify uses
+  `http`/`https`, not Traefik's stock `web`/`websecure`) — fixed, along
+  with adding the http→https redirect router every other app on the box
+  already uses. `ufw` confirmed to expose only SSH/80/443 and the tailnet.
 
 `scripts/aegis-install.sh` (see [Content packs](#content-packs)) drives the
 base-plus-onprem combination end to end; nothing yet automates the VPS
@@ -843,12 +842,9 @@ the section that owns the detail; the numbers live there, once.
   (`findings`, `auditPlans`, `bankProfile`, …), but the chain is orphaned: its
   consumers have no importers, and the live dashboard reads the database
   through `components/dashboard/widgets/*`. Prefer deleting over reviving.
-- **The module admin page has no nav entry.** `/settings/modules` works and
-  is permission-guarded, but nothing links to it →
-  [Module admin and the generic reporting engine](#module-admin-and-the-generic-reporting-engine).
-- **The VPS Compose overlay is unverified.** `docker-compose.vps.yml`'s
-  Traefik network/cert-resolver names are Coolify's documented defaults, not
-  confirmed live → [Deployment targets](#deployment-targets).
+- ~~The module admin page has no nav entry.~~ Fixed 2026-09-16 (#33,
+  #165): `/settings/modules` now has a sidebar `NavItem` gated on
+  `module:manage` → [Module admin and the generic reporting engine](#module-admin-and-the-generic-reporting-engine).
 
 ## Adding a feature
 

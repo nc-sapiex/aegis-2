@@ -5,11 +5,13 @@
 #
 #   docker compose -f docker-compose.yml -f docker-compose.vps.yml up -d --wait
 #
-# TODO before first run: confirm the external network name and cert resolver
-# against vps-control's actual Traefik config (`docker inspect coolify-proxy`)
-# — this assumes Coolify's documented defaults (network "coolify", resolver
-# "letsencrypt") but that hasn't been verified live; SSH to vps-control was
-# unreachable when this was written.
+# Verified live 2026-09-16 against vps-control's actual Traefik config
+# (`docker inspect coolify-proxy`, and multica-frontend-1's own labels as a
+# working reference): network "coolify" and cert resolver "letsencrypt"
+# were right; the entrypoint name was NOT — Coolify names its entrypoints
+# "http"/"https", not Traefik's stock "web"/"websecure". The http router +
+# redirect middleware below matches the pattern every other app on this
+# box already uses.
 
 services:
   postgres:
@@ -30,8 +32,12 @@ services:
     labels:
       traefik.enable: "true"
       traefik.docker.network: "coolify"
+      traefik.http.middlewares.aegis-https.redirectscheme.scheme: "https"
+      traefik.http.routers.aegis-http.entrypoints: "http"
+      traefik.http.routers.aegis-http.middlewares: "aegis-https"
+      traefik.http.routers.aegis-http.rule: "Host(`aegis.sapiex.tech`)"
+      traefik.http.routers.aegis.entrypoints: "https"
       traefik.http.routers.aegis.rule: "Host(`aegis.sapiex.tech`)"
-      traefik.http.routers.aegis.entrypoints: "websecure"
       traefik.http.routers.aegis.tls.certresolver: "letsencrypt"
       traefik.http.services.aegis.loadbalancer.server.port: "3000"
 
