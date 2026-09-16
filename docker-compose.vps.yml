@@ -41,6 +41,13 @@ services:
     # network, nothing here is routed through Traefik.
     ports: !reset []
 
+  mailhog:
+    restart: always
+    # Internal only, same reasoning as minio — a real SMTP relay replaces
+    # this in .env (MAIL_DRIVER=smtp/SMTP_HOST=...), but the base compose
+    # starts this service unconditionally, so its UI must stay off the host.
+    ports: !reset []
+
 networks:
   coolify:
     external: true
