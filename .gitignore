@@ -88,3 +88,4 @@ packs/*/.staging/
 
 # third-party skill kept per machine (pbakaus/impeccable), not vendored
 .claude/skills/frontend-design/
+graphify-out/
