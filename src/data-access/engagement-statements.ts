@@ -10,15 +10,23 @@ import { prismaForTenant } from "@/lib/prisma";
  * engagement's ground truth (spec §6.6).
  *
  * Call inside the same transaction that creates the engagement's
- * EngagementModule rows, after they exist.
+ * EngagementModule rows, after they exist. When modules are added to an
+ * engagement that already has a snapshot, pass `onlyModuleIds`: without it,
+ * every statement added to an already-selected module since the snapshot
+ * would be pulled in, rescoping the running engagement.
  */
 export async function materializeEngagementStatements(
   tx: Prisma.TransactionClient,
   engagementId: string,
   tenantId: string,
+  onlyModuleIds?: string[],
 ): Promise<void> {
   const selectedModules = await tx.engagementModule.findMany({
-    where: { tenantId, engagementId },
+    where: {
+      tenantId,
+      engagementId,
+      ...(onlyModuleIds ? { moduleId: { in: onlyModuleIds } } : {}),
+    },
     select: { moduleId: true },
   });
   const moduleIds = selectedModules.map((m) => m.moduleId);
@@ -62,7 +70,12 @@ export async function materializeEngagementStatements(
   ];
 
   if (rows.length > 0) {
-    await tx.engagementStatement.createMany({ data: rows });
+    // skipDuplicates: a repeat call for a module already snapshotted adds
+    // nothing and does not fail.
+    await tx.engagementStatement.createMany({
+      data: rows,
+      skipDuplicates: true,
+    });
   }
 }
 
@@ -110,12 +123,23 @@ export async function getModuleRegister(
   });
   if (!auditModule) return [];
 
+  // Ground truth is EngagementStatement (spec §6.6). Do not filter the live
+  // catalogue's isActive: turning a statement off, or uninstalling its pack,
+  // must not hide in-flight work.
+  const statements = await db.engagementStatement.findMany({
+    where: { tenantId, engagementId, nodeId: { not: null } },
+    select: { nodeId: true, text: true, isCritical: true, origin: true },
+  });
+  const snapshotNodeIds = statements
+    .map((s) => s.nodeId)
+    .filter((id): id is string => id != null);
+  if (snapshotNodeIds.length === 0) return [];
+
   const nodes = await db.examinationNode.findMany({
     where: {
       tenantId,
       moduleId: auditModule.id,
-      isLeaf: true,
-      isActive: true,
+      id: { in: snapshotNodeIds },
     },
     orderBy: [{ path: "asc" }, { displayOrder: "asc" }],
     select: { id: true, code: true },
@@ -123,24 +147,18 @@ export async function getModuleRegister(
   if (nodes.length === 0) return [];
   const nodeIds = nodes.map((n) => n.id);
 
-  const [statements, responses] = await Promise.all([
-    db.engagementStatement.findMany({
-      where: { tenantId, engagementId, nodeId: { in: nodeIds } },
-      select: { nodeId: true, text: true, isCritical: true, origin: true },
-    }),
-    db.examinationResponse.findMany({
-      where: { tenantId, engagementId, nodeId: { in: nodeIds } },
-      select: {
-        nodeId: true,
-        scoreLabel: true,
-        remarks: true,
-        isNotApplicable: true,
-        notApplicableReason: true,
-        version: true,
-        respondedById: true,
-      },
-    }),
-  ]);
+  const responses = await db.examinationResponse.findMany({
+    where: { tenantId, engagementId, nodeId: { in: nodeIds } },
+    select: {
+      nodeId: true,
+      scoreLabel: true,
+      remarks: true,
+      isNotApplicable: true,
+      notApplicableReason: true,
+      version: true,
+      respondedById: true,
+    },
+  });
 
   const userIds = [
     ...new Set(
@@ -224,15 +242,24 @@ export async function getModuleRailData(
   if (checklistModules.length === 0) return [];
 
   const moduleIds = checklistModules.map((m) => m.id);
-  const nodes = await db.examinationNode.findMany({
-    where: {
-      tenantId,
-      moduleId: { in: moduleIds },
-      isLeaf: true,
-      isActive: true,
-    },
-    select: { id: true, moduleId: true },
+  const snapshot = await db.engagementStatement.findMany({
+    where: { tenantId, engagementId, nodeId: { not: null } },
+    select: { nodeId: true },
   });
+  const snapshotNodeIds = snapshot
+    .map((s) => s.nodeId)
+    .filter((id): id is string => id != null);
+  const nodes =
+    snapshotNodeIds.length === 0
+      ? []
+      : await db.examinationNode.findMany({
+          where: {
+            tenantId,
+            moduleId: { in: moduleIds },
+            id: { in: snapshotNodeIds },
+          },
+          select: { id: true, moduleId: true },
+        });
   const nodeIds = nodes.map((n) => n.id);
   const responses = nodeIds.length
     ? await db.examinationResponse.findMany({

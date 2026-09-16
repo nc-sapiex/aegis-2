@@ -43,3 +43,17 @@ export function findUnscoredLeaves(
   for (const mod of modules) walk(mod);
   return outstanding;
 }
+
+/**
+ * When an engagement has a statement snapshot, freeze and scoring ignore live
+ * leaves that are not in it (spec §6.6). An empty snapshot (an engagement that
+ * never materialised) keeps the live tree; the caller filters that tree to
+ * active nodes, as freeze did before snapshots.
+ */
+export function engagementLeafInScope(
+  snapshotNodeIds: Set<string>,
+  isLeaf: boolean,
+  nodeId: string,
+): boolean {
+  return snapshotNodeIds.size === 0 || !isLeaf || snapshotNodeIds.has(nodeId);
+}

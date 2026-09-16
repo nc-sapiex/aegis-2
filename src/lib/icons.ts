@@ -94,4 +94,5 @@ export {
   Lightbulb,
   Archive,
   EyeOff,
+  Camera,
 } from "lucide-react";

@@ -21,6 +21,7 @@ import {
   Building2,
   TrendingUp,
   Monitor,
+  LayoutGrid,
 } from "@/lib/icons";
 import type { Permission, Role } from "./permissions";
 import {
@@ -127,6 +128,12 @@ export const navItems: NavItem[] = [
     icon: Settings,
     requiredPermission: "admin:manage_settings",
   },
+  {
+    title: "Modules",
+    href: "/settings/modules",
+    icon: LayoutGrid,
+    requiredPermission: "module:manage",
+  },
 ];
 
 /**
@@ -210,6 +217,7 @@ function getPermissionsForRole(role: Role): Permission[] {
       "compliance:update",
       "report:read",
       "dashboard:manager",
+      "module:manage",
     ],
     CAE: [
       "observation:read",
@@ -229,6 +237,7 @@ function getPermissionsForRole(role: Role): Permission[] {
       "admin:manage_settings",
       "calendar:manage",
       "dashboard:cae",
+      "module:manage",
     ],
     CCO: [
       "compliance:read",
@@ -372,6 +381,7 @@ function getPermissionsForRole(role: Role): Permission[] {
       "policy:manage",
       "committee:manage",
       "dashboard:cae",
+      "module:manage",
     ],
   };
 

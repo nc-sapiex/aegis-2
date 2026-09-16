@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { findUnscoredLeaves, type LeafStatus } from "../rbia-completeness";
+import {
+  findUnscoredLeaves,
+  engagementLeafInScope,
+  type LeafStatus,
+} from "../rbia-completeness";
 import type { ScoredNode } from "../rbia-scoring-engine";
 
 function leaf(nodeId: string, code: string): ScoredNode {
@@ -109,5 +113,23 @@ describe("findUnscoredLeaves", () => {
       ]),
     );
     expect(result).toEqual([]);
+  });
+});
+
+describe("engagementLeafInScope", () => {
+  it("keeps the live tree when no snapshot exists (legacy fixtures)", () => {
+    expect(engagementLeafInScope(new Set(), true, "new-leaf")).toBe(true);
+    expect(engagementLeafInScope(new Set(), false, "group")).toBe(true);
+  });
+
+  it("drops a live leaf that is not in the snapshot", () => {
+    const snapshot = new Set(["ops-a", "ops-b"]);
+    expect(engagementLeafInScope(snapshot, true, "ops-b01")).toBe(false);
+    expect(engagementLeafInScope(snapshot, true, "ops-a")).toBe(true);
+  });
+
+  it("never drops grouping nodes, even if they are not snapshotted", () => {
+    const snapshot = new Set(["ops-a"]);
+    expect(engagementLeafInScope(snapshot, false, "ops-group")).toBe(true);
   });
 });

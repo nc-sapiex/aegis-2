@@ -12,7 +12,11 @@ import {
   SCORE_VALUES,
   type ScoredNode,
 } from "@/lib/rbia-scoring-engine";
-import { findUnscoredLeaves, type LeafStatus } from "@/lib/rbia-completeness";
+import {
+  findUnscoredLeaves,
+  engagementLeafInScope,
+  type LeafStatus,
+} from "@/lib/rbia-completeness";
 import {
   FreezeRbiaScoreSchema,
   type FreezeRbiaScoreInput,
@@ -142,23 +146,62 @@ export async function freezeRbiaScore(
           },
         });
 
-        // ── Step 2: Load full examination node tree + build scored tree ──
+        // ── Step 2: Load examination node tree for this engagement's snapshot ──
         currentStep = "building_tree";
-        const allNodes = await tx.examinationNode.findMany({
-          where: { tenantId, isActive: true },
-          select: {
-            id: true,
-            code: true,
-            weight: true,
-            isCritical: true,
-            isLeaf: true,
-            parentId: true,
-            depth: true,
-            name: true,
-            path: true,
-            moduleId: true,
-          },
+        const selections = await tx.engagementModule.findMany({
+          where: { engagementId: validated.engagementId, tenantId },
+          select: { moduleId: true },
         });
+        const selectedModuleIds = new Set<string>(
+          selections.map((s: { moduleId: string }) => s.moduleId),
+        );
+
+        // Spec §6.6: later catalogue edits (add bank statement, turn off,
+        // pack uninstall) apply to future engagements only. Completeness and
+        // scoring walk the snapshotted leaves when a snapshot exists.
+        const snapshotRows = await tx.engagementStatement.findMany({
+          where: {
+            engagementId: validated.engagementId,
+            tenantId,
+            nodeId: { not: null },
+          },
+          select: { nodeId: true, weight: true, isCritical: true },
+        });
+        const snapshotByNodeId = new Map(
+          snapshotRows.flatMap((row) =>
+            row.nodeId ? [[row.nodeId, row] as const] : [],
+          ),
+        );
+        const snapshotNodeIds = new Set(snapshotByNodeId.keys());
+
+        const allNodes =
+          selectedModuleIds.size === 0
+            ? []
+            : await tx.examinationNode.findMany({
+                where: {
+                  tenantId,
+                  moduleId: { in: [...selectedModuleIds] },
+                  // No snapshot: walk the live tree as before, active nodes
+                  // only. With one, a snapshotted leaf turned off since
+                  // must still count, so isActive is not filtered.
+                  ...(snapshotNodeIds.size === 0 ? { isActive: true } : {}),
+                },
+                select: {
+                  id: true,
+                  code: true,
+                  weight: true,
+                  isCritical: true,
+                  isLeaf: true,
+                  parentId: true,
+                  depth: true,
+                  name: true,
+                  path: true,
+                  moduleId: true,
+                  isActive: true,
+                },
+              });
+        const leafInScope = (isLeaf: boolean, id: string): boolean =>
+          engagementLeafInScope(snapshotNodeIds, isLeaf, id);
 
         // Build response lookup: nodeId -> { scoreLabel, score }
         const responseMap = new Map<
@@ -184,12 +227,13 @@ export async function freezeRbiaScore(
         >();
         for (const n of allNodes) {
           const resp = responseMap.get(n.id);
+          const snap = snapshotByNodeId.get(n.id);
           nodeMap.set(n.id, {
             nodeId: n.id,
             code: n.code,
             name: n.name,
-            weight: Number(n.weight),
-            isCritical: n.isCritical,
+            weight: snap ? Number(snap.weight) : Number(n.weight),
+            isCritical: snap ? snap.isCritical : n.isCritical,
             isLeaf: n.isLeaf,
             scoreLabel: (resp?.scoreLabel as any) ?? null,
             children: [],
@@ -204,18 +248,10 @@ export async function freezeRbiaScore(
           });
         }
 
-        // Link children -> parents. Modules in scope come from the engagement's
-        // selection, not from every module in the tenant catalogue: the
-        // snapshot must describe this engagement, not the whole product.
-        const selections = await tx.engagementModule.findMany({
-          where: { engagementId: validated.engagementId, tenantId },
-          select: { moduleId: true },
-        });
-        const selectedModuleIds = new Set<string>(
-          selections.map((s: { moduleId: string }) => s.moduleId),
-        );
-
+        // Link children → parents. Skip live leaves that are not in this
+        // engagement's snapshot (a bank statement added after create).
         for (const node of nodeMap.values()) {
+          if (!leafInScope(node.isLeaf, node.nodeId)) continue;
           if (node.parentId) {
             const parent = nodeMap.get(node.parentId);
             if (parent) parent.children.push(node);
@@ -227,6 +263,7 @@ export async function freezeRbiaScore(
         // scripts/backfill/module-native.ts).
         const moduleNodes: ScoredNode[] = [];
         for (const node of nodeMap.values()) {
+          if (!leafInScope(node.isLeaf, node.nodeId)) continue;
           if (
             node.depth === 1 &&
             node.moduleId &&
@@ -243,6 +280,41 @@ export async function freezeRbiaScore(
             ),
             { code: "INCOMPLETE_EXAMINATION" },
           );
+        }
+
+        // A module selected without its statements snapshotted (added before
+        // module add materialised them) has active leaves but no snapshot
+        // rows. Every leaf would drop out of scope, the module would score
+        // null and leave the composite, and freeze would pass. Refuse instead.
+        // Only active leaves count: a module whose statements are all turned
+        // off snapshots nothing, and re-adding it could never clear the error.
+        if (snapshotNodeIds.size > 0) {
+          const activeLeafModuleIds = new Set<string>();
+          const snapshotModuleIds = new Set<string>();
+          for (const n of allNodes) {
+            if (!n.isLeaf || !n.moduleId) continue;
+            if (n.isActive) activeLeafModuleIds.add(n.moduleId);
+            if (snapshotNodeIds.has(n.id)) snapshotModuleIds.add(n.moduleId);
+          }
+          const unsnapshotted = [...nodeMap.values()]
+            .filter(
+              (node) =>
+                node.depth === 1 &&
+                node.moduleId &&
+                selectedModuleIds.has(node.moduleId) &&
+                activeLeafModuleIds.has(node.moduleId) &&
+                !snapshotModuleIds.has(node.moduleId),
+            )
+            .map((node) => node.code);
+          if (unsnapshotted.length > 0) {
+            throw Object.assign(
+              new Error(
+                `Cannot freeze: ${unsnapshotted.join(", ")} has no statement snapshot ` +
+                  `for this engagement. Remove the module and add it again.`,
+              ),
+              { code: "INCOMPLETE_EXAMINATION" },
+            );
+          }
         }
 
         // ── Completeness gate ──

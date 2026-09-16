@@ -29,11 +29,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Loader2 } from "@/lib/icons";
 import { EmptyStateCard } from "@/components/dashboard/empty-state-card";
 import { toast } from "sonner";
+import { getCurrentFiscalYear, getFiscalYearWindow } from "@/lib/fiscal-year";
+
+const FISCAL_YEAR_OPTIONS = getFiscalYearWindow(getCurrentFiscalYear().year);
 
 interface RamAssessmentsTableProps {
   assessments: Array<{
@@ -71,7 +73,7 @@ export function RamAssessmentsTable({
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [selectedBranchId, setSelectedBranchId] = React.useState("");
   const [assessmentYear, setAssessmentYear] = React.useState(
-    new Date().getFullYear().toString(),
+    getCurrentFiscalYear().label,
   );
 
   async function handleCreate() {
@@ -137,14 +139,21 @@ export function RamAssessmentsTable({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="year">Assessment Year</Label>
-                  <Input
-                    id="year"
-                    type="number"
-                    min="2020"
-                    max="2099"
+                  <Select
                     value={assessmentYear}
-                    onChange={(e) => setAssessmentYear(e.target.value)}
-                  />
+                    onValueChange={setAssessmentYear}
+                  >
+                    <SelectTrigger id="year">
+                      <SelectValue placeholder="Select a fiscal year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FISCAL_YEAR_OPTIONS.map((fy) => (
+                        <SelectItem key={fy} value={fy}>
+                          FY {fy}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <DialogFooter>
