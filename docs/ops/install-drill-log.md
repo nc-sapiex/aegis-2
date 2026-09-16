@@ -30,3 +30,4 @@ clean streak.
 <!-- append below this line; do not fabricate an entry -->
 
 2026-09-16T07:30:31Z install-drill FAILED vm=aegis-install-drill-1789543831 reason="aegis-app container unhealthy, docker compose up --wait timed out; no diagnostic logs captured before the VM was torn down (fixed in cleanup() for future runs — see scripts/drills/install-drill.sh)"
+2026-09-16T11:01:43Z install-drill PASSED vm=aegis-install-drill-1789553600

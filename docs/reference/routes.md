@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `394002a` (cursor/critical-bug-management-4a2c)
+> Source commit: `5e4e756` (worktree-e2e-deployment-drills+foundation)
 
 Every addressable path in the application: **51 pages** and
 **10 HTTP endpoints**.

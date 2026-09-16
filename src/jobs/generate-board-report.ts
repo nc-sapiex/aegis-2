@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { prismaSystem } from "@/lib/prisma";
+import { prismaForTenant } from "@/lib/prisma";
 import { aggregateReportData, createBoardReport } from "@/data-access/reports";
 import { BoardReport } from "@/components/pdf-report/board-report";
 import { uploadToS3 } from "@/lib/s3";
@@ -29,11 +29,13 @@ export async function processGenerateBoardReport(
   const { tenantId, year, quarter, requestedById, executiveCommentary } =
     payload;
 
-  const user = await prismaSystem.user.findUnique({
+  // Already scoped to tenantId via prismaForTenant/RLS — a row can only
+  // come back if requestedById actually belongs to this tenant.
+  const user = await prismaForTenant(tenantId).user.findUnique({
     where: { id: requestedById },
     select: { id: true, tenantId: true, roles: true },
   });
-  if (!user || user.tenantId !== tenantId) {
+  if (!user) {
     throw new Error(
       `generate-board-report: requestedById ${requestedById} not found in tenant ${tenantId}`,
     );
