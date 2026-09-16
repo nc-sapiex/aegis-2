@@ -54,14 +54,17 @@ of this statement:
 
 ## Backups
 
-`scripts/backup.sh` and `scripts/restore.sh` (Task 6) implement the
-mechanism and have been proven for real: run against a disposable local
-Postgres + MinIO stack, a restore reproduced identical row counts and
-object contents. That is not yet the same claim as an install drill's
-VM-hop restore, which is recorded separately in
-`docs/ops/restore-drill-log.md` — as of this statement, that log has no
-completed run. **Do not claim a VM-hop restore drill has passed until that
-log has an entry for it.**
+**Not yet a safe claim.** `scripts/backup.sh`/`restore.sh` (Task 6) passed
+against a disposable local Postgres + MinIO stack early in that task, but
+the first real VM-hop restore drill (2026-09-16,
+`docs/ops/restore-drill-log.md`) **failed**: `pg_dump --clean` emits a
+`DROP CONSTRAINT` Postgres rejects for pg-boss's partitioned
+`queue_stats` table once a daily partition exists — which is normal,
+expected operation, not an edge case. The restore rolled back cleanly
+under `--single-transaction` (no corruption), but the mechanism does not
+currently work against a database that has run long enough to matter.
+Tracked in #170. **Do not represent backup/restore as working until that
+issue closes and a restore drill has a PASSED entry.**
 
 ## Licensing and access control
 
