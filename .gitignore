@@ -11,6 +11,10 @@ Thumbs.db
 /license.aegis
 # On-prem backup mount default target (docker-compose.onprem.yml's BACKUP_HOST_PATH)
 /backups/
+# Throwaway keypair from `pnpm drill:license` (scripts/drills/generate-drill-license.sh)
+# — the public key and issued license ARE meant to be committed, the private
+# key never is.
+/drills/fixtures/drill-key.private.pem
 
 # Dependencies
 node_modules/
