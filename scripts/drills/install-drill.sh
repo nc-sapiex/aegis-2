@@ -93,7 +93,12 @@ cleanup() {
   # Always drop the hosts-file mapping, --keep or not — the VM's IP is
   # gone or about to be, and a stale mapping would silently break the next
   # drill run (which reuses the same DRILL_HOST for a different VM/IP).
-  sudo sed -i '' "/[[:space:]]$DRILL_HOST\$/d" /etc/hosts 2>/dev/null || true
+  # osascript's GUI prompt, not bare sudo: this script has no controlling
+  # terminal when run from an agent harness, and "sudo: a password is
+  # required" then blocks forever. `do shell script ... with administrator
+  # privileges` triggers macOS's native authentication dialog instead,
+  # which works the same interactively or not.
+  osascript -e "do shell script \"sed -i '' '/[[:space:]]$DRILL_HOST\$/d' /etc/hosts\" with administrator privileges" 2>/dev/null || true
   if [ "$KEEP" = true ]; then
     echo "--keep passed: leaving drill VM $VM_NAME running. Chain restore-drill.sh onto it, then 'multipass delete $VM_NAME --purge' when done."
     return 0
@@ -121,8 +126,15 @@ DRILL_IP=$(multipass info "$VM_NAME" --format json | jq -r ".info[\"$VM_NAME\"].
 # smoke suite hits the VM's raw IP, Better Auth's trustedOrigins check
 # rejects that origin as untrusted, and login silently never redirects
 # (page.waitForURL times out with no visible error).
-echo "Mapping $DRILL_HOST -> $DRILL_IP in /etc/hosts (sudo)..."
-sudo sh -c "echo '$DRILL_IP $DRILL_HOST' >> /etc/hosts"
+echo "Mapping $DRILL_HOST -> $DRILL_IP in /etc/hosts (macOS admin prompt)..."
+# Remove-then-add in one privileged call, not just append: cleanup()'s own
+# removal below needs a *second* admin prompt, which has no one to answer
+# it on an unattended/background run (the first prompt's auth grant doesn't
+# last that long) — confirmed empirically, a failed drill's mapping outlived
+# its VM. Without this, the next run's plain append would leave two lines
+# for the same fixed DRILL_HOST, and whichever sorts first wins, silently
+# pointing at a dead VM.
+osascript -e "do shell script \"sed -i '' '/[[:space:]]$DRILL_HOST\$/d' /etc/hosts && echo '$DRILL_IP $DRILL_HOST' >> /etc/hosts\" with administrator privileges"
 
 # Clean checkout, not the working tree as-is — transferring node_modules/
 # .next/.git into the VM would be slow, and .next can be stale relative to

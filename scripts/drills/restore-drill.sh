@@ -67,7 +67,7 @@ multipass exec "$VM_NAME" -- bash -c "cd aegis && ./scripts/restore.sh $(date +%
 
 # Single-quoted remote command (vs. the plan sketch's nested \"-escaped
 # version) — one quoting level instead of three, same query.
-AFTER_COUNT=$(multipass exec "$VM_NAME" -- bash -c 'docker compose exec -T postgres psql -U "${POSTGRES_USER:-aegis}" -tAc "SELECT count(*) FROM \"Observation\"" "${POSTGRES_DB:-aegis}"')
+AFTER_COUNT=$(multipass exec "$VM_NAME" -- bash -c 'cd aegis && docker compose exec -T postgres psql -U "${POSTGRES_USER:-aegis}" -tAc "SELECT count(*) FROM \"Observation\"" "${POSTGRES_DB:-aegis}"')
 
 if [ "$BEFORE_COUNT" != "$AFTER_COUNT" ]; then
   echo "RESTORE DRILL FAILED: row count mismatch ($BEFORE_COUNT vs $AFTER_COUNT)" >&2
