@@ -4,11 +4,10 @@ import { getReportStatusForEngagement } from "@/data-access/reports";
 import { prismaForTenant } from "@/data-access/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { FileText, Download } from "lucide-react";
-import Link from "next/link";
+import { FileText } from "@/lib/icons";
 import { ReportStatusWorkflow } from "@/components/reports/report-status-workflow";
-import type { Role } from "@/generated/prisma/enums";
+import { EngagementReportActions } from "@/components/reports/engagement-report-actions";
+import { hasPermission } from "@/lib/permissions";
 import type { ReportStatus } from "@/actions/reports/schemas";
 
 interface PageProps {
@@ -22,6 +21,7 @@ export default async function ReportPage({ params }: PageProps) {
   const session = await getRequiredSession();
   const tenantId = session.user.tenantId;
   const userRoles = session.user.roles;
+  const canGenerate = hasPermission(userRoles, "report:generate");
 
   // Fetch engagement report status
   const engagement = await getReportStatusForEngagement(session, engagementId);
@@ -123,20 +123,10 @@ export default async function ReportPage({ params }: PageProps) {
           <FileText className="h-5 w-5" />
           Report Generation
         </h2>
-        <div className="flex gap-4">
-          <Link href={`/audit-execution/${engagementId}/generate-pdf`}>
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Generate PDF Report
-            </Button>
-          </Link>
-          <Link href={`/audit-execution/${engagementId}/generate-xlsx`}>
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Generate Excel Report
-            </Button>
-          </Link>
-        </div>
+        <EngagementReportActions
+          engagementId={engagementId}
+          canGenerate={canGenerate}
+        />
         <p className="text-muted-foreground mt-3 text-sm">
           Generate comprehensive audit reports in PDF or Excel format.
         </p>
