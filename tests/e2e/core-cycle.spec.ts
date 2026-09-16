@@ -652,32 +652,20 @@ test.describe.serial("@smoke core cycle", () => {
 
 /**
  * Deliberately OUTSIDE the "@smoke core cycle" describe, and deliberately
- * untagged.
+ * untagged — same reasoning as before: Playwright's `--grep` matches the
+ * full title path, and this suite's parent title contains "@smoke", so it
+ * still runs under `pnpm test:e2e:smoke` regardless of tags on the test
+ * itself. Kept out here anyway to mirror the file's existing structure.
  *
- * Playwright's `--grep` matches the full title path, so a test nested under a
- * describe whose own title contains "@smoke" is selected by
- * `pnpm test:e2e:smoke` no matter what its own title says. A `test.fail()`
- * marker there is a trap: Playwright reports an *unexpected pass* as a
- * failure, so the day someone fixes the bug below — a one-line change, quite
- * possibly on an unrelated PR — the merge gate goes red for everyone until
- * somebody also deletes this marker. Out here it runs under `pnpm test:e2e`
- * only, where the unexpected pass is the useful signal it was meant to be and
- * costs nobody a merge.
- *
- * Expected to fail: `/api/exports/findings` serves a *rotated* workbook —
- * every byte is present and the length is right, but the file starts part way
- * through the zip, so `unzip` reports "extra bytes at beginning" and Excel
- * cannot open it. Reproduced against `pnpm build && pnpm start`, not just dev,
- * and it affects every route that goes through `toBuffer()` in
- * src/lib/excel-export.ts:253-261, which converts the Node Buffer from
- * `writeBuffer()` to an ArrayBuffer by taking `.buffer` and dropping
- * `byteOffset`/`byteLength`.
+ * Regression guard for the bug fixed in #158/#167: `toBuffer()`
+ * (src/lib/excel-export.ts) used to return a Node Buffer's whole backing
+ * allocation instead of just the view's bytes, serving a rotated
+ * (corrupt) zip. Now asserts the fix holds instead of asserting the bug.
  */
-test.describe("xlsx export integrity (known broken)", () => {
+test.describe("xlsx export integrity", () => {
   test.use({ storageState: "playwright/.auth/cae.json" });
 
   test("the downloaded workbook is a valid zip", async ({ page }) => {
-    test.fail();
     const response = await page.request.get("/api/exports/findings");
     const body = await response.body();
     expect(body.subarray(0, 2).toString("latin1")).toBe("PK");
