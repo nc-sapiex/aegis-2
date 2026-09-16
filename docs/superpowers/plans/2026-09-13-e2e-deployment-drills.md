@@ -728,66 +728,33 @@ git commit -m "feat(ops): backup/restore scripts and the restore drill; both dri
 
 ---
 
-### Task 7: AWS checklist
+### Task 7: VPS checklist (replaces the AWS checklist — nc's direction, 2026-09-16)
+
+**First customer targets our own VPS (vps-control, Hostinger + Tailscale,
+`aegis.sapiex.tech`), not AWS.** The AWS path in spec §8.5/§10 stays
+documented for a future AWS-hosted customer, but is not this program's
+go-live target — written as `docs/ops/vps-checklist.md` instead.
 
 **Files:**
 
-- Create: `docs/ops/aws-checklist.md`
+- Create: `docs/ops/vps-checklist.md`
 
 **Interfaces:** none — this is a document, run manually once before go-live per spec §10.
 
-- [ ] **Step 1: Write the checklist**
+- [x] **Step 1: Write the checklist**
 
-```markdown
-# AWS Go-Live Checklist
+Written as `docs/ops/vps-checklist.md` — same shape as the AWS template
+above would have been (DB, object store, networking/TLS, licensing,
+restore drill, sign-off), adapted to vps-control's actual stack: no RDS/S3,
+Postgres and MinIO run as containers with no public ports, Coolify's
+existing Traefik does TLS instead of an ALB/Caddy, ufw + Tailscale ACLs
+replace security groups. See that file for the actual checklist.
 
-Run once, manually, before go-live on the AWS target (spec §10). Not
-automated — an agent must not create, modify, or delete real AWS resources
-per this repo's standing constraints; this checklist is for a human operator
-with AWS console/CLI access to work through and initial.
-
-## RDS (Postgres)
-
-- [ ] Automated backups enabled, retention >= 30 days (spec §8.5)
-- [ ] Point-in-time recovery (PITR) enabled
-- [ ] Encryption at rest enabled (AWS default, confirm not opted out)
-- [ ] `aegis_app` role exists with the RLS-required GRANT set (per the tenant-isolation plan's Task 3 role setup — cross-check against that plan's `prisma/sql` role script)
-- [ ] Security group restricts inbound to the app's subnet only, no 0.0.0.0/0 on 5432
-
-## S3 (object store)
-
-- [ ] Versioning enabled on the evidence bucket (spec §8.5)
-- [ ] Default encryption enabled (SSE-S3 or SSE-KMS)
-- [ ] Bucket policy denies public access; block-public-access settings all on
-- [ ] Lifecycle rule matches the 30-day retention policy for anything mirrored from backups
-
-## Networking / TLS
-
-- [ ] Load balancer or Caddy in front of the app terminates TLS with a valid cert
-- [ ] `NEXT_PUBLIC_APP_URL` matches the real customer-facing hostname (license `allowedHosts` check will refuse boot otherwise, per spec §8.3)
-
-## Licensing
-
-- [ ] Production `license.aegis` issued for this customer's real hostname, not a drill/staging one
-- [ ] `expiresAt`/`gracePeriodDays` match the signed contract terms
-
-## Restore drill (AWS target)
-
-- [ ] RDS PITR restore performed to a scratch instance, row counts compared against the source, scratch instance deleted afterward
-- [ ] S3 versioned-object restore performed on one deliberately-deleted test object, confirmed recoverable
-
-## Sign-off
-
-- [ ] Checklist run date: __________
-- [ ] Run by: __________
-- [ ] Result recorded in `docs/ops/restore-drill-log.md` (AWS section) and `docs/ops/security-statement.md` if it changes any claim there
-```
-
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
-git add docs/ops/aws-checklist.md
-git commit -m "docs(ops): AWS go-live checklist, run manually once before go-live"
+git add docs/ops/vps-checklist.md
+git commit -m "docs(ops): VPS go-live checklist, run manually once before go-live"
 ```
 
 ---
