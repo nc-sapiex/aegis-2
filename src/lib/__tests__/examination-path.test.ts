@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { descendantPathPrefix, isDescendantPath } from "@/lib/examination-path";
+import {
+  descendantPathPrefix,
+  isDescendantPath,
+  parentPath,
+} from "@/lib/examination-path";
 
 describe("descendantPathPrefix", () => {
   it("appends a slash so startsWith matches children, not a dotted sibling", () => {
@@ -28,5 +32,18 @@ describe("isDescendantPath", () => {
     expect(isDescendantPath("ROOT/CREDIT/CREDIT-001", "ROOT/CREDIT.")).toBe(
       false,
     );
+  });
+});
+
+describe("parentPath", () => {
+  it("strips the last segment of a housing-pack path", () => {
+    expect(parentPath("CRD-HLN/CRD-HLN-PRE/CRD-HLN-PRE-001")).toBe(
+      "CRD-HLN/CRD-HLN-PRE",
+    );
+    expect(parentPath("CRD-HLN/CRD-HLN-PRE")).toBe("CRD-HLN");
+  });
+
+  it("returns null for a module root with no slash", () => {
+    expect(parentPath("CRD-HLN")).toBeNull();
   });
 });

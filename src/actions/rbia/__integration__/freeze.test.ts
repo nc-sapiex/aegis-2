@@ -619,4 +619,116 @@ describe("freezeRbiaScore completeness", () => {
       expect(result.error).toContain("CREDIT");
     }
   });
+
+  it("still scores a pack-shaped tree whose parentId was never set", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+
+    const housing = await withFixtures(async () => {
+      const housingModule = await integrationOwner.auditModule.create({
+        data: {
+          tenantId: tenant.id,
+          code: "CRD-HLN",
+          name: "Housing Loans",
+          domain: "CREDIT",
+          kinds: ["CHECKLIST"],
+          applicability: {},
+        },
+        select: { id: true },
+      });
+      await integrationOwner.examinationNode.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: housingModule.id,
+          code: "CRD-HLN",
+          name: "Housing Loans",
+          path: "CRD-HLN",
+          depth: 1,
+          isLeaf: false,
+          parentId: null,
+          weight: 1,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+      await integrationOwner.examinationNode.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: housingModule.id,
+          code: "CRD-HLN-PRE",
+          name: "Pre-Sanction Checks",
+          path: "CRD-HLN/CRD-HLN-PRE",
+          depth: 2,
+          isLeaf: false,
+          parentId: null,
+          weight: 0.2,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+      const leaf = await integrationOwner.examinationNode.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: housingModule.id,
+          code: "CRD-HLN-PRE-001",
+          name: "Borrower Eligibility",
+          path: "CRD-HLN/CRD-HLN-PRE/CRD-HLN-PRE-001",
+          depth: 3,
+          isLeaf: true,
+          parentId: null,
+          weight: 1,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+      await integrationOwner.engagementModule.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: housingModule.id,
+        },
+      });
+      return { leaf };
+    });
+
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const blocked = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(blocked.success).toBe(false);
+    if (!blocked.success) {
+      expect(blocked.code).toBe("INCOMPLETE_EXAMINATION");
+      expect(blocked.error).toContain("CRD-HLN-PRE-001");
+    }
+
+    await score(
+      tenant.id,
+      seed.engagementId,
+      housing.leaf.id,
+      "FULLY_COMPLIANT",
+    );
+    const frozen = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(frozen.success).toBe(true);
+    if (frozen.success) expect(frozen.data.compositeScore).toBe(1);
+
+    const snapshot = await integrationOwner.branchRbiaScore.findUniqueOrThrow({
+      where: { engagementId: seed.engagementId },
+      select: { moduleScores: true },
+    });
+    expect(Object.keys(snapshot.moduleScores as object).sort()).toEqual([
+      "CRD-HLN",
+      "OPS",
+    ]);
+  });
 });

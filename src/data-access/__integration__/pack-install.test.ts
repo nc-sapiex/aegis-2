@@ -28,10 +28,28 @@ const privateKeyPem = privateKey
 let tenantId: string;
 let userId: string;
 let packFile: string;
+let nestedPackFile: string;
 let sourceDir: string;
+let nestedSourceDir: string;
 
 function actorFor(userIdArg: string, tenantIdArg: string): Actor {
   return { kind: "user", userId: userIdArg, tenantId: tenantIdArg };
+}
+
+async function signAndTar(dir: string, outFile: string): Promise<void> {
+  const unsigned = await buildPackArchive(dir, outFile);
+  const signed = signPackManifest(unsigned, privateKeyPem);
+  await writeFile(
+    join(dir, ".staging", "manifest.json"),
+    JSON.stringify(signed, null, 2),
+  );
+  await createTar({ gzip: true, file: outFile, cwd: join(dir, ".staging") }, [
+    "manifest.json",
+    "modules.json",
+    "nodes.json",
+    "questions.json",
+    "population-schemas.json",
+  ]);
 }
 
 beforeAll(async () => {
@@ -55,26 +73,57 @@ beforeAll(async () => {
     "- code: FX-01\n  moduleCode: FX\n  name: FEMA Compliance\n  path: FX/FX-01\n  depth: 1\n  isLeaf: true\n  weight: 1\n  isCritical: true\n  description: FEMA declarations are on file\n",
   );
   packFile = join(sourceDir, "example-forex-1.0.0.aegispack");
-  const unsigned = await buildPackArchive(sourceDir, packFile);
-  const signed = signPackManifest(unsigned, privateKeyPem);
+  await signAndTar(sourceDir, packFile);
+
+  nestedSourceDir = await mkdtemp(join(tmpdir(), "pack-nested-"));
   await writeFile(
-    join(sourceDir, ".staging", "manifest.json"),
-    JSON.stringify(signed, null, 2),
+    join(nestedSourceDir, "manifest.yaml"),
+    'id: nested-tree\nversion: 1.0.0\nname: Nested Tree\npublisher: Nexly\nrequiresFramework: "^2.0.0"\ndependsOn: []\nprovides: [CRD-HLN]\n',
   );
-  await createTar(
-    { gzip: true, file: packFile, cwd: join(sourceDir, ".staging") },
+  await writeFile(
+    join(nestedSourceDir, "modules.yaml"),
+    "- code: CRD-HLN\n  name: Housing Loans\n  domain: CREDIT\n  kinds: [CHECKLIST]\n  applicability: {}\n  weight: 1\n",
+  );
+  await writeFile(
+    join(nestedSourceDir, "nodes.yaml"),
     [
-      "manifest.json",
-      "modules.json",
-      "nodes.json",
-      "questions.json",
-      "population-schemas.json",
-    ],
+      "- code: CRD-HLN",
+      "  moduleCode: CRD-HLN",
+      "  name: Housing Loans",
+      "  path: CRD-HLN",
+      "  depth: 1",
+      "  isLeaf: false",
+      "  weight: 1",
+      "  isCritical: false",
+      "  description: Housing Loans",
+      "- code: CRD-HLN-PRE",
+      "  moduleCode: CRD-HLN",
+      "  name: Pre-Sanction Checks",
+      "  path: CRD-HLN/CRD-HLN-PRE",
+      "  depth: 2",
+      "  isLeaf: false",
+      "  weight: 0.2",
+      "  isCritical: false",
+      "  description: Pre-Sanction Checks",
+      "- code: CRD-HLN-PRE-001",
+      "  moduleCode: CRD-HLN",
+      "  name: Borrower Eligibility",
+      "  path: CRD-HLN/CRD-HLN-PRE/CRD-HLN-PRE-001",
+      "  depth: 3",
+      "  isLeaf: true",
+      "  weight: 1",
+      "  isCritical: true",
+      "  description: Borrower Eligibility",
+      "",
+    ].join("\n"),
   );
+  nestedPackFile = join(nestedSourceDir, "nested-tree-1.0.0.aegispack");
+  await signAndTar(nestedSourceDir, nestedPackFile);
 }, 30_000);
 
 afterAll(async () => {
   await rm(sourceDir, { recursive: true, force: true });
+  await rm(nestedSourceDir, { recursive: true, force: true });
   await integrationOwner.$disconnect();
 });
 
@@ -171,5 +220,32 @@ describe("installPack", () => {
       where: { tenantId, code: "FX-01" },
     });
     expect(node?.isActive).toBe(true);
+  });
+
+  it("sets parentId from path so a nested housing-style tree can freeze", async () => {
+    const result = await installPack(
+      tenantId,
+      actorFor(userId, tenantId),
+      nestedPackFile,
+      publicKeyPem,
+      ["pack:nested-tree@*"],
+    );
+    expect(result.success).toBe(true);
+
+    const root = await integrationOwner.examinationNode.findFirst({
+      where: { tenantId, code: "CRD-HLN" },
+      select: { id: true, parentId: true },
+    });
+    const section = await integrationOwner.examinationNode.findFirst({
+      where: { tenantId, code: "CRD-HLN-PRE" },
+      select: { id: true, parentId: true },
+    });
+    const leaf = await integrationOwner.examinationNode.findFirst({
+      where: { tenantId, code: "CRD-HLN-PRE-001" },
+      select: { parentId: true },
+    });
+    expect(root?.parentId).toBeNull();
+    expect(section?.parentId).toBe(root?.id);
+    expect(leaf?.parentId).toBe(section?.id);
   });
 });

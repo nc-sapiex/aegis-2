@@ -17,6 +17,7 @@ import {
   engagementLeafInScope,
   type LeafStatus,
 } from "@/lib/rbia-completeness";
+import { parentPath } from "@/lib/examination-path";
 import {
   FreezeRbiaScoreSchema,
   type FreezeRbiaScoreInput,
@@ -250,11 +251,23 @@ export async function freezeRbiaScore(
 
         // Link children → parents. Skip live leaves that are not in this
         // engagement's snapshot (a bank statement added after create).
+        // Pack install historically left parentId null; fall back to the
+        // slash-separated path so a housing-style tree still rolls up.
+        const idByPath = new Map(allNodes.map((n) => [n.path, n.id]));
+        const pathById = new Map(allNodes.map((n) => [n.id, n.path]));
         for (const node of nodeMap.values()) {
           if (!leafInScope(node.isLeaf, node.nodeId)) continue;
-          if (node.parentId) {
-            const parent = nodeMap.get(node.parentId);
-            if (parent) parent.children.push(node);
+          let parent = node.parentId ? nodeMap.get(node.parentId) : undefined;
+          if (!parent) {
+            const path = pathById.get(node.nodeId);
+            const parentP = path ? parentPath(path) : null;
+            const parentIdFromPath = parentP
+              ? idByPath.get(parentP)
+              : undefined;
+            if (parentIdFromPath) parent = nodeMap.get(parentIdFromPath);
+          }
+          if (parent && parent.nodeId !== node.nodeId) {
+            parent.children.push(node);
           }
         }
 
