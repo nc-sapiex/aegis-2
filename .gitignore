@@ -15,6 +15,8 @@ Thumbs.db
 # — the public key and issued license ARE meant to be committed, the private
 # key never is.
 /drills/fixtures/drill-key.private.pem
+# Container logs install-drill.sh dumps on a failed run (per-VM, local debugging only)
+/drills/diagnostics/
 
 # Dependencies
 node_modules/

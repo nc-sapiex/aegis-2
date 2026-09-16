@@ -3,7 +3,9 @@
 # Multipass, installs AEGIS on it via the on-prem compose stack
 # (scripts/aegis-install.sh, Task 4), and runs the E2E smoke suite against
 # it. Recorded per release in docs/ops/install-drill-log.md (spec Sec10).
-# Tears the VM down on exit regardless of outcome.
+# Tears the VM down on exit regardless of outcome — but on failure, dumps
+# `docker compose ps`/`logs` to drills/diagnostics/<vm-name>.log first, so
+# the teardown doesn't also destroy the only evidence of why it failed.
 #
 # Prerequisites:
 #   1. Multipass installed (`brew install multipass` on macOS).
@@ -60,6 +62,27 @@ WORKDIR=""
 DRILL_TAR=""
 
 cleanup() {
+  # Must be the first statement — $? is what the script is actually exiting
+  # with, and any command below (even a plain `[`) would overwrite it.
+  local exit_code=$?
+
+  # A failed run used to vanish with nothing but "unhealthy" — the VM (and
+  # its container logs) was gone before anyone could see why. On any
+  # non-zero exit, grab compose's view of every container plus their logs
+  # and write it somewhere that outlives the teardown below.
+  if [ "$exit_code" -ne 0 ] && multipass info "$VM_NAME" >/dev/null 2>&1; then
+    echo "Drill failed (exit $exit_code) — capturing diagnostics before teardown..." >&2
+    mkdir -p drills/diagnostics
+    local diag_file="drills/diagnostics/$VM_NAME.log"
+    {
+      echo "=== docker compose ps ($(date -u +%Y-%m-%dT%H:%M:%SZ)) ==="
+      multipass exec "$VM_NAME" -- bash -c "cd aegis && docker compose -f docker-compose.yml -f docker-compose.onprem.yml ps" 2>&1
+      echo "=== docker compose logs --tail 200 (all services) ==="
+      multipass exec "$VM_NAME" -- bash -c "cd aegis && docker compose -f docker-compose.yml -f docker-compose.onprem.yml logs --no-color --tail 200" 2>&1
+    } 2>&1 | tee "$diag_file" >&2
+    echo "Diagnostics captured to $diag_file" >&2
+  fi
+
   # Local temp files (checkout + tar) are never worth keeping — only the VM
   # itself is what --keep is for.
   [ -n "$WORKDIR" ] && rm -rf "$WORKDIR"

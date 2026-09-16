@@ -4,13 +4,12 @@ Record of `scripts/drills/install-drill.sh` runs (spec §10). One line per
 run, appended by the script itself on a passing run — never hand-edited to
 claim a pass, and never backfilled after the fact.
 
-**Status: no drill has been run yet.** `scripts/drills/install-drill.sh` has
-been written and reviewed but not executed — Multipass isn't installed on
-the machine that wrote it, and the plan
-(`docs/superpowers/plans/2026-09-13-e2e-deployment-drills.md`, Task 5)
-requires the user's explicit sign-off on drill-license signing before the
-first real run. Do not add a result line below until a run has actually
-happened.
+**Status: one real run, and it failed.** See the entry below. `aegis-app`
+never passed its healthcheck and the run's own trap tore the VM down
+(as designed) before anyone could see why — that gap is fixed for the next
+run (`cleanup()` now dumps `docker compose ps`/`logs` to
+`drills/diagnostics/<vm-name>.log` before teardown on any failure), but this
+run predates that fix, so no container logs exist for it.
 
 ## Format
 
@@ -29,3 +28,5 @@ clean streak.
 ## Runs
 
 <!-- append below this line; do not fabricate an entry -->
+
+2026-09-16T07:30:31Z install-drill FAILED vm=aegis-install-drill-1789543831 reason="aegis-app container unhealthy, docker compose up --wait timed out; no diagnostic logs captured before the VM was torn down (fixed in cleanup() for future runs — see scripts/drills/install-drill.sh)"
