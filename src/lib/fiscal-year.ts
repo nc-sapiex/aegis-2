@@ -91,6 +91,22 @@ export function getQuarterDateRange(
   }
 }
 
+/**
+ * Build a window of FY labels centered on a start year.
+ * getFiscalYearWindow(2025) → ["2024-25", "2025-26", "2026-27"]
+ */
+export function getFiscalYearWindow(
+  centerYear: number,
+  before = 1,
+  after = 1,
+): string[] {
+  const labels: string[] = [];
+  for (let y = centerYear - before; y <= centerYear + after; y++) {
+    labels.push(`${y}-${String(y + 1).slice(-2)}`);
+  }
+  return labels;
+}
+
 /** All quarters in fiscal year order */
 export const ALL_QUARTERS: Quarter[] = [
   "Q1_APR_JUN",
