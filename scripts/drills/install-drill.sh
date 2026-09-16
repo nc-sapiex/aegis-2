@@ -5,10 +5,8 @@
 # it. Recorded per release in docs/ops/install-drill-log.md (spec Sec10).
 # Tears the VM down on exit regardless of outcome.
 #
-# NOT YET RUN. Two things have to happen first, neither of which this
-# script or any agent can do for you:
-#   1. Multipass installed (`brew install multipass` on macOS — not present
-#      on this machine as of the script being written).
+# Prerequisites:
+#   1. Multipass installed (`brew install multipass` on macOS).
 #   2. `pnpm drill:license` run once, by a human, to produce
 #      drills/fixtures/drill-license.aegis and drills/fixtures/drill-key.public.pem.
 #      See drills/fixtures/README.md.
@@ -50,10 +48,13 @@ DRILL_HOST="aegis-install-drill.local"
 VM_NAME="aegis-install-drill-$(date +%s)"
 WORKDIR=""
 
+DRILL_TAR=""
+
 cleanup() {
   echo "Tearing down drill VM $VM_NAME"
   multipass delete "$VM_NAME" --purge || true
   [ -n "$WORKDIR" ] && rm -rf "$WORKDIR"
+  [ -n "$DRILL_TAR" ] && rm -f "$DRILL_TAR"
   return 0
 }
 trap cleanup EXIT
@@ -144,25 +145,25 @@ multipass exec "$VM_NAME" -- bash -c "cd aegis && ./scripts/aegis-install.sh ./d
 
 echo "Install succeeded on $VM_NAME."
 
-# KNOWN GAP, not fixed by this script (see task-5-report.md): two things
-# stand between this and an actually-useful smoke run, and both belong to
-# files this task doesn't own.
-#   1. playwright.config.ts's `webServer` block is unconditional
-#      (`command: "pnpm build && pnpm start"`, `url: "http://localhost:3000"`)
-#      — run locally (not CI), `reuseExistingServer` is true, but nothing is
-#      listening on the *host's* localhost:3000 (the app is in the VM), so
-#      Playwright will build and boot its own local server and exercise
-#      that instead of the drill VM. Setting BASE_URL only changes
-#      `use.baseURL` for navigation — it does not touch webServer's
-#      hardcoded url/command. Fixing this means teaching playwright.config.ts
-#      (Task 3's file) an escape hatch, e.g. skipping `webServer` when
-#      BASE_URL is set to something other than localhost.
-#   2. aegis-install.sh runs `pnpm db:migrate` only, never a seed script —
-#      the drill VM's database has no accounts. The smoke suite's `setup`
-#      project logs in via seeded users and will fail on an unseeded
-#      database. Seeding the drill VM (`pnpm seed:rbia-housing` etc., run
-#      inside the VM against its own compose stack) is straightforward but
-#      unverified here, and belongs with whoever wires this up for real.
+# aegis-install.sh only runs `pnpm db:migrate` (schema, no data) — the
+# smoke suite's `setup` project logs in as seeded users, so the drill needs
+# the same sequence docs/SEED-PROCESS-MANUAL.md documents for a fresh local
+# database: db:seed (creates the tenants/users) before the three
+# incremental seed scripts. Reuses the `migrate` service (Task 4's
+# `aegis-install.sh` already documents why: builder-stage image, has
+# pnpm/tsx/prisma, the `app` image's runner stage doesn't) rather than a
+# fifth compose invocation path.
+#
+# db:seed refuses to run under NODE_ENV=production or a database name that
+# looks production-like (src/lib/seed-guard.ts) — and the builder image
+# this drill uses sets NODE_ENV=production (Dockerfile), so it would
+# otherwise refuse here. ALLOW_DESTRUCTIVE_SEED=true is the documented
+# escape hatch; the drill's Postgres is a fresh disposable container in a
+# disposable VM, never anything with real data, so the guard's whole
+# purpose doesn't apply here.
+echo "Seeding the drill database..."
+multipass exec "$VM_NAME" -- bash -c "cd aegis && docker compose -f docker-compose.yml -f docker-compose.onprem.yml run --rm -T -e ALLOW_DESTRUCTIVE_SEED=true migrate bash -c 'pnpm db:seed && pnpm seed:rbia-housing && pnpm seed:exam-questions && pnpm seed:lifecycle'"
+
 echo "Running smoke suite against $DRILL_IP..."
 BASE_URL="http://$DRILL_IP:3000" pnpm test:e2e:smoke
 
