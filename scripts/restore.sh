@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # scripts/restore.sh — restores a backup taken by backup.sh onto a running
-# stack, empty or already matching (backup.sh's pg_dump --clean --if-exists
-# makes this idempotent either way — see its comment).
+# stack, empty or already matching: this script drops and recreates every
+# schema itself before loading the dump, so it's idempotent either way
+# regardless of what's already there (#170 — see below for why this isn't
+# pg_dump --clean anymore).
 #
 # Precondition: stop the app container first (`docker compose stop app`).
-# The restore below runs DROP TABLE inside a transaction, which needs an
+# The restore below runs DROP SCHEMA inside a transaction, which needs an
 # ACCESS EXCLUSIVE lock; a live app holding its own connections (pg-boss
 # polling its job tables, which are in the same dump) blocks on that lock
 # and reconnects, so the restore hangs rather than failing cleanly.
@@ -25,12 +27,33 @@ BACKUP_DIR="${BACKUP_HOST_PATH:-./backups}/$BACKUP_DATE"
 
 [ -f "$BACKUP_DIR/db.sql.gz" ] || { echo "No backup found at $BACKUP_DIR" >&2; exit 1; }
 
+# backup.sh's dump (#170) has no --clean — instead, drop and recreate every
+# non-system schema here, ahead of loading it, in the same transaction.
+# This sidesteps pg_dump --clean's per-object DROP statements entirely
+# (and their partition-ordering problems: a partition's inherited
+# constraint can't be dropped piecemeal on the child). Discovered
+# dynamically so a future migration adding a schema doesn't silently skip
+# this. `public` is never dropped+recreated by the dump itself (pg_dump
+# assumes initdb already created it), so it's the one schema this
+# explicitly recreates; every other schema comes back via the dump's own
+# CREATE SCHEMA statements.
+SCHEMAS=$(docker compose exec -T postgres psql -tAc \
+  "SELECT nspname FROM pg_namespace WHERE nspname NOT LIKE 'pg\_%' AND nspname != 'information_schema'" \
+  -U "${POSTGRES_USER:-aegis}" "${POSTGRES_DB:-aegis}" | tr -d '\r')
+
 # ON_ERROR_STOP=1: plain psql continues past a failed statement and still
-# exits 0 — on this dump (DROP/CREATE/COPY per table) that means a restore
+# exits 0 — on this dump (CREATE/COPY per table) that means a restore
 # that half-failed midway still prints "Restore complete". --single-transaction
-# wraps the whole script in one transaction so a failure rolls back to the
-# pre-restore state instead of leaving the database half-populated.
-gunzip -c "$BACKUP_DIR/db.sql.gz" | docker compose exec -T postgres psql -v ON_ERROR_STOP=1 --single-transaction -U "${POSTGRES_USER:-aegis}" "${POSTGRES_DB:-aegis}"
+# wraps the whole script (schema drops included) in one transaction so a
+# failure rolls back to the pre-restore state instead of leaving the
+# database half-populated or half-dropped.
+{
+  for schema in $SCHEMAS; do
+    echo "DROP SCHEMA IF EXISTS \"$schema\" CASCADE;"
+  done
+  echo 'CREATE SCHEMA IF NOT EXISTS public;'
+  gunzip -c "$BACKUP_DIR/db.sql.gz"
+} | docker compose exec -T postgres psql -v ON_ERROR_STOP=1 --single-transaction -U "${POSTGRES_USER:-aegis}" "${POSTGRES_DB:-aegis}"
 
 # Same MC_HOST_<alias> approach as backup.sh — see its comment for why.
 MINIO_CONTAINER_NAME="${MINIO_CONTAINER_NAME:-aegis-minio}"

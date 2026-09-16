@@ -19,14 +19,16 @@ fi
 BACKUP_DIR="${BACKUP_HOST_PATH:-./backups}/$(date +%Y-%m-%d)"
 mkdir -p "$BACKUP_DIR/objects"
 
-# --clean --if-exists: the dump DROPs each object (IF EXISTS) before
-# recreating it, so restore.sh works whether the target is a truly empty
-# database or one that already has the same schema/data — which is what
-# scripts/drills/restore-drill.sh actually hands it (the install-drill VM
-# is migrated *and* seeded before the drill runs). Roles (aegis_app,
-# aegis_system) are cluster-level, not per-database, so they aren't in
-# this dump and don't need to survive a --clean restore — they already do.
-docker compose exec -T postgres pg_dump --clean --if-exists -U "${POSTGRES_USER:-aegis}" "${POSTGRES_DB:-aegis}" | gzip > "$BACKUP_DIR/db.sql.gz"
+# No --clean: pg_dump --clean emits a bare `ALTER TABLE ONLY <partition>
+# DROP CONSTRAINT <inherited_pkey>` for pg-boss's partitioned queue_stats
+# table once a daily partition exists — Postgres refuses this, a
+# partition's inherited constraint can only be dropped via its parent or
+# by dropping the partition itself (#170). restore.sh instead drops and
+# recreates the whole schema(s) before loading this plain dump, which
+# sidesteps per-object DROP statements — and their partition-ordering
+# problems — entirely. Roles (aegis_app, aegis_system) are cluster-level,
+# not per-database, so they aren't in this dump and don't need restoring.
+docker compose exec -T postgres pg_dump -U "${POSTGRES_USER:-aegis}" "${POSTGRES_DB:-aegis}" | gzip > "$BACKUP_DIR/db.sql.gz"
 
 # `mc mirror` needs a configured alias first. `mc alias set` writes to a
 # persistent config dir we'd have to manage across runs of this script; mc's
