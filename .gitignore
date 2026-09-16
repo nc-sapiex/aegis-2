@@ -7,6 +7,11 @@ Thumbs.db
 .env.*
 !.env.example
 
+# On-prem installer drops the customer's license here (scripts/aegis-install.sh)
+/license.aegis
+# On-prem backup mount default target (docker-compose.onprem.yml's BACKUP_HOST_PATH)
+/backups/
+
 # Dependencies
 node_modules/
 

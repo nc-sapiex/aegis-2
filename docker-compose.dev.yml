@@ -8,6 +8,19 @@ services:
     profiles:
       - production-only
 
+  # MinIO/MailHog/the bucket-creation one-shot are only needed alongside the
+  # containerized app (full stack / on-prem) — the postgres-only dev path
+  # (pnpm dev) doesn't use them, so keep them off here too.
+  minio:
+    profiles:
+      - production-only
+  createbuckets:
+    profiles:
+      - production-only
+  mailhog:
+    profiles:
+      - production-only
+
   postgres:
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
