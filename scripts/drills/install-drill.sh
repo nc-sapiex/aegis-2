@@ -200,7 +200,13 @@ echo "Install succeeded on $VM_NAME."
 # disposable VM, never anything with real data, so the guard's whole
 # purpose doesn't apply here.
 echo "Seeding the drill database..."
-multipass exec "$VM_NAME" -- bash -c "cd aegis && docker compose -f docker-compose.yml -f docker-compose.onprem.yml run --rm -T -e ALLOW_DESTRUCTIVE_SEED=true migrate bash -c 'pnpm db:seed && pnpm seed:rbia-housing && pnpm seed:exam-questions && pnpm seed:lifecycle'"
+# `sh`, not `bash`: the migrate image is node:22-alpine, which has no bash.
+# Its docker-entrypoint.sh prepends `node` to any command it doesn't
+# recognize via `command -v`, so `migrate bash -c '...'` silently became
+# `node bash -c '...'` -> node tried to require('/app/bash') and failed with
+# "Cannot find module '/app/bash'". sh is present in Alpine and the command
+# chain below is plain POSIX `&&`, so sh -c runs it correctly.
+multipass exec "$VM_NAME" -- bash -c "cd aegis && docker compose -f docker-compose.yml -f docker-compose.onprem.yml run --rm -T -e ALLOW_DESTRUCTIVE_SEED=true migrate sh -c 'pnpm db:seed && pnpm seed:rbia-housing && pnpm seed:exam-questions && pnpm seed:lifecycle'"
 
 echo "Running smoke suite against $DRILL_IP..."
 BASE_URL="http://$DRILL_IP:3000" pnpm test:e2e:smoke
