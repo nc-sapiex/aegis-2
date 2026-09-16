@@ -104,6 +104,12 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
       timeout: 300_000,
       dependencies: ["setup"],
+      // A retry re-runs the whole serial block from the top, but the cycle
+      // mutates the database as it goes — the second attempt at "RAM
+      // assessment is scored and computed" meets an already-COMPUTED
+      // assessment and fails for a different reason than the first. Retrying
+      // turns one real failure into three misleading ones. Fail once, legibly.
+      retries: 0,
     },
   ],
 

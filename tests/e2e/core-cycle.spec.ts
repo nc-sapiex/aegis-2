@@ -62,6 +62,24 @@ const FRESH_BRANCH = "BR012 - Wanowrie Branch";
 const FRESH_BRANCH_NAME = "Wanowrie Branch";
 const RAM_YEAR = "2026-27";
 const AUDIT_NUMBER = "RBIA/2026-27/BR012/V1";
+
+/**
+ * The plan generator offers the current fiscal year and the next two, and
+ * defaults to the first (audit-plans/plan-generator.tsx:29-40). It writes
+ * `year: parseInt(fiscalYear.split("-")[0])` (generate-annual-plan.ts:52), so
+ * both the plan row's label and the engagement form's plan option are
+ * functions of today's date, not constants. Derived the same way the component
+ * derives them: hardcoding "2026-27" would silently stop matching on
+ * 2027-04-01. `RAM_YEAR` above is a static seeded string and stays one — the
+ * DAL's `fiscalYear` argument is documented as unused
+ * (src/data-access/audit-plans.ts:105), so the assessment's year never has to
+ * agree with the plan's.
+ */
+const FY_START = (() => {
+  const now = new Date();
+  return now.getMonth() < 3 ? now.getFullYear() - 1 : now.getFullYear();
+})();
+const FY_LABEL = `${FY_START}-${String(FY_START + 1).slice(2)}`;
 const OBSERVATION_TITLE = "Core cycle: housing loan income re-verification gap";
 
 /** scripts/seed-full-audit-lifecycle.ts:2218 — IN_PROGRESS, team assigned. */
@@ -216,7 +234,7 @@ test.describe.serial("@smoke core cycle", () => {
       // that was already on screen.
       await page.reload();
       await expect(
-        page.getByRole("cell", { name: /^FY 2026-27$/ }),
+        page.getByRole("cell", { name: new RegExp(`^FY ${FY_LABEL}$`) }),
       ).toBeVisible();
     });
 
@@ -227,7 +245,11 @@ test.describe.serial("@smoke core cycle", () => {
       // `CardTitle` renders a div, not a heading element, so this is text.
       await expect(page.getByText("Create Audit Engagement")).toBeVisible();
 
-      await chooseOption(page, "Select audit plan", /^FY 2026 - Q1_APR_JUN$/);
+      await chooseOption(
+        page,
+        "Select audit plan",
+        new RegExp(`^FY ${FY_START} - Q1_APR_JUN$`),
+      );
       await chooseOption(page, "Select branch", new RegExp(FRESH_BRANCH));
       await chooseOption(page, "Select audit area", /credit risk/i);
       await chooseOption(
@@ -610,22 +632,39 @@ test.describe.serial("@smoke core cycle", () => {
       // see the test below for why this only checks that it exists.
       expect(body.indexOf(Buffer.from("PK\x05\x06"))).toBeGreaterThan(-1);
     });
+  });
+});
 
-    // Expected to fail: `/api/exports/findings` serves a *rotated* workbook —
-    // every byte is present and the length is right, but the file starts part
-    // way through the zip, so `unzip` reports "extra bytes at beginning" and
-    // Excel cannot open it. Reproduced against `pnpm build && pnpm start`, not
-    // just dev, and it affects every route that goes through
-    // `toBuffer()` in src/lib/excel-export.ts:253-261, which converts the Node
-    // Buffer from `writeBuffer()` to an ArrayBuffer by taking `.buffer` and
-    // dropping `byteOffset`/`byteLength`. Filed as a bug; this test is the
-    // regression guard, and when the fix lands Playwright will report it as an
-    // unexpected pass so this marker gets removed.
-    test("the downloaded workbook is a valid zip", async ({ page }) => {
-      test.fail();
-      const response = await page.request.get("/api/exports/findings");
-      const body = await response.body();
-      expect(body.subarray(0, 2).toString("latin1")).toBe("PK");
-    });
+/**
+ * Deliberately OUTSIDE the "@smoke core cycle" describe, and deliberately
+ * untagged.
+ *
+ * Playwright's `--grep` matches the full title path, so a test nested under a
+ * describe whose own title contains "@smoke" is selected by
+ * `pnpm test:e2e:smoke` no matter what its own title says. A `test.fail()`
+ * marker there is a trap: Playwright reports an *unexpected pass* as a
+ * failure, so the day someone fixes the bug below — a one-line change, quite
+ * possibly on an unrelated PR — the merge gate goes red for everyone until
+ * somebody also deletes this marker. Out here it runs under `pnpm test:e2e`
+ * only, where the unexpected pass is the useful signal it was meant to be and
+ * costs nobody a merge.
+ *
+ * Expected to fail: `/api/exports/findings` serves a *rotated* workbook —
+ * every byte is present and the length is right, but the file starts part way
+ * through the zip, so `unzip` reports "extra bytes at beginning" and Excel
+ * cannot open it. Reproduced against `pnpm build && pnpm start`, not just dev,
+ * and it affects every route that goes through `toBuffer()` in
+ * src/lib/excel-export.ts:253-261, which converts the Node Buffer from
+ * `writeBuffer()` to an ArrayBuffer by taking `.buffer` and dropping
+ * `byteOffset`/`byteLength`.
+ */
+test.describe("xlsx export integrity (known broken)", () => {
+  test.use({ storageState: "playwright/.auth/cae.json" });
+
+  test("the downloaded workbook is a valid zip", async ({ page }) => {
+    test.fail();
+    const response = await page.request.get("/api/exports/findings");
+    const body = await response.body();
+    expect(body.subarray(0, 2).toString("latin1")).toBe("PK");
   });
 });
