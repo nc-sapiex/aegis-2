@@ -138,7 +138,12 @@ Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/do
   `.prettierignore` and must stay there.
 - pnpm is pinned by `packageManager`; settings live in `pnpm-workspace.yaml`,
   which the Dockerfile copies on purpose.
-- `docs/architecture.md` has been rewritten to describe 2.0 as it actually is
-  (the 1.x-inherited drift — i18n, Sentry, v5 sections — is gone). Keep it
-  current as each implementation plan lands; trust the spec where they
-  disagree in the meantime.
+- `docs/architecture.md` was rewritten 2026-09-16 (Task 10 of the
+  e2e-deployment-drills plan) to describe 2.0 as it actually is: the
+  1.x-inherited drift (i18n, Sentry, v5 sections) is gone, and it now covers
+  RLS tenant isolation, the hash-chained audit log, the module framework,
+  content packs, the module admin page (flagged there as unreachable from
+  nav), the generic reporting engine, licensing/feature flags, and the
+  on-prem plus VPS Compose deployment targets. Keep it current as each new
+  implementation plan lands; trust the spec where they disagree in the
+  meantime.
