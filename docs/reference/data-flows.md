@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `e28e78f` (module-admin-reporting/foundation)
+> Source commit: `18da60a` (cursor/ci-autofix-automation-800e)
 
 Which processes read and write which tables.
 
@@ -40,6 +40,7 @@ reachability graph.
 |---|---|---|
 | `compliance-escalation` | — | — |
 | `deadline-reminder` | yes | `NotificationQueue`, `Observation` |
+| `generate-board-report` | — | — |
 | `notification-processor` | — | — |
 | `overdue-escalation` | yes | `NotificationQueue`, `Observation`, `User` |
 | `rbia-overdue-escalation` | yes | `BmResponseBatch`, `NotificationQueue`, `User` |
