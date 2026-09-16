@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   XCircle,
   RotateCcw,
+  Camera,
 } from "@/lib/icons";
 import {
   requestBmEvidenceUpload,
@@ -84,6 +85,17 @@ export function BmEvidenceUploadPanel({
 }: BmEvidenceUploadPanelProps) {
   const [entry, setEntry] = useState<UploadEntry | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  // navigator.maxTouchPoints, not the width-based useIsMobile hook — a
+  // landscape tablet (the real camera-capture target) is wide enough to
+  // fail a max-width check but still has no keyboard/mouse-driven file picker.
+  useEffect(() => {
+    setIsTouchDevice(
+      typeof navigator !== "undefined" && navigator.maxTouchPoints > 0,
+    );
+  }, []);
 
   // Upload a single file through the 4-step presigned URL pattern
   const uploadFile = useCallback(
@@ -201,15 +213,15 @@ export function BmEvidenceUploadPanel({
     [actionPointId, engagementId, onUploadComplete],
   );
 
-  // Handle file drop
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
+  // Validate and queue a single file, shared by drag-drop and camera capture.
+  // Server allowlist (pdf, jpeg, png, docx, xlsx, 10MB, magic bytes) is
+  // unchanged — this only affects what the client offers to send.
+  const queueFile = useCallback(
+    (file: File | undefined) => {
       if (entry && entry.status === "uploading") {
         toast.error("Please wait for the current upload to complete");
         return;
       }
-
-      const file = acceptedFiles[0];
       if (!file) return;
 
       if (file.size > MAX_FILE_SIZE) {
@@ -228,6 +240,26 @@ export function BmEvidenceUploadPanel({
       void uploadFile(newEntry);
     },
     [entry, uploadFile],
+  );
+
+  // Handle file drop
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => queueFile(acceptedFiles[0]),
+    [queueFile],
+  );
+
+  // Handle a photo taken via the device camera (touch devices only).
+  // ponytail: no HEIC->JPEG conversion — Android cameras emit JPEG and iOS
+  // Safari already transcodes HEIC for <input accept="image/*">; the
+  // server's magic-byte check rejects loudly if that ever isn't true.
+  // Upgrade path: add heic2any client-side conversion if a real device
+  // reports a rejection.
+  const handleCameraCapture = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      queueFile(e.target.files?.[0]);
+      e.target.value = "";
+    },
+    [queueFile],
   );
 
   const isUploading =
@@ -288,6 +320,30 @@ export function BmEvidenceUploadPanel({
             PDF, JPEG, PNG, DOCX, XLSX &bull; Max{" "}
             {formatFileSize(MAX_FILE_SIZE)}
           </p>
+          {isTouchDevice && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={(e) => {
+                e.stopPropagation();
+                cameraInputRef.current?.click();
+              }}
+            >
+              <Camera className="mr-1.5 h-3.5 w-3.5" />
+              Take Photo
+            </Button>
+          )}
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onClick={(e) => e.stopPropagation()}
+            onChange={handleCameraCapture}
+          />
         </div>
       )}
 
