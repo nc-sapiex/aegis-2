@@ -27,39 +27,41 @@
 
 ## File structure
 
-| File | Responsibility |
-|---|---|
-| `src/lib/__tests__/authorization-gaps.test.ts` (new) | Static test: every `(dashboard)` page file calls `requirePermission`/`requireAnyPermission`/`requireOnboardingPermission`; every server action file calls `hasPermission`. |
-| `src/lib/permissions.ts`, `src/lib/nav-items.ts` (modify) | `BOARD_OBSERVER` gets real read permissions, or every reference to it is removed — decided in Task 1 based on what's found. |
-| `src/jobs/generate-board-report.ts` (new) | Real handler: ISSUED observations for a period → PDF → object store → `BoardReport` audit record. |
-| `src/jobs/index.ts` (modify) | Wire the new handler in place of the logging-only stub. |
-| `src/jobs/__integration__/generate-board-report.test.ts` (new) | Integration test. |
-| `tests/e2e/core-cycle.spec.ts` (new) | The full deterministic core-cycle run from spec §10, tagged `@smoke`. |
-| `tests/e2e/tenant-isolation.spec.ts` (new) | The "second tenant seeded alongside and asserted untouched" half of §10's E2E requirement, factored separately since it's a different assertion shape than the cycle test. |
-| `docker-compose.yml` (modify) | Add `minio` and `mailhog` services so the full on-prem stack (app, Postgres, object store, mail) runs from one file, matching the adapters plan's driver seams. |
-| `docker-compose.onprem.yml` (new) | On-prem overlay: named volumes for the bank's backup path, no dev-only ports exposed, `restart: always`. |
-| `scripts/aegis-install.sh` (new) | The one-command clean-machine installer the runbook and the install drill both call. |
-| `scripts/backup.sh`, `scripts/restore.sh` (new) | Nightly `pg_dump` + MinIO mirror; scripted restore. |
-| `scripts/drills/install-drill.sh` (new) | Provisions a clean VM, runs `aegis-install.sh`, runs the smoke suite, records the result. |
-| `scripts/drills/restore-drill.sh` (new) | Takes a backup from the E2E database, restores it on the drill VM, verifies row counts. |
-| `docs/ops/aws-checklist.md` (new) | The manual, run-once-before-go-live AWS checklist (RDS, S3, PITR, security groups, encryption defaults). |
-| `docs/ops/runbook.md` (rewrite) | Onboarding runbook, updated to describe the real install/restore/upgrade paths this plan builds, replacing the current "there is nothing to operate" framing where it's now false. |
-| `docs/ops/security-statement.md` (new) | Customer-facing security statement, written from the claims audit in Task 8. |
-| `docs/architecture.md` (rewrite) | Brought current with everything the seven plans built; the stale i18n/Sentry/v5 passages are removed. |
-| `docs/ops/install-drill-log.md`, `docs/ops/restore-drill-log.md` (new) | Dated records of each drill run, per spec §10 "Recorded per release." |
+| File                                                                   | Responsibility                                                                                                                                                                     |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/__tests__/authorization-gaps.test.ts` (new)                   | Static test: every `(dashboard)` page file calls `requirePermission`/`requireAnyPermission`/`requireOnboardingPermission`; every server action file calls `hasPermission`.         |
+| `src/lib/permissions.ts`, `src/lib/nav-items.ts` (modify)              | `BOARD_OBSERVER` gets real read permissions, or every reference to it is removed — decided in Task 1 based on what's found.                                                        |
+| `src/jobs/generate-board-report.ts` (new)                              | Real handler: ISSUED observations for a period → PDF → object store → `BoardReport` audit record.                                                                                  |
+| `src/jobs/index.ts` (modify)                                           | Wire the new handler in place of the logging-only stub.                                                                                                                            |
+| `src/jobs/__integration__/generate-board-report.test.ts` (new)         | Integration test.                                                                                                                                                                  |
+| `tests/e2e/core-cycle.spec.ts` (new)                                   | The full deterministic core-cycle run from spec §10, tagged `@smoke`.                                                                                                              |
+| `tests/e2e/tenant-isolation.spec.ts` (new)                             | The "second tenant seeded alongside and asserted untouched" half of §10's E2E requirement, factored separately since it's a different assertion shape than the cycle test.         |
+| `docker-compose.yml` (modify)                                          | Add `minio` and `mailhog` services so the full on-prem stack (app, Postgres, object store, mail) runs from one file, matching the adapters plan's driver seams.                    |
+| `docker-compose.onprem.yml` (new)                                      | On-prem overlay: named volumes for the bank's backup path, no dev-only ports exposed, `restart: always`.                                                                           |
+| `scripts/aegis-install.sh` (new)                                       | The one-command clean-machine installer the runbook and the install drill both call.                                                                                               |
+| `scripts/backup.sh`, `scripts/restore.sh` (new)                        | Nightly `pg_dump` + MinIO mirror; scripted restore.                                                                                                                                |
+| `scripts/drills/install-drill.sh` (new)                                | Provisions a clean VM, runs `aegis-install.sh`, runs the smoke suite, records the result.                                                                                          |
+| `scripts/drills/restore-drill.sh` (new)                                | Takes a backup from the E2E database, restores it on the drill VM, verifies row counts.                                                                                            |
+| `docs/ops/aws-checklist.md` (new)                                      | The manual, run-once-before-go-live AWS checklist (RDS, S3, PITR, security groups, encryption defaults).                                                                           |
+| `docs/ops/runbook.md` (rewrite)                                        | Onboarding runbook, updated to describe the real install/restore/upgrade paths this plan builds, replacing the current "there is nothing to operate" framing where it's now false. |
+| `docs/ops/security-statement.md` (new)                                 | Customer-facing security statement, written from the claims audit in Task 8.                                                                                                       |
+| `docs/architecture.md` (rewrite)                                       | Brought current with everything the seven plans built; the stale i18n/Sentry/v5 passages are removed.                                                                              |
+| `docs/ops/install-drill-log.md`, `docs/ops/restore-drill-log.md` (new) | Dated records of each drill run, per spec §10 "Recorded per release."                                                                                                              |
 
 ---
 
 ### Task 1: Authorization-gap static test, and BOARD_OBSERVER decision
 
 **Files:**
+
 - Create: `src/lib/__tests__/authorization-gaps.test.ts`
 - Modify (as needed, based on what the test finds): any `(dashboard)/**/page.tsx` missing a guard call, any `src/actions/**/*.ts` missing `hasPermission`; `src/lib/permissions.ts`, `src/lib/nav-items.ts` for the `BOARD_OBSERVER` decision.
 
 **Interfaces:**
+
 - Produces: a static test enforcing spec §10's "`hasPermission` in every action; `requirePermission` in every dashboard page."
 
-- [ ] **Step 1: Write the static test**
+- [x] **Step 1: Write the static test**
 
 ```ts
 // src/lib/__tests__/authorization-gaps.test.ts
@@ -67,11 +69,17 @@ import { describe, expect, it } from "vitest";
 import { globSync } from "glob";
 import { readFileSync } from "node:fs";
 
-const GUARD_CALLS = ["requirePermission(", "requireAnyPermission(", "requireOnboardingPermission("];
+const GUARD_CALLS = [
+  "requirePermission(",
+  "requireAnyPermission(",
+  "requireOnboardingPermission(",
+];
 
 describe("authorization gaps", () => {
   it("every (dashboard) page.tsx calls a page guard", () => {
-    const pages = globSync("src/app/(dashboard)/**/page.tsx", { cwd: process.cwd() });
+    const pages = globSync("src/app/(dashboard)/**/page.tsx", {
+      cwd: process.cwd(),
+    });
     expect(pages.length).toBeGreaterThan(0);
     const unguarded = pages.filter((path) => {
       const content = readFileSync(path, "utf-8");
@@ -81,7 +89,10 @@ describe("authorization gaps", () => {
   });
 
   it("every server action file checks hasPermission", () => {
-    const actionFiles = globSync("src/actions/**/*.ts", { cwd: process.cwd(), ignore: ["**/*.test.ts", "**/schemas.ts", "**/__integration__/**"] });
+    const actionFiles = globSync("src/actions/**/*.ts", {
+      cwd: process.cwd(),
+      ignore: ["**/*.test.ts", "**/schemas.ts", "**/__integration__/**"],
+    });
     const unguarded = actionFiles.filter((path) => {
       const content = readFileSync(path, "utf-8");
       if (!content.includes('"use server"')) return false; // not an action entry point (a shared helper)
@@ -94,25 +105,25 @@ describe("authorization gaps", () => {
 
 Read how the tenant-predicate static test (`src/data-access/__tests__/tenant-isolation.test.ts` per CLAUDE.md, or wherever the existing "literal audited-mutation allowlist" static test lives) does its file-scanning, and match its glob/ignore conventions rather than inventing a different pattern — this repo already has at least one static-analysis test of this shape.
 
-- [ ] **Step 2: Run it, expect real failures**
+- [x] **Step 2: Run it, expect real failures**
 
 Run: `pnpm vitest run src/lib/__tests__/authorization-gaps.test.ts`
 Expected: FAIL, listing the actual unguarded pages/actions in this codebase. This is real discovery, not a scripted result — the list depends on what's actually in the repo at the time this task runs, after the six dependency plans have landed.
 
-- [ ] **Step 3: Fix every reported gap**
+- [x] **Step 3: Fix every reported gap**
 
 For each unguarded page, add the appropriate `require*` call per `src/lib/guards.ts`'s existing pattern (read a neighboring guarded page first to match its exact usage). For each unguarded action, add `hasPermission(session.user.roles, "...")` with the permission key that best matches the action's effect (read `src/lib/permissions.ts`'s existing `Permission` union for the closest match; do not invent a new permission key without checking whether one already covers this action).
 
-- [ ] **Step 4: Resolve `BOARD_OBSERVER`**
+- [x] **Step 4: Resolve `BOARD_OBSERVER`**
 
 Run: `grep -rn "BOARD_OBSERVER" src/lib/permissions.ts src/lib/nav-items.ts` and read every match. Per spec §9: "`BOARD_OBSERVER` gets real read permissions or is removed." Decide based on what's found — if `BOARD_OBSERVER` already has zero permissions wired to it anywhere (a dead enum value with no `hasPermission` grant), remove it from the `Role` enum's actual usages (the Prisma enum itself may need a migration if it's a DB-backed enum — check `prisma/schema.prisma`'s `Role` enum before removing a value that existing seeded rows might reference) and from `nav-items.ts`; if it has partial wiring, complete it with real read-only grants (dashboard, findings list, reports — not create/update/delete on anything) matching what a board-level read observer role should plausibly see.
 
-- [ ] **Step 5: Run the full suite**
+- [x] **Step 5: Run the full suite**
 
 Run: `pnpm vitest run src/lib/__tests__/authorization-gaps.test.ts && pnpm tsc --noEmit && pnpm test:unit`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/lib/__tests__/authorization-gaps.test.ts src/lib/permissions.ts src/lib/nav-items.ts
@@ -124,21 +135,29 @@ git commit -m "test(auth): static authorization-gap test; close every gap it fin
 ### Task 2: Implement `generate-board-report`
 
 **Files:**
+
 - Create: `src/jobs/generate-board-report.ts`
 - Create: `src/jobs/__integration__/generate-board-report.test.ts`
 - Modify: `src/jobs/index.ts`
 
 **Interfaces:**
+
 - Consumes: `ObjectStore` (adapters plan), `withAuditedMutation`, the `AuditSummaryDocument`/kernel PDF primitives (module-admin-reporting plan's Task 10 output — read that plan's landed `generic-module-section.tsx`/kernel document component before writing this, since a board report is a kernel-sections-only document, no module sections).
 - Produces: `processGenerateBoardReport(payload: { tenantId: string; periodStart: string; periodEnd: string; requestedById: string }): Promise<{ reportUrl: string }>`.
 
-- [ ] **Step 1: Write the failing integration test**
+- [x] **Step 1: Write the failing integration test**
 
 ```ts
 // src/jobs/__integration__/generate-board-report.test.ts
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { processGenerateBoardReport } from "../generate-board-report";
-import { integrationOwner, createTenant, createUser, resetDatabase, withFixtures } from "../../../tests/integration/harness";
+import {
+  integrationOwner,
+  createTenant,
+  createUser,
+  resetDatabase,
+  withFixtures,
+} from "../../../tests/integration/harness";
 
 let tenantId: string;
 let userId: string;
@@ -149,9 +168,23 @@ beforeAll(async () => {
     const tenant = await createTenant("Board Report Bank");
     tenantId = tenant.id;
     userId = (await createUser(tenantId, ["CAE"])).id;
-    const branch = await integrationOwner.branch.create({ data: { tenantId, name: "B1", code: "B1", loanProducts: [] } });
+    const branch = await integrationOwner.branch.create({
+      data: { tenantId, name: "B1", code: "B1", loanProducts: [] },
+    });
     await integrationOwner.observation.create({
-      data: { tenantId, branchId: branch.id, title: "Cash breach", condition: "x", criteria: "x", cause: "x", effect: "x", recommendation: "x", severity: "HIGH", status: "ISSUED", raisedById: userId },
+      data: {
+        tenantId,
+        branchId: branch.id,
+        title: "Cash breach",
+        condition: "x",
+        criteria: "x",
+        cause: "x",
+        effect: "x",
+        recommendation: "x",
+        severity: "HIGH",
+        status: "ISSUED",
+        raisedById: userId,
+      },
     } as never);
   });
 });
@@ -161,11 +194,16 @@ afterAll(async () => integrationOwner.$disconnect());
 describe("processGenerateBoardReport", () => {
   it("generates a PDF covering ISSUED observations in the period and records a BoardReport", async () => {
     const result = await processGenerateBoardReport({
-      tenantId, periodStart: "2026-01-01", periodEnd: "2026-12-31", requestedById: userId,
+      tenantId,
+      periodStart: "2026-01-01",
+      periodEnd: "2026-12-31",
+      requestedById: userId,
     });
     expect(result.reportUrl).toBeTruthy();
 
-    const record = await integrationOwner.boardReport.findFirstOrThrow({ where: { tenantId } });
+    const record = await integrationOwner.boardReport.findFirstOrThrow({
+      where: { tenantId },
+    });
     expect(record.reportUrl).toBe(result.reportUrl);
   });
 });
@@ -173,12 +211,12 @@ describe("processGenerateBoardReport", () => {
 
 Confirm the actual `BoardReport` model's field names (read `prisma/schema.prisma`) before writing this test — `generate-pdf.ts`'s existing non-RBIA path already creates one via `withAuditedMutation(userActor(session), "board_report.generated", ...)`, so match that exact shape rather than guessing field names.
 
-- [ ] **Step 2: Run it to see it fail**
+- [x] **Step 2: Run it to see it fail**
 
 Run: `pnpm test:integration -- src/jobs/__integration__/generate-board-report.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 // src/jobs/generate-board-report.ts
@@ -186,7 +224,10 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import React from "react";
 import { prismaForTenant } from "@/lib/prisma";
 import { getObjectStore } from "@/lib/adapters/object-store";
-import { withAuditedMutation, systemActor } from "@/data-access/audited-mutation";
+import {
+  withAuditedMutation,
+  systemActor,
+} from "@/data-access/audited-mutation";
 import { BoardReportDocument } from "@/components/pdf-report/board-report";
 
 export async function processGenerateBoardReport(payload: {
@@ -199,28 +240,49 @@ export async function processGenerateBoardReport(payload: {
   const db = prismaForTenant(tenantId);
 
   const observations = await db.observation.findMany({
-    where: { tenantId, status: "ISSUED", createdAt: { gte: new Date(periodStart), lte: new Date(periodEnd) } },
+    where: {
+      tenantId,
+      status: "ISSUED",
+      createdAt: { gte: new Date(periodStart), lte: new Date(periodEnd) },
+    },
     include: { branch: true },
   });
 
-  const buffer = await renderToBuffer(React.createElement(BoardReportDocument, { observations, periodStart, periodEnd }) as never);
+  const buffer = await renderToBuffer(
+    React.createElement(BoardReportDocument, {
+      observations,
+      periodStart,
+      periodEnd,
+    }) as never,
+  );
   const store = getObjectStore();
   const key = `board-reports/${tenantId}/${periodStart}-${periodEnd}-${Date.now()}.pdf`;
   await store.put(key, Buffer.from(buffer), "application/pdf");
   const reportUrl = key;
 
-  return withAuditedMutation(systemActor(tenantId), "board_report.generated", async (tx) => {
-    await tx.boardReport.create({
-      data: { tenantId, reportUrl, periodStart: new Date(periodStart), periodEnd: new Date(periodEnd), requestedById, observationCount: observations.length },
-    });
-    return { reportUrl };
-  });
+  return withAuditedMutation(
+    systemActor(tenantId),
+    "board_report.generated",
+    async (tx) => {
+      await tx.boardReport.create({
+        data: {
+          tenantId,
+          reportUrl,
+          periodStart: new Date(periodStart),
+          periodEnd: new Date(periodEnd),
+          requestedById,
+          observationCount: observations.length,
+        },
+      });
+      return { reportUrl };
+    },
+  );
 }
 ```
 
 Confirm `systemActor` exists in `src/data-access/audited-mutation.ts` (a pg-boss job has no session) — if only `userActor(session)` exists today, this is the first job-context caller and needs a `systemActor(tenantId)` variant added to that file; read the file before assuming either name is already there. Confirm `getObjectStore()`'s real export name from the adapters plan's landed code (this plan's research found the interface as `ObjectStore { put, presignPut, presignGet, delete }` per spec §8.1 but not its factory function's exact name).
 
-- [ ] **Step 4: Wire into `src/jobs/index.ts`**
+- [x] **Step 4: Wire into `src/jobs/index.ts`**
 
 ```ts
 import { processGenerateBoardReport } from "./generate-board-report";
@@ -228,17 +290,24 @@ import { processGenerateBoardReport } from "./generate-board-report";
 // replace the logging-only handler:
 await boss.work(JOBS.GENERATE_BOARD_REPORT, async (jobs) => {
   for (const job of jobs) {
-    await processGenerateBoardReport(job.data as { tenantId: string; periodStart: string; periodEnd: string; requestedById: string });
+    await processGenerateBoardReport(
+      job.data as {
+        tenantId: string;
+        periodStart: string;
+        periodEnd: string;
+        requestedById: string;
+      },
+    );
   }
 });
 ```
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `pnpm test:integration -- src/jobs/__integration__/generate-board-report.test.ts && pnpm tsc --noEmit`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/jobs/generate-board-report.ts src/jobs/index.ts src/jobs/__integration__/generate-board-report.test.ts src/data-access/audited-mutation.ts
@@ -250,15 +319,17 @@ git commit -m "feat(jobs): implement generate-board-report, replacing the loggin
 ### Task 3: The core-cycle E2E test and the second-tenant isolation test
 
 **Files:**
+
 - Create: `tests/e2e/core-cycle.spec.ts`
 - Create: `tests/e2e/tenant-isolation.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `tests/auth.setup.ts`'s seeded users, `/api/download` (existing per spec §10).
 
 This is the single most load-bearing test in the whole 7-plan program — it's spec §11's week-12 gate ("E2E gates merges") and it's the concrete proof the entire rebuild works end to end. Read the full existing `tests/e2e/observation-lifecycle.spec.ts` and `tests/e2e/smoke.spec.ts` first for the repo's actual Playwright idioms (role-based locators, `storageState` per describe block, the `@smoke` tag convention) before writing this — it must look like a natural extension of what's already there, not a new style.
 
-- [ ] **Step 1: Write the core-cycle test**
+- [x] **Step 1: Write the core-cycle test**
 
 ```ts
 // tests/e2e/core-cycle.spec.ts
@@ -276,7 +347,10 @@ test.describe("@smoke core cycle", () => {
     test("onboarding through report generation @smoke", async ({ page }) => {
       // 1. RAM assessed and approved
       await page.goto("/risk-assessment");
-      await page.getByRole("link", { name: /new assessment|start/i }).first().click();
+      await page
+        .getByRole("link", { name: /new assessment|start/i })
+        .first()
+        .click();
       // ... fill and submit the RAM form; assert it reaches an APPROVED-eligible state
       // Read the actual RAM pages/actions before writing these steps — this plan's
       // research did not trace the RAM flow's exact form fields, and inventing
@@ -321,9 +395,11 @@ test.describe("@smoke core cycle", () => {
       // tests; reuse it, or drop this step from the E2E path and note why in this
       // task's completion report.
 
-          // 10. Report generated and downloaded through /api/download
+      // 10. Report generated and downloaded through /api/download
       const downloadPromise = page.waitForEvent("download");
-      await page.getByRole("button", { name: /generate report|download report/i }).click();
+      await page
+        .getByRole("button", { name: /generate report|download report/i })
+        .click();
       const download = await downloadPromise;
       expect(download.suggestedFilename()).toMatch(/\.(pdf|xlsx)$/);
     });
@@ -333,7 +409,7 @@ test.describe("@smoke core cycle", () => {
 
 The `// ...` placeholders above are explicitly not acceptable as delivered — they mark steps this plan's research did not trace far enough to write real selectors for (the RAM/plan/team-assignment/branch-response flows). Before marking this task complete, the implementer must open each of those pages in a running dev server (seeded via `pnpm db:seed`), read the actual DOM (role names, labels), and replace every placeholder with real Playwright actions and assertions — the same way `smoke.spec.ts`'s existing "observation can be created" test does it. A test file with `// ...` in it does not pass review.
 
-- [ ] **Step 2: Write the second-tenant isolation test**
+- [x] **Step 2: Write the second-tenant isolation test**
 
 ```ts
 // tests/e2e/tenant-isolation.spec.ts
@@ -345,7 +421,9 @@ import { test, expect } from "@playwright/test";
  * that nothing core-cycle.spec.ts did leaked into the second tenant's data.
  */
 test.describe("@smoke second-tenant isolation", () => {
-  test("a second tenant's findings list is unaffected by the first tenant's core-cycle run", async ({ page }) => {
+  test("a second tenant's findings list is unaffected by the first tenant's core-cycle run", async ({
+    page,
+  }) => {
     // Requires the seed script to create a second tenant with its own storageState
     // file (e.g. playwright/.auth/tenant2-auditor.json) — check tests/auth.setup.ts
     // and prisma/seed.ts for whether a second tenant already exists in the seed data;
@@ -359,16 +437,16 @@ test.describe("@smoke second-tenant isolation", () => {
 });
 ```
 
-- [ ] **Step 3: Run against a real seeded dev environment**
+- [x] **Step 3: Run against a real seeded dev environment**
 
 Run: `pnpm db:seed && pnpm test:e2e:smoke -- tests/e2e/core-cycle.spec.ts tests/e2e/tenant-isolation.spec.ts`
 Expected: PASS, deterministically, on a repeated run (`pnpm db:seed` re-run between attempts) — flakiness here is not acceptable per spec §10's "one deterministic run."
 
-- [ ] **Step 4: Wire into branch protection**
+- [x] **Step 4: Wire into branch protection**
 
 Confirm (or add, if missing) that `pnpm test:e2e:smoke` is a required CI check on `main`'s branch protection rule. This plan does not have direct GitHub admin access to change branch protection settings — flag this as a manual step for the user/repo admin to confirm via `gh api repos/nc-sapiex/aegis-2/branches/main/protection` rather than attempting it from an agent, per this plan's Global Constraints (no unrequested changes to CI/shared infra without confirmation).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/e2e/core-cycle.spec.ts tests/e2e/tenant-isolation.spec.ts prisma/seed.ts
@@ -380,48 +458,50 @@ git commit -m "test(e2e): deterministic core-cycle run and second-tenant isolati
 ### Task 4: Full on-prem Docker Compose and the one-command installer
 
 **Files:**
+
 - Modify: `docker-compose.yml`
 - Create: `docker-compose.onprem.yml`
 - Create: `scripts/aegis-install.sh`
 
 **Interfaces:**
+
 - Consumes: `STORAGE_DRIVER`/`MAIL_DRIVER` env vars (adapters plan), `license.aegis` (licensing plan), `pnpm db:migrate`/`db:bootstrap`/`db:verify`/`db:seed` (existing).
 
-- [ ] **Step 1: Add MinIO and MailHog to `docker-compose.yml`**
+- [x] **Step 1: Add MinIO and MailHog to `docker-compose.yml`**
 
 ```yaml
 # addition to docker-compose.yml's services:
-  minio:
-    image: minio/minio:latest
-    container_name: aegis-minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    ports:
-      - "${MINIO_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+minio:
+  image: minio/minio:latest
+  container_name: aegis-minio
+  restart: unless-stopped
+  command: server /data --console-address ":9001"
+  ports:
+    - "${MINIO_PORT:-9000}:9000"
+    - "${MINIO_CONSOLE_PORT:-9001}:9001"
+  environment:
+    MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+    MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
+  volumes:
+    - minio_data:/data
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
 
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: aegis-mailhog
-    restart: unless-stopped
-    ports:
-      - "${MAILHOG_SMTP_PORT:-1025}:1025"
-      - "${MAILHOG_UI_PORT:-8025}:8025"
+mailhog:
+  image: mailhog/mailhog:latest
+  container_name: aegis-mailhog
+  restart: unless-stopped
+  ports:
+    - "${MAILHOG_SMTP_PORT:-1025}:1025"
+    - "${MAILHOG_UI_PORT:-8025}:8025"
 ```
 
 Add `minio_data` to the `volumes:` block. Add `STORAGE_DRIVER: ${STORAGE_DRIVER:-minio}` and `MAIL_DRIVER: ${MAIL_DRIVER:-smtp}` plus the MinIO/SMTP connection env vars to the `app` service's `environment:` block, matching whatever exact env var names the adapters plan's `ObjectStore`/`Mailer` factories actually read (read that plan's landed `src/lib/adapters/` code for the exact names before guessing).
 
-- [ ] **Step 2: On-prem overlay**
+- [x] **Step 2: On-prem overlay**
 
 ```yaml
 # docker-compose.onprem.yml
@@ -439,7 +519,7 @@ services:
 
 The bank's own SMTP relay likely replaces MailHog in a real on-prem deployment — this overlay's `mailhog` service is for the install drill only; the runbook (Task 8) must say explicitly that a production on-prem install points `MAIL_DRIVER=smtp` at the bank's real relay, not at MailHog.
 
-- [ ] **Step 3: The installer script**
+- [x] **Step 3: The installer script**
 
 ```bash
 #!/usr/bin/env bash
@@ -472,11 +552,11 @@ curl -fsS http://localhost:3000/api/health | tee /dev/stderr | grep -q '"status"
 
 Confirm `pnpm db:migrate` actually exists as a script (spec §8.2 says the program moves to `prisma migrate`; the current `CLAUDE.md` commands list still shows `pnpm db:push` — this plan runs after the adapters/migrations/licensing plan, which is where that script gets added; if it hasn't landed by the time this task runs, use `pnpm db:generate && pnpm db:push` instead and note the discrepancy rather than silently assuming the newer command exists).
 
-- [ ] **Step 4: Manual dry run**
+- [x] **Step 4: Manual dry run**
 
 Run the script locally against a fresh `docker compose down -v` state (never against a database with data you want to keep) and confirm it reaches the health-check line successfully.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docker-compose.yml docker-compose.onprem.yml scripts/aegis-install.sh
@@ -488,19 +568,21 @@ git commit -m "feat(ops): full on-prem compose stack (MinIO, MailHog) and one-co
 ### Task 5: Install drill
 
 **Files:**
+
 - Create: `scripts/drills/install-drill.sh`
 - Create: `docs/ops/install-drill-log.md`
 
 **Interfaces:**
+
 - Consumes: `scripts/aegis-install.sh` (Task 4).
 
 Spec §10: "a script provisions a clean Ubuntu VM (Multipass or a throwaway VPS), installs from the image with the on-prem compose, restores a backup taken from the E2E database, runs the smoke suite." This task covers provisioning + install + smoke; Task 6 covers the restore half specifically, since it needs a real backup artifact from Task 3's E2E run as input.
 
-- [ ] **Step 1: Choose Multipass vs. a throwaway VPS**
+- [x] **Step 1: Choose Multipass vs. a throwaway VPS**
 
 Prefer Multipass (a local Ubuntu VM, no cloud credentials, no cost, fully within this session's sandbox) over provisioning a real Hostinger VPS through `mcp__hostinger__VPS_purchaseNewVirtualMachineV1` — creating and destroying a billed VPS for a drill is exactly the kind of hard-to-reverse, costs-real-money action that needs the user's explicit confirmation first per this plan's Global Constraints, and CLAUDE.md's standing rule is "no agent access to production/VPS/live DB/AWS" for anything beyond read-only checks. If Multipass is not installed, tell the user it's required (`brew install multipass` on macOS) rather than silently falling back to a cloud VM.
 
-- [ ] **Step 2: Write the drill script**
+- [x] **Step 2: Write the drill script**
 
 ```bash
 #!/usr/bin/env bash
@@ -534,13 +616,13 @@ PLAYWRIGHT_BASE_URL="http://$DRILL_IP:3000" pnpm test:e2e:smoke
 echo "Install drill passed for $VM_NAME on $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> docs/ops/install-drill-log.md
 ```
 
-A throwaway drill license (`drills/fixtures/drill-license.aegis`) needs generating via `scripts/aegis-license` (licensing plan) with a short `expiresAt` and `allowedHosts` matching the drill VM's ephemeral hostname pattern — write that generation as a `Makefile`/`package.json` script (`pnpm drill:license`) rather than committing a real signed file with a real private key's signature to the repo; the private key itself never leaves `~/.platform-secrets`, so this script must be run once by a human with access to it, not by an agent, and its *output* (the signed `.aegis` file) is what gets committed to `drills/fixtures/`.
+A throwaway drill license (`drills/fixtures/drill-license.aegis`) needs generating via `scripts/aegis-license` (licensing plan) with a short `expiresAt` and `allowedHosts` matching the drill VM's ephemeral hostname pattern — write that generation as a `Makefile`/`package.json` script (`pnpm drill:license`) rather than committing a real signed file with a real private key's signature to the repo; the private key itself never leaves `~/.platform-secrets`, so this script must be run once by a human with access to it, not by an agent, and its _output_ (the signed `.aegis` file) is what gets committed to `drills/fixtures/`.
 
-- [ ] **Step 3: Confirm with the user before the first real run**
+- [x] **Step 3: Confirm with the user before the first real run**
 
 This script provisions and destroys a local VM, which is reversible and local, but it also generates a throwaway license (Step 2's note) — before running the drill for the first time, confirm with the user who should generate that license and where its short-lived private-key signature comes from (per the standing rule that the vendor's real private key stays in `~/.platform-secrets` and is never handled by an agent).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add scripts/drills/install-drill.sh docs/ops/install-drill-log.md
@@ -552,14 +634,16 @@ git commit -m "feat(ops): install drill — clean-VM provision, install, smoke s
 ### Task 6: Backup, restore, and the restore drill
 
 **Files:**
+
 - Create: `scripts/backup.sh`, `scripts/restore.sh`
 - Create: `scripts/drills/restore-drill.sh`
 - Create: `docs/ops/restore-drill-log.md`
 
 **Interfaces:**
+
 - Consumes: `pg_dump`/`pg_restore`, the MinIO `mc mirror` CLI (or the S3-compatible API directly).
 
-- [ ] **Step 1: Backup script**
+- [x] **Step 1: Backup script**
 
 ```bash
 #!/usr/bin/env bash
@@ -579,7 +663,7 @@ find "$(dirname "$BACKUP_DIR")" -maxdepth 1 -type d -mtime +30 -exec rm -rf {} +
 echo "Backup complete: $BACKUP_DIR"
 ```
 
-- [ ] **Step 2: Restore script**
+- [x] **Step 2: Restore script**
 
 ```bash
 #!/usr/bin/env bash
@@ -601,7 +685,7 @@ docker compose exec -T app pnpm db:verify
 echo "Restore complete from $BACKUP_DIR"
 ```
 
-- [ ] **Step 3: Restore drill script**
+- [x] **Step 3: Restore drill script**
 
 ```bash
 #!/usr/bin/env bash
@@ -644,59 +728,33 @@ git commit -m "feat(ops): backup/restore scripts and the restore drill; both dri
 
 ---
 
-### Task 7: AWS checklist
+### Task 7: VPS checklist (replaces the AWS checklist — nc's direction, 2026-09-16)
+
+**First customer targets our own VPS (vps-control, Hostinger + Tailscale,
+`aegis.sapiex.tech`), not AWS.** The AWS path in spec §8.5/§10 stays
+documented for a future AWS-hosted customer, but is not this program's
+go-live target — written as `docs/ops/vps-checklist.md` instead.
 
 **Files:**
-- Create: `docs/ops/aws-checklist.md`
+
+- Create: `docs/ops/vps-checklist.md`
 
 **Interfaces:** none — this is a document, run manually once before go-live per spec §10.
 
-- [ ] **Step 1: Write the checklist**
+- [x] **Step 1: Write the checklist**
 
-```markdown
-# AWS Go-Live Checklist
+Written as `docs/ops/vps-checklist.md` — same shape as the AWS template
+above would have been (DB, object store, networking/TLS, licensing,
+restore drill, sign-off), adapted to vps-control's actual stack: no RDS/S3,
+Postgres and MinIO run as containers with no public ports, Coolify's
+existing Traefik does TLS instead of an ALB/Caddy, ufw + Tailscale ACLs
+replace security groups. See that file for the actual checklist.
 
-Run once, manually, before go-live on the AWS target (spec §10). Not
-automated — an agent must not create, modify, or delete real AWS resources
-per this repo's standing constraints; this checklist is for a human operator
-with AWS console/CLI access to work through and initial.
-
-## RDS (Postgres)
-- [ ] Automated backups enabled, retention >= 30 days (spec §8.5)
-- [ ] Point-in-time recovery (PITR) enabled
-- [ ] Encryption at rest enabled (AWS default, confirm not opted out)
-- [ ] `aegis_app` role exists with the RLS-required GRANT set (per the tenant-isolation plan's Task 3 role setup — cross-check against that plan's `prisma/sql` role script)
-- [ ] Security group restricts inbound to the app's subnet only, no 0.0.0.0/0 on 5432
-
-## S3 (object store)
-- [ ] Versioning enabled on the evidence bucket (spec §8.5)
-- [ ] Default encryption enabled (SSE-S3 or SSE-KMS)
-- [ ] Bucket policy denies public access; block-public-access settings all on
-- [ ] Lifecycle rule matches the 30-day retention policy for anything mirrored from backups
-
-## Networking / TLS
-- [ ] Load balancer or Caddy in front of the app terminates TLS with a valid cert
-- [ ] `NEXT_PUBLIC_APP_URL` matches the real customer-facing hostname (license `allowedHosts` check will refuse boot otherwise, per spec §8.3)
-
-## Licensing
-- [ ] Production `license.aegis` issued for this customer's real hostname, not a drill/staging one
-- [ ] `expiresAt`/`gracePeriodDays` match the signed contract terms
-
-## Restore drill (AWS target)
-- [ ] RDS PITR restore performed to a scratch instance, row counts compared against the source, scratch instance deleted afterward
-- [ ] S3 versioned-object restore performed on one deliberately-deleted test object, confirmed recoverable
-
-## Sign-off
-- [ ] Checklist run date: __________
-- [ ] Run by: __________
-- [ ] Result recorded in `docs/ops/restore-drill-log.md` (AWS section) and `docs/ops/security-statement.md` if it changes any claim there
-```
-
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
-git add docs/ops/aws-checklist.md
-git commit -m "docs(ops): AWS go-live checklist, run manually once before go-live"
+git add docs/ops/vps-checklist.md
+git commit -m "docs(ops): VPS go-live checklist, run manually once before go-live"
 ```
 
 ---
@@ -704,11 +762,12 @@ git commit -m "docs(ops): AWS go-live checklist, run manually once before go-liv
 ### Task 8: Onboarding runbook, run end to end
 
 **Files:**
+
 - Rewrite: `docs/ops/runbook.md`
 
 **Interfaces:** none — this is a document, but it must be executed, not just written (spec §11 week 14 gate: "Runbook executed on a clean machine").
 
-- [ ] **Step 1: Rewrite the runbook**
+- [x] **Step 1: Rewrite the runbook**
 
 The current `docs/ops/runbook.md` opens with "There is nothing to operate... AEGIS has no deployed instance." That framing is only true until this plan's install/restore/board-report/E2E work lands — once it does, there is something to operate (the on-prem install path this plan built), even though there is still no live customer deployment. Rewrite the runbook to cover, in order:
 
@@ -719,11 +778,27 @@ The current `docs/ops/runbook.md` opens with "There is nothing to operate... AEG
 5. **Health check and schema-drift caveat** (keep, still accurate per the existing text about `/api/health` not checking schema match).
 6. Keep the honest "not deployed anywhere live" framing for anything that's still true — do not imply a production customer exists if none does.
 
-- [ ] **Step 2: Execute the runbook on a clean machine**
+- [x] **Step 2: Execute the runbook on a clean machine**
 
 This is the literal spec gate, not a formality: run `scripts/drills/install-drill.sh` (Task 5) fresh, and manually follow the runbook's backup/restore section against that same drill VM, timing how long each step takes and noting anywhere the written steps didn't match what actually happened. Fix the runbook text for any mismatch found — a runbook that doesn't match the real commands is worse than no runbook.
 
-- [ ] **Step 3: Record the run**
+Done 2026-09-16/17: `install-drill.sh --keep` had a real defect blocking unattended
+execution (its `/etc/hosts` mapping needed a terminal-bound `sudo`, which an
+agent harness can't satisfy) — fixed with an `osascript ... with administrator
+privileges` GUI prompt, plus a remove-then-add idempotency fix to that same
+mapping step (a stale entry from an unattended cleanup's own failed prompt
+would otherwise corrupt the next run — caught empirically, not hypothetically).
+A clean, fully unattended run then passed all 50 e2e specs
+(`docs/ops/install-drill-log.md`, `2026-09-16T19:50:32Z ... PASSED`).
+`restore-drill.sh` was chained onto that same VM per this task's own note
+about the sequencing gap, and fixed a second real bug along the way (a
+missing `cd aegis &&` before one `docker compose exec`, breaking the
+post-restore row-count check) — see `docs/ops/restore-drill-log.md`'s
+`2026-09-16T19:59:06Z ... PASSED` line, which also confirms #170's fix:
+the restored database's `pgboss.queue_stats` partitions (the exact
+condition #170 hit) survived intact.
+
+- [x] **Step 3: Record the run**
 
 Append the execution date, machine type (Multipass Ubuntu 22.04), and outcome to `docs/ops/install-drill-log.md` (reusing Task 5's log rather than creating a third log file for what is really the same drill run, just also serving as the runbook's own acceptance test).
 
@@ -739,6 +814,7 @@ git commit -m "docs(ops): rewrite runbook for the real install/backup/restore/li
 ### Task 9: Claims audit and the customer security statement
 
 **Files:**
+
 - Create: `docs/ops/security-statement.md`
 
 **Interfaces:** none — a document, but Step 1's audit must trace each claim to real, currently-true evidence (a passing test, a piece of landed code) before it goes in the statement.
@@ -764,26 +840,33 @@ The spec (§11 week 14) calls for the security statement to be "rewritten from t
 **Deployment model:** on-premises (bank-hosted) or AWS (vendor-hosted), per contract.
 
 ## Tenant isolation
+
 <filled from Step 1's audit — state the actual mechanism (RLS or the
 application-level fallback), citing the ADR>
 
 ## Audit trail integrity
+
 <filled from Step 1>
 
 ## Data at rest
+
 <filled from Step 1 — explicit about what AEGIS provides vs. what the
 hosting environment provides>
 
 ## Backups
+
 <filled from Step 1, citing the drill logs with their actual dates>
 
 ## Licensing and access control
+
 <filled from Step 1>
 
 ## Authorization
+
 <filled from Step 1>
 
 ## What this statement does not cover
+
 Field-level encryption, external anchoring of the audit chain, and formal
 penetration testing are not part of this program (spec §13, after go-live).
 Any claim beyond what is listed above should be treated as not yet true.
@@ -801,19 +884,20 @@ git commit -m "docs(ops): customer security statement, rewritten from a claims a
 ### Task 10: Rewrite `docs/architecture.md`
 
 **Files:**
+
 - Rewrite: `docs/architecture.md`
 
 **Interfaces:** none.
 
-- [ ] **Step 1: Diff old against new**
+- [x] **Step 1: Diff old against new**
 
 Read the current 616-line `docs/architecture.md` in full. Per `CLAUDE.md`: "it describes some things that are no longer here (i18n, Sentry, v5 sections)." Remove every passage describing next-intl, Sentry, and the v5 examination tables as if they're current. Add sections for: RLS-based tenant isolation (or the fallback, matching whatever the security statement says), the hash-chained audit log, the module-native framework (`AuditModule`/`ExaminationNode`/`ExaminationQuestion`/`EngagementModule`/`EngagementStatement`), the content-pack format and installer, the module admin page, the generic reporting engine, licensing and feature flags, and the on-prem/AWS deployment targets this plan built.
 
-- [ ] **Step 2: Cross-check against the spec, not against memory**
+- [x] **Step 2: Cross-check against the spec, not against memory**
 
 For each section rewritten, cite the specific spec section number it corresponds to (§4, §5, §6, §7, §8) so a future reader can trace architecture.md back to the design decision, the same way this plan's own research repeatedly needed to trace forward from the spec into the code.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/architecture.md
@@ -825,6 +909,7 @@ git commit -m "docs: rewrite architecture.md for the module-native, RLS-isolated
 ## Self-review
 
 **Spec coverage (§9, §10, §11 weeks 12-14, §12's ADR/security-statement instruction):**
+
 - §9's `generate-board-report` and authorization-gap items → Tasks 1-2.
 - §10's static/integration/E2E/install-drill/load verification → Task 3 (E2E, the core-cycle and second-tenant tests), Tasks 5-6 (drills). Load (`the spike's autocannon script stays in scripts/ and runs before each release`) is not a new task in this plan — it already exists from Plan 1's Task 2 spike; this plan's only obligation regarding it is to confirm it's still referenced in the release checklist, which Task 8's runbook rewrite folds in as a line item rather than a separate task, since duplicating an already-built script would be needless.
 - §11 week 12 (E2E, authorization gaps, board report) → Tasks 1-3. Week 13 (on-prem compose, installer, install drill, restore drill, AWS checklist) → Tasks 4-7. Week 14 (runbook run end to end, security statement, architecture.md, buffer) → Tasks 8-10. No week's gate is left uncovered.
@@ -835,6 +920,7 @@ git commit -m "docs: rewrite architecture.md for the module-native, RLS-isolated
 **Type consistency:** `processGenerateBoardReport`'s payload shape matches what `src/jobs/index.ts`'s `boss.work` handler passes as `job.data`. `BoardReport` field names in Task 2's test are flagged as needing confirmation against the real schema rather than assumed.
 
 **Known risks to watch:**
+
 - Task 3's core-cycle E2E test is the single riskiest deliverable in this plan — it is also the one this plan's own research could trace least concretely, since it requires a live, fully-seeded dev environment to write real selectors against, which this planning pass did not have running. A fresh implementer must budget real time to run the dev server and read actual DOM before writing this test, not just adapt the skeleton given here.
 - Task 5/6's drill-script sequencing gap (the install drill destroys its own VM before the restore drill could reuse it) is called out explicitly in Task 6 Step 4 as something this task must resolve, not a finished design.
 - Every place this plan invents an exact function/env-var name from a dependency plan (`getObjectStore()`, `systemActor()`, `pnpm db:migrate`, the adapters' exact env var names) is flagged inline as needing confirmation against that plan's actually-landed code, since this plan was written before those six plans finished executing and cannot know their final shape with certainty.

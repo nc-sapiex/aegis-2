@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
-import { getRequiredSession } from "@/data-access/session";
 import {
   getEngagementForBhCertificate,
   deriveBhCertStatus,
 } from "@/data-access/bh-certificate";
 import { prismaForTenant } from "@/data-access/prisma";
 import { BhCertificateWorkflow } from "@/components/audit-execution/bh-certificate-workflow";
+import { requireAnyPermission } from "@/lib/guards";
 import type { Role } from "@/generated/prisma/enums";
 
 interface PageProps {
@@ -16,7 +16,12 @@ export default async function BhCertificatePage({ params }: PageProps) {
   // Next.js 16: params is a Promise (await it)
   const { engagementId } = await params;
 
-  const session = await getRequiredSession();
+  // BRANCH_HEAD signs but holds no audit_execution:read; the rest of the
+  // audit team (and CEO) view/countersign via audit_execution:read.
+  const session = await requireAnyPermission([
+    "audit_execution:read",
+    "bh_certificate:sign",
+  ]);
   const tenantId = session.user.tenantId;
   const userRoles = session.user.roles;
 

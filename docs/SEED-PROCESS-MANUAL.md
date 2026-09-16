@@ -51,26 +51,34 @@ Destructive: deletes tenants and the dependent rows listed at the top of
 
 **Creates:**
 
-| Tenant | What |
-| ------ | ---- |
-| Apex Sahakari Bank (primary) | 5 users (2 multi-role), 4 zones, 12 branches, 7 audit areas, 4 fiscal-quarter audit plans, 7 engagements, 55 compliance requirements, 35 observations, 3 report templates, 6 calendar events |
-| Test Nagari Sahakari Bank (isolation) | 1 user (`CEO`+`CAE`), 1 branch, 1 audit area, 1 plan, 1 compliance requirement, 1 observation |
-| Global | 8 RBI circulars (no `tenantId`) |
-| Both tenants | 19 RAM parameters, 39 v5 `ExaminationArea` rows, 568 `ExaminationItem` rows |
+| Tenant                                | What                                                                                                                                                                                                                                      |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Apex Sahakari Bank (primary)          | 7 users (2 multi-role), 4 zones, 12 branches, 7 audit areas, 4 fiscal-quarter audit plans, 7 engagements, 55 compliance requirements, 35 observations, 3 report templates, 6 calendar events, 1 `DRAFT` RAM assessment (BR012, FY2026-27) |
+| Test Nagari Sahakari Bank (isolation) | 1 user (`CEO`+`CAE`), 1 branch, 1 audit area, 1 plan, 1 compliance requirement, 1 observation                                                                                                                                             |
+| Global                                | 8 RBI circulars (no `tenantId`)                                                                                                                                                                                                           |
+| Both tenants                          | 19 RAM parameters, 39 v5 `ExaminationArea` rows, 568 `ExaminationItem` rows                                                                                                                                                               |
 
 The v5 examination tables still seed because they remain in
 `prisma/schema.prisma`. No page or action reads them; do not build on them.
 
 User emails (all password `TestPassword123!`):
 
-| Email | Roles |
-| ----- | ----- |
-| `rajesh.deshmukh@apexbank.example` | `CEO` |
-| `priya.sharma@apexbank.example` | `CAE` + `AUDIT_MANAGER` |
-| `amit.joshi@apexbank.example` | `CCO` |
-| `suresh.patil@apexbank.example` | `AUDITOR` |
-| `vikram.kulkarni@apexbank.example` | `AUDITEE` + `AUDITOR` |
-| `admin@testbank.example` | `CEO` + `CAE` (tenant B) |
+| Email                              | Roles                    |
+| ---------------------------------- | ------------------------ |
+| `rajesh.deshmukh@apexbank.example` | `CEO`                    |
+| `priya.sharma@apexbank.example`    | `CAE` + `AUDIT_MANAGER`  |
+| `amit.joshi@apexbank.example`      | `CCO`                    |
+| `suresh.patil@apexbank.example`    | `AUDITOR`                |
+| `vikram.kulkarni@apexbank.example` | `AUDITEE` + `AUDITOR`    |
+| `deepa.rao@apexbank.example`       | `AUDIT_MANAGER`          |
+| `neha.kulkarni@apexbank.example`   | `LEAD_AUDITOR`           |
+| `admin@testbank.example`           | `CEO` + `CAE` (tenant B) |
+
+The last two Apex users exist for `tests/e2e/core-cycle.spec.ts`. Deepa Rao is
+`AUDIT_MANAGER` **only**, because RAM's maker-checker rule forbids the person
+who computed an assessment from approving it and Priya Sharma dual-hats
+`CAE` + `AUDIT_MANAGER`. Neha Kulkarni is the only seeded holder of
+`rbia:examine`, which only `LEAD_AUDITOR` and `FIELD_AUDITOR` carry.
 
 These are local seed credentials for a disposable database. They are not
 secrets, and must never be reused anywhere reachable from a network.
@@ -108,16 +116,16 @@ nodes, exam questions, and RAM parameters from steps 1–3.
 
 **Creates (8 phases):**
 
-| Phase | What | Records |
-| ----- | ---- | ------- |
-| 1. RAM Assessment | Risk scoring for Kothrud | 1 assessment, 19 scores (composite 3.80 → HIGH) |
-| 2. Engagement Setup | Completed RBIA engagement | 1 engagement (`COMPLETED`, `RBIA/2025-26/BR-002/V1`) |
-| 3. Audit Execution | Exam responses, loan sampling, action points | 23 exam responses, 50 loans (10 sampled), 250 account responses (10 × 25 questions), 12 action points, 6 SMA/NPA, 2 meetings |
-| 4. Score Freeze | Frozen RBIA score snapshot | 1 `BranchRbiaScore` (0.78 = GOOD) |
-| 5. Observations | Formal 5C findings with timeline | 6 observations + 1 E2E compliance fixture, 16 timeline entries, RBI circular linkages, 2 auditee responses |
-| 6. Compliance | Full compliance lifecycle stages | 6 items (`ACB_REVIEW` → `CLOSED`) |
-| 7. Board Report | Quarterly board report | 1 report (Q4 FY2025-26) |
-| 8. Supporting Data | Dashboards, assignments, second visit | 4 snapshots, 3 assignments, 10 log entries, 1 second engagement (`IN_PROGRESS` at Shivajinagar) |
+| Phase               | What                                         | Records                                                                                                                      |
+| ------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 1. RAM Assessment   | Risk scoring for Kothrud                     | 1 assessment, 19 scores (composite 3.80 → HIGH)                                                                              |
+| 2. Engagement Setup | Completed RBIA engagement                    | 1 engagement (`COMPLETED`, `RBIA/2025-26/BR-002/V1`)                                                                         |
+| 3. Audit Execution  | Exam responses, loan sampling, action points | 23 exam responses, 50 loans (10 sampled), 250 account responses (10 × 25 questions), 12 action points, 6 SMA/NPA, 2 meetings |
+| 4. Score Freeze     | Frozen RBIA score snapshot                   | 1 `BranchRbiaScore` (0.78 = GOOD)                                                                                            |
+| 5. Observations     | Formal 5C findings with timeline             | 6 observations + 1 E2E compliance fixture, 16 timeline entries, RBI circular linkages, 2 auditee responses                   |
+| 6. Compliance       | Full compliance lifecycle stages             | 6 items (`ACB_REVIEW` → `CLOSED`)                                                                                            |
+| 7. Board Report     | Quarterly board report                       | 1 report (Q4 FY2025-26)                                                                                                      |
+| 8. Supporting Data  | Dashboards, assignments, second visit        | 4 snapshots, 3 assignments, 10 log entries, 1 second engagement (`IN_PROGRESS` at Shivajinagar)                              |
 
 ## Quick Run (All Steps)
 

@@ -69,9 +69,15 @@ describe("ROLE_PERMISSIONS structure", () => {
     expect(hasPermission([Role.SYSTEM_ADMIN], "admin:system")).toBe(true);
   });
 
-  it("BOARD_OBSERVER has no permissions (reserved)", () => {
+  it("BOARD_OBSERVER has read-only board-level permissions, no writes", () => {
     const perms = getPermissions([Role.BOARD_OBSERVER]);
-    expect(perms).toEqual([]);
+    expect(perms.sort()).toEqual(
+      ["dashboard:ceo", "observation:read", "report:read"].sort(),
+    );
+    expect(hasPermission([Role.BOARD_OBSERVER], "observation:create")).toBe(
+      false,
+    );
+    expect(hasPermission([Role.BOARD_OBSERVER], "report:generate")).toBe(false);
   });
 
   it("AUDIT_MANAGER has observation:close_low_medium but NOT close_high_critical", () => {

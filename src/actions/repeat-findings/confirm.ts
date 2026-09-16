@@ -5,6 +5,7 @@ import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/lib/prisma";
 import { escalateSeverity, type Severity } from "@/lib/state-machine";
 import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
+import { hasPermission } from "@/lib/permissions";
 import {
   ConfirmRepeatSchema,
   DismissRepeatSchema,
@@ -51,7 +52,10 @@ export async function confirmRepeatFinding(
   }
 
   // Validate AUDITOR role
-  if (!userRoles.includes("AUDITOR") && !userRoles.includes("AUDIT_MANAGER")) {
+  if (
+    (!userRoles.includes("AUDITOR") && !userRoles.includes("AUDIT_MANAGER")) ||
+    !hasPermission(userRoles, "observation:read")
+  ) {
     return {
       success: false,
       error: "Only auditors can confirm repeat findings",
@@ -195,7 +199,10 @@ export async function dismissRepeatFinding(
   }
 
   // Validate AUDITOR role
-  if (!userRoles.includes("AUDITOR") && !userRoles.includes("AUDIT_MANAGER")) {
+  if (
+    (!userRoles.includes("AUDITOR") && !userRoles.includes("AUDIT_MANAGER")) ||
+    !hasPermission(userRoles, "observation:read")
+  ) {
     return {
       success: false,
       error: "Only auditors can dismiss repeat findings",

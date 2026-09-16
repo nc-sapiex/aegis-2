@@ -7,6 +7,17 @@ Thumbs.db
 .env.*
 !.env.example
 
+# On-prem installer drops the customer's license here (scripts/aegis-install.sh)
+/license.aegis
+# On-prem backup mount default target (docker-compose.onprem.yml's BACKUP_HOST_PATH)
+/backups/
+# Throwaway keypair from `pnpm drill:license` (scripts/drills/generate-drill-license.sh)
+# — the public key and issued license ARE meant to be committed, the private
+# key never is.
+/drills/fixtures/drill-key.private.pem
+# Container logs install-drill.sh dumps on a failed run (per-VM, local debugging only)
+/drills/diagnostics/
+
 # Dependencies
 node_modules/
 
@@ -77,3 +88,4 @@ packs/*/.staging/
 
 # third-party skill kept per machine (pbakaus/impeccable), not vendored
 .claude/skills/frontend-design/
+graphify-out/

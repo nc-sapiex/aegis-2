@@ -1,4 +1,3 @@
-import { getRequiredSession } from "@/data-access/session";
 import { getEngagementWithTeam } from "@/data-access/audit-execution";
 import {
   getSamplingConfigWithCreator,
@@ -6,6 +5,7 @@ import {
   getLoanAccountCount,
 } from "@/data-access/sampling";
 import { hasPermission } from "@/lib/permissions";
+import { requirePermission } from "@/lib/guards";
 import { notFound } from "next/navigation";
 import { CriteriaConfigForm } from "@/components/sampling/criteria-config-form";
 import { SampleListTable } from "@/components/sampling/sample-list-table";
@@ -42,7 +42,7 @@ const DEFAULT_MODULE_CODE = "CRD-HLN";
  */
 export default async function SamplingPage({ params }: PageProps) {
   const { engagementId } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
   const userRoles = session.user.roles;
 
   // Load engagement to verify access

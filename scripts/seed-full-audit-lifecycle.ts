@@ -2240,6 +2240,71 @@ async function seedLifecycle() {
     },
   });
 
+  // Select the housing-loan module and freeze its statement set, exactly as
+  // createEngagement does at :117-134. Without this the engagement has no
+  // EngagementStatement rows, getModuleRegister filters every leaf out
+  // (src/data-access/engagement-statements.ts:163), and the examination
+  // register renders "No statements in this module for this engagement" — so
+  // the only IN_PROGRESS fixture in the seed could not actually be examined.
+  // Note that adding a module through the UI afterwards does not repair this:
+  // addModuleSelection only writes EngagementModule and never materializes.
+  await prisma.engagementModule.create({
+    data: {
+      tenantId,
+      engagementId: ID.eng2,
+      moduleId: housingModule.id,
+      isAutoSelected: true,
+      selectionReason: "Matched branch profile",
+    },
+  });
+  // Mirrors materializeEngagementStatements(); it cannot be imported here
+  // because its module is marked `server-only`.
+  //
+  // SOURCE OF TRUTH: src/data-access/engagement-statements.ts:15-66. This is a
+  // hand-copy and nothing keeps the two in step — if the real one changes
+  // shape, this seed keeps producing the old rows and the e2e register goes
+  // quietly stale rather than failing. Re-read it when touching either.
+  const housingLeaves = await prisma.examinationNode.findMany({
+    where: {
+      tenantId,
+      moduleId: housingModule.id,
+      isLeaf: true,
+      isActive: true,
+    },
+  });
+  const housingQuestions = await prisma.examinationQuestion.findMany({
+    where: { tenantId, moduleId: housingModule.id, isActive: true },
+  });
+  await prisma.engagementStatement.createMany({
+    data: [
+      ...housingLeaves.map((n) => ({
+        tenantId,
+        engagementId: ID.eng2,
+        nodeId: n.id,
+        questionId: null,
+        text: n.description ?? n.name,
+        reference: n.regulatoryRef,
+        weight: n.weight,
+        isCritical: n.isCritical,
+        origin: n.origin,
+      })),
+      ...housingQuestions.map((q) => ({
+        tenantId,
+        engagementId: ID.eng2,
+        nodeId: null,
+        questionId: q.id,
+        text: q.text,
+        reference: q.rbiReference,
+        weight: q.weight,
+        isCritical: q.isCritical,
+        origin: q.origin,
+      })),
+    ],
+  });
+  console.log(
+    `  ✓ ${housingLeaves.length} statements materialized for the second engagement`,
+  );
+
   await prisma.auditTeamMember.create({
     data: {
       id: ID.team2Lead,

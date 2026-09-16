@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
-import { getRequiredSession } from "@/data-access/session";
 import {
   getCashCheckForEngagement,
   getEngagementForCashVerification,
 } from "@/data-access/cash-verification";
 import { CashVerificationForm } from "@/components/audit-execution/cash-verification-form";
+import { requirePermission } from "@/lib/guards";
 
 interface PageProps {
   params: Promise<{ engagementId: string }>;
@@ -12,7 +12,7 @@ interface PageProps {
 
 export default async function CashVerificationPage({ params }: PageProps) {
   const { engagementId } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
 
   const engagement = await getEngagementForCashVerification(
     session,

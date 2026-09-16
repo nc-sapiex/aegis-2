@@ -1,4 +1,3 @@
-import { getRequiredSession } from "@/data-access/session";
 import {
   getBranchRiskHeatmap,
   getAuditPlanProgress,
@@ -13,24 +12,17 @@ import { getRbiaAnalyticsSummary } from "@/data-access/rbia-analytics";
 import { RbiaAnalyticsKpis } from "@/components/rbia/rbia-analytics-kpis";
 import { RbiaModuleRadarChart } from "@/components/rbia/rbia-analytics-radar";
 import { RbiaRatingDistribution } from "@/components/rbia/rbia-rating-distribution";
-import { hasPermission, type Role } from "@/lib/permissions";
-import { redirect } from "next/navigation";
+import { requireAnyPermission } from "@/lib/guards";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function AnalyticsPage() {
-  const session = await getRequiredSession();
-  const userRoles = session.user.roles;
+  // CAE or CEO can view analytics
+  const session = await requireAnyPermission([
+    "dashboard:cae",
+    "dashboard:ceo",
+  ]);
   const tenantId = session.user.tenantId;
-
-  // Check permission: CAE or CEO can view analytics
-  const hasAccess =
-    hasPermission(userRoles, "dashboard:cae") ||
-    hasPermission(userRoles, "dashboard:ceo");
-
-  if (!hasAccess) {
-    redirect("/dashboard");
-  }
 
   // Fetch all analytics data
   const [

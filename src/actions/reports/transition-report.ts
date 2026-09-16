@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/data-access/prisma";
 import { setAuditContext } from "@/data-access/audit-context";
-import { type Role } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import {
   TransitionReportSchema,
@@ -94,6 +93,12 @@ export async function transitionReportStatus(input: TransitionReportInput) {
       };
     }
 
+    // Authorization for this transition is TRANSITION_ROLES (schemas.ts) plus
+    // the maker-checker check below — not a Permission key, because no single
+    // permission maps onto "whichever roles this specific transition names"
+    // the way TRANSITION_ROLES does per-edge. See authorization-gaps.test.ts's
+    // ACTION_GUARD_ALLOWLIST for why this file is exempt from the coarse
+    // hasPermission scan.
     const hasRequiredRole = userRoles.some((role) =>
       requiredRoles.includes(role),
     );

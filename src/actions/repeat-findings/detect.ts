@@ -2,6 +2,7 @@
 
 import { getRequiredSession } from "@/data-access/session";
 import { prismaForTenant } from "@/lib/prisma";
+import { hasPermission } from "@/lib/permissions";
 import { DetectRepeatSchema, type DetectRepeatInput } from "./schemas";
 
 /**
@@ -46,6 +47,12 @@ export async function detectRepeatFindings(
 
   if (!tenantId) {
     return { success: false, error: "No tenant context found" };
+  }
+
+  // Detection runs during observation creation (findings/new/page.tsx is
+  // guarded on observation:create); the same permission gates this helper.
+  if (!hasPermission(session.user.roles, "observation:create")) {
+    return { success: false, error: "Not authorized." };
   }
 
   const { branchId, auditAreaId, riskCategory, title } = parsed.data;

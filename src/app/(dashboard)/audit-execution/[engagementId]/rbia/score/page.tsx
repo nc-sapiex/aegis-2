@@ -1,9 +1,9 @@
-import { getRequiredSession } from "@/data-access/session";
 import { getEngagementWithTeam } from "@/data-access/audit-execution";
 import {
   getEngagementBranchScore,
   getEngagementModuleScores,
 } from "@/data-access/rbia-scoring";
+import { requirePermission } from "@/lib/guards";
 import { notFound } from "next/navigation";
 import { Info } from "@/lib/icons";
 import { ScoreSection } from "./score-section";
@@ -24,7 +24,7 @@ interface PageProps {
  */
 export default async function ScorePage({ params }: PageProps) {
   const { engagementId } = await params;
-  const session = await getRequiredSession();
+  const session = await requirePermission("audit_execution:read");
 
   const engagement = await getEngagementWithTeam(session, engagementId);
   if (!engagement) {

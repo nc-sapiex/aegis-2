@@ -1,0 +1,32 @@
+# AEGIS - On-prem overlay
+# Adds durable restart policies and a host-visible backup mount for a real
+# on-prem install. Use together with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.onprem.yml up -d --wait
+#
+# The bank's own SMTP relay replaces MailHog in a real on-prem deployment —
+# the mailhog service here is for the install drill only. A production
+# install points MAIL_DRIVER=smtp at the bank's real relay (see the runbook),
+# not at this container.
+
+services:
+  postgres:
+    restart: always
+    volumes:
+      - ${BACKUP_HOST_PATH:-./backups}:/backups:ro
+
+  app:
+    restart: always
+    # The base app service has no bind mount — the repo is baked into the
+    # image at build time, so a file dropped at the repo root on the host
+    # (aegis-install.sh's `cp "$LICENSE_FILE" ./license.aegis`) is NOT
+    # visible in the container without this. Set LICENSE_FILE_PATH=/app/license.aegis
+    # in .env to match. The host file must exist before `up` runs, or Docker
+    # creates a directory at the mount point instead of mounting a file.
+    volumes:
+      - ./license.aegis:/app/license.aegis:ro
+
+  minio:
+    restart: always
+
+  mailhog:
+    restart: always

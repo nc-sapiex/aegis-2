@@ -1,25 +1,19 @@
-import { getRequiredSession } from "@/data-access/session";
 import { getReportTemplates } from "@/data-access/analytics";
 import { getGeneratedReports } from "@/data-access/reports";
 import { ReportGenerator } from "@/components/reports/report-generator";
 import { GeneratedReportsList } from "@/components/reports/generated-reports-list";
-import { hasPermission, type Role } from "@/lib/permissions";
-import { redirect } from "next/navigation";
+import { hasPermission } from "@/lib/permissions";
+import { requirePermission } from "@/lib/guards";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, FileSpreadsheet, Download, ExternalLink } from "@/lib/icons";
 import Link from "next/link";
 
 export default async function ReportsPage() {
-  const session = await getRequiredSession();
+  const session = await requirePermission("report:read");
   const userRoles = session.user.roles;
   const tenantId = session.user.tenantId;
 
-  const canRead = hasPermission(userRoles, "report:read");
   const canGenerate = hasPermission(userRoles, "report:generate");
-
-  if (!canRead) {
-    redirect("/dashboard");
-  }
 
   const templates = await getReportTemplates(tenantId);
 

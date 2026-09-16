@@ -1,8 +1,7 @@
-import { getRequiredSession } from "@/data-access/session";
 import { getComplianceItems } from "@/data-access/compliance";
 import { ComplianceTable } from "@/components/compliance/compliance-table";
-import { hasPermission, type Role } from "@/lib/permissions";
-import { redirect } from "next/navigation";
+import { hasPermission } from "@/lib/permissions";
+import { requirePermission } from "@/lib/guards";
 import {
   Card,
   CardContent,
@@ -21,12 +20,8 @@ import {
 import Link from "next/link";
 
 export default async function CompliancePage() {
-  const session = await getRequiredSession();
+  const session = await requirePermission("compliance:read");
   const userRoles = session.user.roles;
-
-  if (!hasPermission(userRoles, "compliance:read")) {
-    redirect("/dashboard");
-  }
 
   const items = await getComplianceItems(session);
 

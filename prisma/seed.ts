@@ -251,6 +251,36 @@ async function main() {
     },
   });
 
+  // A second maker for RAM. `src/actions/ram/approve-assessment.ts:48` refuses
+  // to let the user who computed an assessment approve it, and `ram:approve`
+  // belongs to CAE alone — with priya.sharma dual-hatting CAE + AUDIT_MANAGER
+  // she was the only user who could compute, so no assessment could ever be
+  // approved. Deepa computes, Priya approves: the separation of duties the
+  // maker-checker rule is there to enforce.
+  const userAuditManager = await prisma.user.create({
+    data: {
+      email: "deepa.rao@apexbank.example",
+      name: "Deepa Rao",
+      roles: [Role.AUDIT_MANAGER],
+      tenantId: tenantA.id,
+      status: UserStatus.ACTIVE,
+    },
+  });
+
+  // LEAD_AUDITOR is the only seeded role carrying `rbia:examine` — without it
+  // no user can open the RBIA examination register, add a module selection, or
+  // score a statement, which makes the whole fieldwork half of the product
+  // unreachable from the UI (found while writing tests/e2e/core-cycle.spec.ts).
+  const userLeadAuditor = await prisma.user.create({
+    data: {
+      email: "neha.kulkarni@apexbank.example",
+      name: "Neha Kulkarni",
+      roles: [Role.LEAD_AUDITOR],
+      tenantId: tenantA.id,
+      status: UserStatus.ACTIVE,
+    },
+  });
+
   // Test Bank B user
   const userBankB = await prisma.user.create({
     data: {
@@ -262,7 +292,15 @@ async function main() {
     },
   });
 
-  const allUsersA = [userCEO, userCAE, userCCO, userAuditor, userAuditee];
+  const allUsersA = [
+    userCEO,
+    userCAE,
+    userCCO,
+    userAuditor,
+    userAuditee,
+    userAuditManager,
+    userLeadAuditor,
+  ];
   console.log(`    ✓ Created ${allUsersA.length} users for Tenant A`);
   console.log(`    ✓ Created 1 user for Tenant B`);
   console.log(
@@ -533,6 +571,24 @@ async function main() {
   console.log(
     `    ✓ ${ramParametersData.length} RAM parameters seeded for both tenants`,
   );
+
+  // An empty DRAFT assessment on the last branch, so the RAM scoring flow has
+  // somewhere to start. It cannot be created through the UI: the New
+  // Assessment dialog's year field is <input type="number"> while
+  // CreateRamAssessmentSchema demands /^\d{4}-\d{2}$/, so no value the input
+  // accepts can ever validate (filed as a bug; see tests/e2e/core-cycle.spec.ts).
+  const wanowrie = branches.find((b) => b.code === "BR012");
+  if (wanowrie) {
+    await prisma.ramAssessment.create({
+      data: {
+        tenantId: tenantA.id,
+        branchId: wanowrie.id,
+        assessmentYear: "2026-27",
+        status: "DRAFT",
+      },
+    });
+    console.log("    ✓ 1 DRAFT RAM assessment (BR012, FY2026-27)");
+  }
 
   // ─── 5. Create Audit Areas ──────────────────────────────────────────
 

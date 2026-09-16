@@ -4,6 +4,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/data-access/session";
 import { updateNotificationPreferences } from "@/data-access/notifications";
+import { hasPermission } from "@/lib/permissions";
+import { DASHBOARD_PERMISSIONS } from "@/lib/access-scope";
 import { logger } from "@/lib/logger";
 
 const UpdatePreferencesSchema = z.object({
@@ -22,6 +24,18 @@ export async function updatePreferences(
   input: z.infer<typeof UpdatePreferencesSchema>,
 ) {
   const session = await getRequiredSession();
+
+  // Personal settings — any real user may set their own notification
+  // preferences. Matches settings/notifications/page.tsx's guard: every
+  // role holds a dashboard:* permission except AUDITEE and BRANCH_HEAD,
+  // which hold observation:read instead.
+  const isAuthorized =
+    DASHBOARD_PERMISSIONS.some((permission) =>
+      hasPermission(session.user.roles, permission),
+    ) || hasPermission(session.user.roles, "observation:read");
+  if (!isAuthorized) {
+    return { success: false as const, error: "Not authorized." };
+  }
 
   const parsed = UpdatePreferencesSchema.safeParse(input);
   if (!parsed.success) {
