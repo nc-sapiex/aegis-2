@@ -27,13 +27,19 @@ reference to find out _what_ exists.
 - [Invariant 1 — tenant isolation](#invariant-1--tenant-isolation)
   - [Using the tenant client](#using-the-tenant-client)
 - [Invariant 2 — audit attribution](#invariant-2--audit-attribution)
+- [The hash-chained audit log](#the-hash-chained-audit-log)
 - [Invariant 3 — authorization](#invariant-3--authorization)
+- [The module framework](#the-module-framework)
+- [Content packs](#content-packs)
+- [Module admin and the generic reporting engine](#module-admin-and-the-generic-reporting-engine)
+- [Licensing and feature flags](#licensing-and-feature-flags)
 - [Domain logic: pure engines](#domain-logic-pure-engines)
 - [State machines](#state-machines)
 - [Background jobs](#background-jobs)
 - [Files, exports and email](#files-exports-and-email)
 - [Internationalisation](#internationalisation)
 - [Build and runtime configuration](#build-and-runtime-configuration)
+- [Deployment targets](#deployment-targets)
 - [Testing strategy](#testing-strategy)
 - [Where the map is thin](#where-the-map-is-thin)
 - [Adding a feature](#adding-a-feature)
@@ -157,17 +163,17 @@ The rules, in order of how much damage breaking them does:
    plain data down as props; client components receive props and call server
    actions. There is no data fetching inside a client component.
 4. **Mutations go through server actions, not API routes.** The HTTP
-  endpoints under `src/app/api/` (inventoried in
-  [`reference/routes.md`](reference/routes.md)) exist for things that fit HTTP
-  better: Better Auth's handler, health, file downloads, streamed XLSX/PDF
-  exports, and two authenticated JSON endpoints the client fetches
-  (`/api/dashboard`, `/api/is-audit/checklist`). `/api/dashboard` intersects
-  `?widgets=` with the caller's role allowlist
-  (`allowedDashboardWidgetIds` in `src/lib/dashboard-config.ts`) — naming a
-  CAE widget in the query string must not fetch CAE aggregates for an
-  `AUDITOR`. Exception: `POST /api/reports/board-report` mutates through an
-  API route (PDF → S3 → audit row), so report-permission changes must cover
-  it, not just `src/actions/`.
+   endpoints under `src/app/api/` (inventoried in
+   [`reference/routes.md`](reference/routes.md)) exist for things that fit HTTP
+   better: Better Auth's handler, health, file downloads, streamed XLSX/PDF
+   exports, and two authenticated JSON endpoints the client fetches
+   (`/api/dashboard`, `/api/is-audit/checklist`). `/api/dashboard` intersects
+   `?widgets=` with the caller's role allowlist
+   (`allowedDashboardWidgetIds` in `src/lib/dashboard-config.ts`) — naming a
+   CAE widget in the query string must not fetch CAE aggregates for an
+   `AUDITOR`. Exception: `POST /api/reports/board-report` mutates through an
+   API route (PDF → S3 → audit row), so report-permission changes must cover
+   it, not just `src/actions/`.
 
 ## One request, end to end
 
@@ -389,6 +395,49 @@ A database built by `prisma db push` alone has **no** triggers — they come fro
 `pnpm db:bootstrap`, and adding a table needs no dated migration because the
 attach script is idempotent.
 
+## The hash-chained audit log
+
+Attribution (above) says _who_ changed a row and _why_. Spec §5 adds a second,
+independent guarantee: that the `AuditLog` trail itself has not been edited
+after the fact. Every row for a tenant is linked into a per-tenant SHA-256
+hash chain.
+
+- `src/lib/audit-chain.ts` is the pure core (no Prisma, no clock — the same
+  domain-arithmetic rule as the engines below). `hashRow()` hashes a
+  canonical, length-prefixed encoding of every `AuditLog` column except
+  `rowHash` itself, concatenated with no separator — deliberately different
+  from an earlier `"|"`-joined format, where content could shift across a
+  field boundary without changing the hash — chained onto the previous row's
+  hash (`GENESIS_HASH`, 32 zero bytes, for the first row in a tenant).
+  `verifyChain()` walks a sequence of rows in order and reports the first
+  sequence number where a link or a row's own hash fails to check out.
+  `prisma/sql/010_audit_trigger_function.sql`'s trigger builds the identical
+  canonical string in SQL when it writes each row, so the two can never drift
+  by construction.
+- `src/jobs/verify-audit-chain.ts` runs nightly (02:00 IST), once per tenant,
+  **incrementally** from the last clean checkpoint recorded in
+  `AuditChainHead` — so its cost is one day's writes, not ten years of
+  retention — and records the verdict in `AuditChainVerification`. A break
+  pulls the checkpoint back to the last good row (so later incremental runs
+  keep reporting it instead of silently chaining past it) and queues a
+  CRITICAL `AUDIT_CHAIN_TAMPER_DETECTED` notification to the tenant's active
+  `CAE` and `SYSTEM_ADMIN` users. A weekly full run (`{ full: true }`) walks
+  from genesis regardless of the checkpoint, so an edit to already-verified
+  history is eventually caught even though the nightly incremental run can't
+  see it. `src/actions/admin/audit-chain.ts` exposes a run-now action for an
+  operator to trigger `verifyTenantAuditChain` on demand.
+
+Two things worth knowing before touching either file: the hash covers
+`oldData`/`newData` as `jsonb::text` — the exact string Postgres's cast
+produces (spacing included), not a `JSON.parse`/`JSON.stringify` round-trip,
+which loses that spacing and, for a `NUMERIC` column, trailing-zero
+precision — so the verify job reads those two columns with an explicit
+`::text` cast in raw SQL rather than through Prisma's parsed `Json` scalar.
+And a `NULL` actor (a `systemActor` mutation) hashes differently from an
+empty string, matching how `session-context.ts` leaves
+`app.current_user_id` genuinely unset for system-attributed writes rather
+than writing `""`.
+
 ## Invariant 3 — authorization
 
 Roles are a Prisma enum (17 of them); permissions are a TypeScript union (80) in
@@ -417,20 +466,141 @@ of the page, so it lives in `src/lib/state-machine.ts`.
 > a user without permission cannot _do_ anything, but may be able to _load_ a
 > page. See [Where the map is thin](#where-the-map-is-thin).
 
+## The module framework
+
+RBIA content — what gets examined, and how it scores — is data, not code
+(spec §6, "the internal audit framework, module-native"). Five models carry
+it:
+
+| Model                 | Carries                                                                                                                                                                                                                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AuditModule`         | One examination area (e.g. "Credit Appraisal"): a `ModuleDomain`, one or more `ExaminationKind`s (`CHECKLIST`, `POPULATION_SAMPLE`), a bank-editable `weight` (1–100) feeding the composite score, and a JSON `applicability` predicate over the branch profile (`{}` means every branch). |
+| `ExaminationNode`     | The checklist tree for a `CHECKLIST` module: materialized `path`, `depth` (0 = root area, spanning multiple modules and never owned by one; 1+ = owned by exactly one module), `isLeaf`.                                                                                                   |
+| `ExaminationQuestion` | The flat item list for a `POPULATION_SAMPLE` module — scored per sampled account (`AccountExamResponse`), not per node.                                                                                                                                                                    |
+| `EngagementModule`    | Which modules are in scope for one `AuditEngagement`: auto-selected by evaluating `applicability` against the branch, or added manually with a recorded `selectionReason` / `removalReason` for the audit trail.                                                                           |
+| `EngagementStatement` | A frozen copy of one node's or question's text/weight/`isCritical` at the moment it entered an engagement, so a later content-pack upgrade can't silently reweight a report that has already issued.                                                                                       |
+
+Every content row (`ExaminationNode`, `ExaminationQuestion`) carries a
+`ContentOrigin` (`PACK` or `BANK`), so a bank's own custom items sit in the
+same tables as pack-installed ones rather than a parallel set.
+`AuditModule.packId`/`packVersion` point at the `ContentPackInstall` that
+installed it — `null` for a bank-authored module, and set (to the `"core"`
+pack's install row) for the pack every tenant gets by default;
+`src/data-access/module-admin.ts`'s "core vs. pack" grouping keys off the
+pack's `packCode`, not bare `packId` presence, because `installPack()` stamps
+`packId` on every module it installs, core included.
+
+Scoring stays generic over this shape: `src/lib/rbia-scoring-engine.ts`'s
+node→module roll-up (4-point scale, critical-item ceiling) and
+`src/lib/instance-scoring.ts`'s sample-based bridge (below, under
+[Domain logic](#domain-logic-pure-engines)) don't branch on any particular
+module's `code` — they operate on whatever tree and weights the data
+describes.
+
+## Content packs
+
+A content pack is how regulation-derived checklist/question content ships
+and updates independent of a code deploy (spec §7). `src/lib/pack/types.ts`
+defines the on-disk shape: a `PackManifest` (id, version, publisher,
+`contentHash`, an Ed25519 `signature`) plus `PackModule[]`, `PackNode[]`,
+`PackQuestion[]`, and `PackPopulationSchema[]`.
+
+- **Signing** (`src/lib/pack/sign.ts`) covers only the manifest's identity
+  fields plus `contentHash` — the hash is the commitment, the signature
+  proves who made it — using the same one-shot Ed25519 `sign()`/`verify()`
+  shape as [licensing](#licensing-and-feature-flags), on purpose: one key
+  pair, one verification pattern to audit.
+- **The CLI** (`scripts/aegis-pack/cli.ts`) builds (`build.ts`), signs
+  (`sign.ts`), and inspects (`inspect.ts`) `.tar` pack archives from the
+  command line.
+- **Entitlement** (`src/lib/pack/entitlement.ts`): `core` ships with every
+  license and is never separately entitled; any other pack needs a
+  `pack:<code>@<semver-range>` entry in the license's flat `features` array
+  whose range the pack's version satisfies. `checkEntitlement()` is called
+  from both `installPack()` (`src/data-access/pack-install.ts`) and the
+  catalog view (`src/data-access/pack-catalog.ts`), so an unentitled pack
+  never even shows as installable.
+- **Install, upgrade, and uninstall** all go through
+  `src/data-access/pack-install.ts`'s `installPack()` / `uninstallPack()`,
+  wrapped in `withAuditedMutation` like any other write to an audited table.
+- **The installer**, `scripts/aegis-install.sh`, is the one-command on-prem
+  bring-up: brings up `postgres`/`minio`/`mailhog`, runs `pnpm db:migrate` via
+  the `migrate` one-shot service (the `app` image's runner stage has no
+  pnpm/tsx/prisma CLI to `exec` into — only the `builder` stage does), then
+  brings up `app` and polls `/api/health`. It also checks that `.env`'s
+  `LICENSE_FILE_PATH` matches the on-prem bind mount
+  (`/app/license.aegis`, see [Deployment targets](#deployment-targets))
+  before continuing, because a mismatch there means the app boots with no
+  license check at all rather than failing loudly.
+
+## Module admin and the generic reporting engine
+
+`src/app/(dashboard)/settings/modules/page.tsx`, guarded by
+`requirePermission("module:manage")`, is where a tenant admin sees every
+installed module — core and pack — with its share of the composite score
+(`computeModuleShares`), its applicability text ("All branches" or "`n` of
+`total` branches", spec §7.6's approved wireframe), and installs, upgrades,
+or uninstalls packs from the catalog. The read side is
+`src/data-access/module-admin.ts`'s `getModuleAdminView()`.
+
+**This page is not linked from anywhere in the product.**
+`src/lib/nav-items.ts`'s `navItems` array has no entry for it, and neither
+the sidebar (`src/components/layout/app-sidebar.tsx`) nor
+`src/app/(dashboard)/settings/page.tsx` link to `/settings/modules` — checked
+directly against both files while writing this. It is reachable today only
+by typing the URL. This gap was found earlier in this program and is still
+real as of this rewrite; wiring a nav entry (or a link from the Settings
+page) is outstanding work, not a design decision to leave it hidden.
+
+The reporting engine that reads this content back out is generic in the same
+sense the module framework's scoring is: `src/lib/reporting/module-section.ts`'s
+`buildModuleSection()` renders one module's results — score plus
+per-statement rows — with no branch on `module.code` anywhere in the
+function, the "reporting-genericity" requirement this program's own plan
+tracked, landed in commit `f8262b3` ("Module admin + data-driven RBIA
+reporting engine"). A `CHECKLIST` module's rows key on `nodeId`; a
+`POPULATION_SAMPLE` module's on `questionId` with per-account compliance
+tallies resolved elsewhere — the function only needs "does a response exist
+for this statement's identity," which is the same lookup either way.
+`reportModuleToSection()` bridges the already-joined `ReportModule` shape
+(`src/data-access/reports.ts`) into that generic input, and
+`src/components/pdf-report/generic-rbia-report-document.tsx` renders the
+result to PDF.
+
+## Licensing and feature flags
+
+`src/lib/license.ts` signs and verifies a license file with Ed25519
+(`signLicense()` / `verifyLicense()`, spec §8.3): a `LicensePayload` carries
+`tenantId`, `allowedHosts`, `issuedAt`/`expiresAt`, a `gracePeriodDays`
+window, `features[]`, and `maxUsers`. Verification checks the signature,
+that the requesting host is in `allowedHosts`, and the expiry, landing on
+`"valid"`, `"grace"` (expired but still inside the grace window — the app
+keeps running), or `"invalid"` with a `reason` of `signature` / `expired` /
+`host` / `malformed`. `loadLicense()` reads
+`LICENSE_FILE_PATH`/`LICENSE_PUBLIC_KEY` once at boot, from
+`src/instrumentation.ts`.
+
+`src/lib/feature-flags.ts`'s `getFeatureFlags()` (spec §8.4) is the single
+place that decides which features a tenant has: on-prem, a loaded license's
+features (valid or grace) are authoritative; otherwise — no license file
+configured, the SaaS case — it falls back to `tenant.settings.features`.
+`core` is included unconditionally either way. This is the same feature list
+a content pack's `checkEntitlement()` reads against, above.
+
 ## Domain logic: pure engines
 
 The regulatory arithmetic is isolated from I/O so it can be tested exhaustively
 and reviewed against RBI policy without reading Prisma code.
 
-| Module                            | Computes                                 | Rule of note                                                                                                                                                                         |
-| --------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `lib/ram-engine.ts`               | Branch risk composite score              | Weighted average of 1–5 parameter scores, normalised by total weight. HIGH >3.5 → 12mo, MEDIUM 2.5–3.5 → 18mo, LOW <2.5 → 24mo audit frequency. Repeat findings apply a 1.5× uplift. |
-| `lib/rbia-scoring-engine.ts`      | RBIA node → module roll-up               | 4-point scale (1.0 / 0.75 / 0.5 / 0.0). A critical item scored NON_COMPLIANT **caps** the module at 0.5 — a ceiling, not a floor.                                                    |
+| Module                            | Computes                                 | Rule of note                                                                                                                                                                               |
+| --------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lib/ram-engine.ts`               | Branch risk composite score              | Weighted average of 1–5 parameter scores, normalised by total weight. HIGH >3.5 → 12mo, MEDIUM 2.5–3.5 → 18mo, LOW <2.5 → 24mo audit frequency. Repeat findings apply a 1.5× uplift.       |
+| `lib/rbia-scoring-engine.ts`      | RBIA node → module roll-up               | 4-point scale (1.0 / 0.75 / 0.5 / 0.0). A critical item scored NON_COMPLIANT **caps** the module at 0.5 — a ceiling, not a floor.                                                          |
 | `lib/instance-scoring.ts`         | Per-question compliance % → `ScoreLabel` | Bridges sample-based account responses into the RBIA scoring engine. A register that is complete and exclusively N/A is examined-N/A, not unfinished (`isCompleteExclusiveNotApplicable`). |
-| `lib/sampling-engine.ts`          | Deterministic sample selection           | Bucket-fill across five criteria buckets whose percentages must sum to 100.                                                                                                          |
-| `lib/escalation-engine.ts`        | Overdue → escalation level               | L1 +15d, L2 +30d, L3 +90d, L4 +180d; L0 is within grace.                                                                                                                             |
-| `lib/escalation-router.ts`        | Escalation level → recipients            | L1 Branch+IAD, L2 Zonal Auditor, L3 ACE Officer, L4 ACB Member + CAE.                                                                                                                |
-| `services/risk-rating/compute.ts` | Engagement rating band                   | Inverted scale — fewer and lower-severity findings produce a _higher_ percentage.                                                                                                    |
+| `lib/sampling-engine.ts`          | Deterministic sample selection           | Bucket-fill across five criteria buckets whose percentages must sum to 100.                                                                                                                |
+| `lib/escalation-engine.ts`        | Overdue → escalation level               | L1 +15d, L2 +30d, L3 +90d, L4 +180d; L0 is within grace.                                                                                                                                   |
+| `lib/escalation-router.ts`        | Escalation level → recipients            | L1 Branch+IAD, L2 Zonal Auditor, L3 ACE Officer, L4 ACB Member + CAE.                                                                                                                      |
+| `services/risk-rating/compute.ts` | Engagement rating band                   | Inverted scale — fewer and lower-severity findings produce a _higher_ percentage.                                                                                                          |
 
 `lib/repeat-finding-detector.ts` is the exception that proves the rule: it needs
 the database (pg_trgm title similarity above 0.5, plus explicitly linked
@@ -574,13 +744,52 @@ over a plain object instead of `messages/<locale>.json` (see
   sessions per user, and `httpOnly` + `sameSite=lax` cookies with `secure`
   derived from whether `BETTER_AUTH_URL` is HTTPS.
 
+## Deployment targets
+
+Three Docker Compose files layer on top of each other (spec §8). None of
+them mean AEGIS is deployed anywhere today — see
+[Project overview](../CLAUDE.md#project-overview): "Deployment state: not
+deployed. Local development only. Merging to `main` releases nothing."
+
+- **`docker-compose.yml`** — the full stack for a developer machine or an
+  on-prem install: `postgres`, `app` (built from the repo's `Dockerfile`),
+  `minio` (S3-compatible object storage — pinned to `quay.io/minio/minio`,
+  since Docker Hub's `minio/minio` was pulled over a licensing dispute),
+  `createbuckets` (a one-shot that provisions the bucket before `app` starts,
+  so the first upload doesn't race an empty namespace), and `mailhog`.
+  `NEXT_PUBLIC_APP_URL` is baked into the image at build time via a
+  Dockerfile `ARG` — an image built without it silently defaults to
+  `http://localhost:3000`, which then fails license host verification
+  (above) on any real host.
+- **`docker-compose.onprem.yml`** — an overlay adding `restart: always`, a
+  host-visible backup mount for `postgres`, and the bind mount that puts a
+  dropped-in `license.aegis` file at `/app/license.aegis` inside the
+  container. The base `app` service has no such mount: the repo is baked
+  into the image at build time, so without this overlay a license file
+  placed at the repo root is invisible to the running container.
+- **`docker-compose.vps.yml`** — a second overlay, added on this branch,
+  targeting `aegis.sapiex.tech` on the vps-control Hostinger VPS. It drops
+  every host port binding and joins the external `coolify` Docker network so
+  Coolify's existing Traefik instance (`coolify-proxy`) fronts the app with
+  TLS via its `letsencrypt` cert resolver, instead of exposing port 3000
+  directly. The file's own header flags itself as unverified: the assumed
+  network name (`coolify`) and cert resolver (`letsencrypt`) are Coolify's
+  documented defaults, not yet confirmed against vps-control's actual
+  Traefik config, because SSH to vps-control was unreachable when it was
+  written. Treat it as a drafted target, not a proven one, until that's
+  checked live.
+
+`scripts/aegis-install.sh` (see [Content packs](#content-packs)) drives the
+base-plus-onprem combination end to end; nothing yet automates the VPS
+overlay the same way.
+
 ## Testing strategy
 
-| Kind        | Tool                    | Where                                                      | Roughly                                                                                                                              |
-| ----------- | ----------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Unit        | Vitest                  | `src/**/__tests__/`                                        | Concentrated on the pure engines and state machines, plus route handlers with their I/O mocked                                       |
-| Discipline  | Vitest, static analysis | `src/data-access/__tests__/`, `src/lib/__tests__/`         | Suites that read source text, no database — see below                                                                                |
-| Integration | Vitest, live PostgreSQL | `src/**/__integration__/`, harness in `tests/integration/` | `pnpm test:integration`: real transactions, real triggers. Global setup **resets** the `DATABASE_URL` database                       |
+| Kind        | Tool                    | Where                                                      | Roughly                                                                                                                                                    |
+| ----------- | ----------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit        | Vitest                  | `src/**/__tests__/`                                        | Concentrated on the pure engines and state machines, plus route handlers with their I/O mocked                                                             |
+| Discipline  | Vitest, static analysis | `src/data-access/__tests__/`, `src/lib/__tests__/`         | Suites that read source text, no database — see below                                                                                                      |
+| Integration | Vitest, live PostgreSQL | `src/**/__integration__/`, harness in `tests/integration/` | `pnpm test:integration`: real transactions, real triggers. Global setup **resets** the `DATABASE_URL` database                                             |
 | E2E         | Playwright              | `tests/e2e/`                                               | 4 spec files (observation lifecycle, permission guards, smoke, RBIA sample register), replayed under 5 role projects (auditor, manager, cae, cco, auditee) |
 
 The discipline suites enforce different amounts.
@@ -634,6 +843,12 @@ the section that owns the detail; the numbers live there, once.
   (`findings`, `auditPlans`, `bankProfile`, …), but the chain is orphaned: its
   consumers have no importers, and the live dashboard reads the database
   through `components/dashboard/widgets/*`. Prefer deleting over reviving.
+- **The module admin page has no nav entry.** `/settings/modules` works and
+  is permission-guarded, but nothing links to it →
+  [Module admin and the generic reporting engine](#module-admin-and-the-generic-reporting-engine).
+- **The VPS Compose overlay is unverified.** `docker-compose.vps.yml`'s
+  Traefik network/cert-resolver names are Coolify's documented defaults, not
+  confirmed live → [Deployment targets](#deployment-targets).
 
 ## Adding a feature
 

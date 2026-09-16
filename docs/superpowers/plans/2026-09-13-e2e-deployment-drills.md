@@ -873,15 +873,15 @@ git commit -m "docs(ops): customer security statement, rewritten from a claims a
 
 **Interfaces:** none.
 
-- [ ] **Step 1: Diff old against new**
+- [x] **Step 1: Diff old against new**
 
 Read the current 616-line `docs/architecture.md` in full. Per `CLAUDE.md`: "it describes some things that are no longer here (i18n, Sentry, v5 sections)." Remove every passage describing next-intl, Sentry, and the v5 examination tables as if they're current. Add sections for: RLS-based tenant isolation (or the fallback, matching whatever the security statement says), the hash-chained audit log, the module-native framework (`AuditModule`/`ExaminationNode`/`ExaminationQuestion`/`EngagementModule`/`EngagementStatement`), the content-pack format and installer, the module admin page, the generic reporting engine, licensing and feature flags, and the on-prem/AWS deployment targets this plan built.
 
-- [ ] **Step 2: Cross-check against the spec, not against memory**
+- [x] **Step 2: Cross-check against the spec, not against memory**
 
 For each section rewritten, cite the specific spec section number it corresponds to (§4, §5, §6, §7, §8) so a future reader can trace architecture.md back to the design decision, the same way this plan's own research repeatedly needed to trace forward from the spec into the code.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/architecture.md
