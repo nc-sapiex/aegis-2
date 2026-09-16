@@ -36,6 +36,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # NEXT_PUBLIC_APP_URL is inlined into the image at build time (see the
+      # Dockerfile's own comment on its ARG) — without this, every image
+      # silently bakes in the Dockerfile's http://localhost:3000 default
+      # regardless of .env, which then fails license host verification for
+      # any real deployment (src/instrumentation.ts checks the license
+      # against this baked-in value, not the runtime env var).
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
     container_name: aegis-app
     restart: unless-stopped
     ports:
