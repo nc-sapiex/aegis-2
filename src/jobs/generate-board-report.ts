@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { prismaSystem } from "@/lib/prisma";
+import { prismaForTenant } from "@/lib/prisma";
 import { aggregateReportData, createBoardReport } from "@/data-access/reports";
 import { BoardReport } from "@/components/pdf-report/board-report";
 import { uploadToS3 } from "@/lib/s3";
@@ -29,7 +29,8 @@ export async function processGenerateBoardReport(
   const { tenantId, year, quarter, requestedById, executiveCommentary } =
     payload;
 
-  const user = await prismaSystem.user.findUnique({
+  const db = prismaForTenant(tenantId);
+  const user = await db.user.findUnique({
     where: { id: requestedById },
     select: { id: true, tenantId: true, roles: true },
   });
