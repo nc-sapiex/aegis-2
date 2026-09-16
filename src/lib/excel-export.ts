@@ -254,8 +254,10 @@ export async function toBuffer(
   workbook: ExcelJS.Workbook,
 ): Promise<ArrayBuffer> {
   const buffer = await workbook.xlsx.writeBuffer();
-  // writeBuffer returns ArrayBuffer (or Buffer in Node) — ensure we have ArrayBuffer
-  return buffer instanceof ArrayBuffer
-    ? buffer
-    : (buffer as { buffer: ArrayBuffer }).buffer;
+  // In Node, writeBuffer() returns a Buffer — a *view* into a larger,
+  // possibly pooled ArrayBuffer. Reaching for `.buffer` directly returns the
+  // whole backing allocation and drops this view's byteOffset/byteLength,
+  // corrupting the xlsx for any caller that does Buffer.from(result). Copy
+  // just the bytes this view actually covers into a fresh ArrayBuffer.
+  return buffer instanceof ArrayBuffer ? buffer : new Uint8Array(buffer).buffer;
 }
