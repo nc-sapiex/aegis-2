@@ -169,6 +169,12 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-aegis_minio_admin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-CHANGE_ME_MINIO_PASSWORD}
       S3_BUCKET_NAME: ${S3_BUCKET_NAME:-aegis-evidence-prod}
+    # -p is --ignore-existing (confirmed via `mc mb --help` against this
+    # exact image, and empirically: running `mc mb -p` twice against the
+    # same bucket exits 0 both times) — safe to re-run against an
+    # already-provisioned stack. app's depends_on is a hard
+    # service_completed_successfully, so this NOT being idempotent would
+    # permanently block app from starting on every install after the first.
     entrypoint: >
       /bin/sh -c "
       mc alias set local http://minio:9000 \"$$MINIO_ROOT_USER\" \"$$MINIO_ROOT_PASSWORD\" &&

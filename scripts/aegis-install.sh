@@ -60,7 +60,7 @@ $COMPOSE up -d --wait postgres minio mailhog
 # db:migrate already runs
 # `prisma migrate deploy && tsx scripts/db-bootstrap.ts && tsx scripts/db-verify.ts`
 # — do not call db:bootstrap/db:verify again separately, it would re-run both.
-$COMPOSE run --rm migrate
+$COMPOSE run --rm -T migrate
 
 $COMPOSE up -d --wait app
 
