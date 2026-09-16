@@ -7,6 +7,7 @@ import { readPackArchive } from "@/lib/pack/inspect";
 import { verifyPackManifest } from "@/lib/pack/sign";
 import { checkEntitlement } from "@/lib/pack/entitlement";
 import type { PackFiles } from "@/lib/pack/types";
+import { parentPath } from "@/lib/examination-path";
 
 type InstallResult =
   | { success: true; data: { packCode: string; version: string } }
@@ -162,6 +163,30 @@ async function upsertPack(
         // weight, isCritical, isActive, displayOrder intentionally omitted — bank-editable, preserved (spec §7.3)
       },
     });
+  }
+
+  // Pack archives have no parentId field. Reconstruct it from path so freeze
+  // can walk the tree (housing is depth-1 module → depth-2 sections →
+  // depth-3 leaves). A first install that left parentId null made freeze
+  // treat the module root as childless, skip completeness, and drop the
+  // module from the composite.
+  const packNodeCodes = files.nodes.map((n) => n.code);
+  if (packNodeCodes.length > 0) {
+    const installed = await tx.examinationNode.findMany({
+      where: { tenantId, code: { in: packNodeCodes } },
+      select: { id: true, path: true, parentId: true, origin: true },
+    });
+    const idByPath = new Map(installed.map((n) => [n.path, n.id]));
+    for (const row of installed) {
+      if (row.origin !== "PACK" || row.parentId) continue;
+      const parent = parentPath(row.path);
+      const parentId = parent ? idByPath.get(parent) : undefined;
+      if (!parentId) continue;
+      await tx.examinationNode.update({
+        where: { id: row.id },
+        data: { parentId },
+      });
+    }
   }
 
   for (const question of files.questions) {
