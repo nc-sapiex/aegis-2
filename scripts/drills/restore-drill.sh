@@ -42,7 +42,14 @@ BEFORE_COUNT=$(docker compose exec -T postgres psql -U "${POSTGRES_USER:-aegis}"
 BACKUP_HOST_PATH="${BACKUP_HOST_PATH:-./backups}"
 BACKUP_TAR="$(mktemp -t aegis-restore-drill.XXXXXX.tar)"
 tar -C "$BACKUP_HOST_PATH" -cf "$BACKUP_TAR" .
-multipass exec "$VM_NAME" -- mkdir -p aegis/backups
+# The onprem overlay bind-mounts ./backups into postgres
+# (docker-compose.onprem.yml), and Docker auto-creates a missing bind-mount
+# host directory as root:root the first time the container starts — not as
+# the `ubuntu` user running this script. mkdir -p on an already-existing
+# root-owned dir is a silent no-op, so the extraction below would otherwise
+# fail with "Permission denied" on every fresh drill VM, not just this one.
+multipass exec "$VM_NAME" -- sudo mkdir -p aegis/backups
+multipass exec "$VM_NAME" -- sudo chown ubuntu:ubuntu aegis/backups
 multipass transfer "$BACKUP_TAR" "$VM_NAME":aegis-restore-drill.tar
 multipass exec "$VM_NAME" -- tar -xf aegis-restore-drill.tar -C aegis/backups
 multipass exec "$VM_NAME" -- rm aegis-restore-drill.tar
