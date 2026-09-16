@@ -11,8 +11,17 @@
 #      drills/fixtures/drill-license.aegis and drills/fixtures/drill-key.public.pem.
 #      See drills/fixtures/README.md.
 #
-# Usage: ./scripts/drills/install-drill.sh
+# Usage: ./scripts/drills/install-drill.sh [--keep]
+#   --keep  skip the VM teardown on exit (success or failure) so
+#           scripts/drills/restore-drill.sh can chain onto it afterwards.
+#           Default behavior (no flag) is unchanged: always tear down.
 set -euo pipefail
+
+KEEP=false
+if [ "${1:-}" = "--keep" ]; then
+  KEEP=true
+  shift
+fi
 
 cd "$(git rev-parse --show-toplevel)"
 
@@ -51,10 +60,16 @@ WORKDIR=""
 DRILL_TAR=""
 
 cleanup() {
-  echo "Tearing down drill VM $VM_NAME"
-  multipass delete "$VM_NAME" --purge || true
+  # Local temp files (checkout + tar) are never worth keeping — only the VM
+  # itself is what --keep is for.
   [ -n "$WORKDIR" ] && rm -rf "$WORKDIR"
   [ -n "$DRILL_TAR" ] && rm -f "$DRILL_TAR"
+  if [ "$KEEP" = true ]; then
+    echo "--keep passed: leaving drill VM $VM_NAME running. Chain restore-drill.sh onto it, then 'multipass delete $VM_NAME --purge' when done."
+    return 0
+  fi
+  echo "Tearing down drill VM $VM_NAME"
+  multipass delete "$VM_NAME" --purge || true
   return 0
 }
 trap cleanup EXIT
