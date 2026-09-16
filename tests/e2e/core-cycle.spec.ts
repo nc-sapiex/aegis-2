@@ -101,6 +101,21 @@ async function chooseOption(page: Page, placeholder: string, option: RegExp) {
   await page.getByRole("option", { name: option }).first().click();
 }
 
+/**
+ * Assert the observation's status badge, and only the badge.
+ *
+ * `finding-detail.tsx:87-96` renders the raw enum in upper case, while the
+ * transition comments this spec types are sentence case ("Reviewed against the
+ * sampled files…", "Issued to the branch manager…"). A page-wide
+ * `getByText(/reviewed/i)` would match either, so it could pass on text the
+ * test itself just wrote rather than on the state the server actually moved
+ * to. Exact and case-sensitive is what separates them. `.first()` remains
+ * because `status-timeline.tsx` renders the same enum for each step reached.
+ */
+function expectStatusBadge(page: Page, status: string) {
+  return expect(page.getByText(status, { exact: true }).first()).toBeVisible();
+}
+
 test.describe.serial("@smoke core cycle", () => {
   let ramAssessmentUrl: string;
   let seededEngagementUrl: string;
@@ -535,7 +550,7 @@ test.describe.serial("@smoke core cycle", () => {
         .getByPlaceholder(/reason for this transition/i)
         .fill("Fieldwork complete; submitting for manager review.");
       await page.getByRole("button", { name: /^confirm$/i }).click();
-      await expect(page.getByText(/submitted/i).first()).toBeVisible();
+      await expectStatusBadge(page, "SUBMITTED");
     });
 
     test("the manager reviews and issues it to the branch @smoke", async ({
@@ -554,14 +569,14 @@ test.describe.serial("@smoke core cycle", () => {
         .getByPlaceholder(/reason for this transition/i)
         .fill("Reviewed against the sampled files; approved for issuance.");
       await page.getByRole("button", { name: /^confirm$/i }).click();
-      await expect(page.getByText(/reviewed/i).first()).toBeVisible();
+      await expectStatusBadge(page, "REVIEWED");
 
       await page.getByRole("button", { name: /issue to auditee/i }).click();
       await page
         .getByPlaceholder(/reason for this transition/i)
         .fill("Issued to the branch manager for response.");
       await page.getByRole("button", { name: /^confirm$/i }).click();
-      await expect(page.getByText(/issued/i).first()).toBeVisible();
+      await expectStatusBadge(page, "ISSUED");
 
       await context.close();
     });

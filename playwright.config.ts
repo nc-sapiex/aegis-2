@@ -101,7 +101,14 @@ export default defineConfig({
     {
       name: "core",
       testMatch: CORE_CYCLE_SPECS,
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        // The base config's `trace: "on-first-retry"` produces nothing here,
+        // because `retries: 0` below means there is never a first retry. A
+        // failure in an 11-step serial cycle is the case where a trace is
+        // worth most, so capture one whenever a test fails.
+        trace: "retain-on-failure",
+      },
       timeout: 300_000,
       dependencies: ["setup"],
       // A retry re-runs the whole serial block from the top, but the cycle

@@ -1359,8 +1359,7 @@ async function seedLifecycle() {
         description: `${obs.condition}\n\nCriteria: ${obs.criteria}\n\nRoot cause: ${obs.cause}\n\nEffect: ${obs.effect}`,
         recommendation: obs.recommendation,
         riskCategory: obs.riskCategory,
-        pertainsTo:
-          obs.riskCategory === "COMPLIANCE" ? "OPERATIONS" : "FINANCE",
+        pertainsTo: obs.riskCategory === "COMPLIANCE" ? "OPERATIONS" : "FINANCE",
         moduleId: housingModule.id,
         branchId: kothrudId,
         auditAreaId: creditArea.id,
@@ -2260,6 +2259,11 @@ async function seedLifecycle() {
   });
   // Mirrors materializeEngagementStatements(); it cannot be imported here
   // because its module is marked `server-only`.
+  //
+  // SOURCE OF TRUTH: src/data-access/engagement-statements.ts:15-66. This is a
+  // hand-copy and nothing keeps the two in step — if the real one changes
+  // shape, this seed keeps producing the old rows and the e2e register goes
+  // quietly stale rather than failing. Re-read it when touching either.
   const housingLeaves = await prisma.examinationNode.findMany({
     where: {
       tenantId,

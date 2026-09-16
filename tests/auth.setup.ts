@@ -100,13 +100,28 @@ for (const user of users) {
  * A reseed invalidates these cookies — the Session rows are dropped and the
  * users are recreated with new ids — so this correctly falls through to a real
  * login after `pnpm db:seed`, rather than carrying a dead session forward.
+ *
+ * Both halves of that were verified empirically against the running app, not
+ * assumed:
+ *   - a context carrying a *dropped* session lands on
+ *     `/login?redirect=%2Fdashboard`, so the `/login` test below is what makes
+ *     this fall through rather than carry a dead session forward;
+ *   - a context carrying a live session lands on `/dashboard`.
+ *
+ * `baseURL` is passed explicitly rather than relied on. Playwright 1.63 does
+ * apply the project's `use` options to `browser.newContext()` — including
+ * `storageState`, which is why the explicit one here matters — but that is not
+ * behaviour worth depending on: if it ever stopped holding, the relative
+ * `goto` would throw, the `catch` would report "not valid", and the only
+ * symptom would be that this optimisation silently stopped optimising.
  */
 async function storageStateStillValid(
   browser: import("@playwright/test").Browser,
   file: string,
+  baseURL: string | undefined,
 ): Promise<boolean> {
   if (!existsSync(file)) return false;
-  const context = await browser.newContext({ storageState: file });
+  const context = await browser.newContext({ storageState: file, baseURL });
   try {
     const page = await context.newPage();
     await page.goto("/dashboard");
@@ -121,11 +136,11 @@ async function storageStateStillValid(
 for (const [email, fixtures] of byEmail) {
   const roles = fixtures.map((f) => f.role).join(" + ");
 
-  setup(`authenticate as ${roles}`, async ({ page, browser }) => {
+  setup(`authenticate as ${roles}`, async ({ page, browser, baseURL }) => {
     if (
       (
         await Promise.all(
-          fixtures.map((f) => storageStateStillValid(browser, f.file)),
+          fixtures.map((f) => storageStateStillValid(browser, f.file, baseURL)),
         )
       ).every(Boolean)
     ) {
