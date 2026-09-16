@@ -364,11 +364,24 @@ test.describe.serial("@smoke core cycle", () => {
       const statementCount = await registers.count();
       expect(statementCount).toBe(23);
 
+      // Each click fires `void handleScoreScale(...)` (examination-register
+      // .tsx:303). Those saves go through withAuditedMutation, which serializes
+      // on AuditChainHead (FOR UPDATE). Firing all 23 at once stampede that
+      // lock; Prisma's interactive-transaction maxWait then drops most of them.
+      // Navigating away while any are in flight aborts the rest — CI saw 8/23
+      // persist. Wait for each Next.js server action to finish before the next
+      // click, then navigate once the register has actually committed.
       for (let i = 0; i < statementCount; i++) {
-        await registers
+        const radio = registers
           .nth(i)
-          .getByRole("radio", { name: /^FULLY COMPLIANT/ })
-          .click();
+          .getByRole("radio", { name: /^FULLY COMPLIANT/ });
+        const save = page.waitForResponse((response) => {
+          if (response.request().method() !== "POST") return false;
+          if (!response.url().includes("/rbia/module/CRD-HLN")) return false;
+          return response.request().headers()["next-action"] !== undefined;
+        });
+        await radio.click();
+        expect((await save).ok()).toBeTruthy();
       }
 
       // FULLY_COMPLIANT needs no remarks (src/lib/statement-state.ts:19-23,
@@ -377,24 +390,12 @@ test.describe.serial("@smoke core cycle", () => {
       await expect(page.getByText("Remarks due")).toHaveCount(0);
 
       // Read the progress back from the server, not from the optimistic client
-      // state that just set it — and poll, because examination-register.tsx:303
-      // fires each save with `void handleScoreScale(...)`, so the click resolves
-      // before the round trip does. Asserting once against a server-rendered
-      // page reads whatever had committed at that instant (22/23 is the usual
-      // near-miss); the progress card only re-reads the database on navigation,
-      // so the retry has to include the navigation.
-      await expect
-        .poll(
-          async () => {
-            await page.goto(seededEngagementUrl);
-            return page
-              .locator("a[href*='/rbia/module/CRD-HLN']")
-              .first()
-              .innerText();
-          },
-          { timeout: 30_000, message: "every statement should persist" },
-        )
-        .toContain("23 / 23 items scored");
+      // state that just set it. The progress card only re-reads the database
+      // on navigation.
+      await page.goto(seededEngagementUrl);
+      await expect(
+        page.locator("a[href*='/rbia/module/CRD-HLN']").first(),
+      ).toContainText("23 / 23 items scored");
 
       await expect(
         page.locator("a[href*='/rbia/module/CRD-HLN']").first(),

@@ -41,35 +41,52 @@ beforeAll(async () => {
 afterAll(async () => rm(sourceDir, { recursive: true, force: true }));
 
 function runCli(...args: string[]): string {
-  return execFileSync("npx", ["tsx", "scripts/aegis-pack/cli.ts", ...args], {
-    encoding: "utf8",
-  });
+  // Use the workspace tsx via pnpm, not `npx tsx`. npx can spend seconds
+  // resolving the package on a cold CI runner, and three sequential
+  // invocations then blow the default 5s vitest timeout.
+  return execFileSync(
+    "pnpm",
+    ["exec", "tsx", "scripts/aegis-pack/cli.ts", ...args],
+    { encoding: "utf8" },
+  );
 }
 
 describe("aegis-pack CLI", () => {
-  it("build then sign then verify round-trips", () => {
-    runCli("build", sourceDir, "--out", packFile);
-    runCli("sign", packFile, "--key", privateKeyPath);
-    const output = runCli("verify", packFile, "--public-key", publicKeyPath);
-    expect(output).toContain("valid");
-  });
+  it(
+    "build then sign then verify round-trips",
+    () => {
+      runCli("build", sourceDir, "--out", packFile);
+      runCli("sign", packFile, "--key", privateKeyPath);
+      const output = runCli("verify", packFile, "--public-key", publicKeyPath);
+      expect(output).toContain("valid");
+    },
+    20_000,
+  );
 
-  it("verify fails against the wrong public key", () => {
-    const { publicKey: wrongKey } = generateKeyPairSync("ed25519");
-    const wrongKeyPath = join(sourceDir, "wrong-public.pem");
-    return writeFile(
-      wrongKeyPath,
-      wrongKey.export({ type: "spki", format: "pem" }),
-    ).then(() => {
-      expect(() =>
-        runCli("verify", packFile, "--public-key", wrongKeyPath),
-      ).toThrow();
-    });
-  });
+  it(
+    "verify fails against the wrong public key",
+    () => {
+      const { publicKey: wrongKey } = generateKeyPairSync("ed25519");
+      const wrongKeyPath = join(sourceDir, "wrong-public.pem");
+      return writeFile(
+        wrongKeyPath,
+        wrongKey.export({ type: "spki", format: "pem" }),
+      ).then(() => {
+        expect(() =>
+          runCli("verify", packFile, "--public-key", wrongKeyPath),
+        ).toThrow();
+      });
+    },
+    20_000,
+  );
 
-  it("inspect prints the manifest identity", () => {
-    const output = runCli("inspect", packFile);
-    expect(output).toContain("example-forex");
-    expect(output).toContain("1.0.0");
-  });
+  it(
+    "inspect prints the manifest identity",
+    () => {
+      const output = runCli("inspect", packFile);
+      expect(output).toContain("example-forex");
+      expect(output).toContain("1.0.0");
+    },
+    20_000,
+  );
 });
