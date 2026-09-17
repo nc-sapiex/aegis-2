@@ -731,4 +731,54 @@ describe("freezeRbiaScore completeness", () => {
       "OPS",
     ]);
   });
+
+  it("weights the frozen composite by AuditModule.weight, not the tree node's weight", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+    await addModuleSelection(
+      fakeSession({
+        id: cae.id,
+        tenantId: tenant.id,
+        roles: ["CAE"],
+      }) as never,
+      seed.engagementId,
+      seed.creditModule.id,
+      "Branch also books gold loans",
+    );
+    await withFixtures(async () => {
+      await integrationOwner.auditModule.update({
+        where: { tenantId_code: { tenantId: tenant.id, code: "OPS" } },
+        data: { weight: 80 },
+      });
+      await integrationOwner.auditModule.update({
+        where: { tenantId_code: { tenantId: tenant.id, code: "CREDIT" } },
+        data: { weight: 20 },
+      });
+    });
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+    await score(
+      tenant.id,
+      seed.engagementId,
+      seed.creditLeaf.id,
+      "NON_COMPLIANT",
+    );
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    // OPS = 1.0 at weight 80, CREDIT = 0.0 at weight 20 → 0.80.
+    // Equal tree-node weights (both 1.0) would freeze at 0.50.
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.compositeScore).toBeCloseTo(0.8);
+  });
 });
