@@ -157,6 +157,23 @@ export async function freezeRbiaScore(
           selections.map((s: { moduleId: string }) => s.moduleId),
         );
 
+        // Spec §6.5: module → composite uses AuditModule.weight (bank-editable
+        // 1–100), not the depth-1 ExaminationNode.weight. saveModuleWeights
+        // only writes AuditModule; the tree node's weight is intra-module roll-up.
+        const auditModules =
+          selectedModuleIds.size === 0
+            ? []
+            : await tx.auditModule.findMany({
+                where: { tenantId, id: { in: [...selectedModuleIds] } },
+                select: { id: true, weight: true },
+              });
+        const compositeWeightByModuleId = new Map(
+          auditModules.map((m: { id: string; weight: number }) => [
+            m.id,
+            m.weight,
+          ]),
+        );
+
         // Spec §6.6: later catalogue edits (add bank statement, turn off,
         // pack uninstall) apply to future engagements only. Completeness and
         // scoring walk the snapshotted leaves when a snapshot exists.
@@ -373,8 +390,13 @@ export async function freezeRbiaScore(
           if (moduleScore !== null) {
             moduleScoresMap[moduleNode.code] = moduleScore;
           }
+          const treeNode = nodeMap.get(moduleNode.nodeId);
+          const compositeWeight =
+            (treeNode?.moduleId
+              ? compositeWeightByModuleId.get(treeNode.moduleId)
+              : undefined) ?? moduleNode.weight;
           moduleScoreInputs.push({
-            weight: moduleNode.weight,
+            weight: compositeWeight,
             score: moduleScore,
           });
         }
