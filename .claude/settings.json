@@ -10,6 +10,44 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard search",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard read --strict",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(pnpm tsc *)",
+      "Bash(pnpm test:unit *)",
+      "Bash(git fetch *)",
+      "Bash(pnpm lint *)",
+      "Bash(pnpm vitest *)",
+      "mcp__honcho__inspect_workspace",
+      "Bash(gh run watch *)",
+      "mcp__claude_ai_Context7__query-docs",
+      "mcp__honcho__list_conclusions",
+      "mcp__claude_ai_Context7__resolve-library-id",
+      "mcp__honcho__get_metadata",
+      "mcp__honcho__inspect_session"
     ]
   }
 }

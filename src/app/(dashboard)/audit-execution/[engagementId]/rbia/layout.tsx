@@ -10,6 +10,7 @@ import { StatusTransitionControl } from "@/components/rbia/status-transition-con
 import { TabNav } from "@/components/rbia/tab-nav";
 import {
   ENGAGEMENT_TRANSITIONS,
+  type EngagementContext,
   type EngagementStatus,
 } from "@/lib/engagement-state-machine";
 
@@ -35,25 +36,22 @@ function deriveTransitionLabel(status: string): string {
 }
 
 /**
- * Check if the meeting prerequisite is satisfied for the current status transition.
+ * Evaluate the primary transition's prerequisite against the real state
+ * machine definition (the same one transitionEngagementStatus() enforces
+ * server-side), so the button's disabled state can never drift from what
+ * the server will actually accept.
  */
-function isPrerequisiteMet(
+function evaluatePrerequisite(
   status: string,
-  openingMeetingRecorded: boolean,
-  exitMeetingRecorded: boolean,
-): boolean {
-  if (status === "OPENING_MEETING") return openingMeetingRecorded;
-  if (status === "EXIT_MEETING") return exitMeetingRecorded;
-  return true;
-}
-
-/**
- * Get the prerequisite message for disabled tooltip.
- */
-function getPrerequisiteMessage(status: string): string {
-  if (status === "OPENING_MEETING") return "Record opening meeting first";
-  if (status === "EXIT_MEETING") return "Record exit meeting first";
-  return "";
+  ctx: EngagementContext,
+): { met: boolean; message: string } {
+  const transitions = ENGAGEMENT_TRANSITIONS[status as EngagementStatus] ?? [];
+  const primary = transitions.find((t) => t.to !== "CANCELLED");
+  if (!primary?.prerequisite) return { met: true, message: "" };
+  const result = primary.prerequisite(ctx);
+  return result.allowed
+    ? { met: true, message: "" }
+    : { met: false, message: result.reason };
 }
 
 // ---- Layout ------------------------------------------------------------------
@@ -101,12 +99,18 @@ export default async function RbiaLayout({ children, params }: LayoutProps) {
   );
   const nextStatus = deriveNextStatus(engagement.status);
   const transitionLabel = deriveTransitionLabel(engagement.status);
-  const prerequisiteMet = isPrerequisiteMet(
-    engagement.status,
-    openingMeetingRecorded,
-    exitMeetingRecorded,
-  );
-  const prerequisiteMessage = getPrerequisiteMessage(engagement.status);
+  const transitionContext: EngagementContext = {
+    teamMemberCount: engagement.teamMembers.length,
+    hasOpeningMeeting: meetings.some(
+      (m) => m.meetingType === "OPENING" && m.signedOff,
+    ),
+    hasExitMeeting: meetings.some(
+      (m) => m.meetingType === "EXIT" && m.signedOff,
+    ),
+    hasFrozenScore: engagement.branchRbiaScore?.frozenAt != null,
+  };
+  const { met: prerequisiteMet, message: prerequisiteMessage } =
+    evaluatePrerequisite(engagement.status, transitionContext);
 
   // Finish-line gate: only the fieldwork phase (IN_PROGRESS -> EXIT_MEETING,
   // the state machine's nearest edge to the spec's "FIELDWORK -> REVIEW")
@@ -190,6 +194,11 @@ export default async function RbiaLayout({ children, params }: LayoutProps) {
       {/* Tab navigation -- URL-based segments */}
       <TabNav
         tabs={[
+          {
+            key: "team",
+            label: "Team",
+            href: `${basePath}/team`,
+          },
           {
             key: "examination",
             label: "Examination",
