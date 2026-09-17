@@ -4,9 +4,9 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `5e4e756` (worktree-e2e-deployment-drills+foundation)
+> Source commit: `439d823` (main)
 
-Every addressable path in the application: **51 pages** and
+Every addressable path in the application: **52 pages** and
 **10 HTTP endpoints**.
 
 Pages are React Server Components under the Next.js App Router. Route groups in
@@ -40,6 +40,7 @@ the URL, so they are stripped here.
 | `/audit-execution/[engagementId]/rbia/questions` | `src/app/(dashboard)/audit-execution/[engagementId]/rbia/questions/page.tsx` |
 | `/audit-execution/[engagementId]/rbia/sampling` | `src/app/(dashboard)/audit-execution/[engagementId]/rbia/sampling/page.tsx` |
 | `/audit-execution/[engagementId]/rbia/score` | `src/app/(dashboard)/audit-execution/[engagementId]/rbia/score/page.tsx` |
+| `/audit-execution/[engagementId]/rbia/team` | `src/app/(dashboard)/audit-execution/[engagementId]/rbia/team/page.tsx` |
 | `/audit-execution/[engagementId]/report` | `src/app/(dashboard)/audit-execution/[engagementId]/report/page.tsx` |
 | `/audit-execution/create` | `src/app/(dashboard)/audit-execution/create/page.tsx` |
 | `/audit-plans` | `src/app/(dashboard)/audit-plans/page.tsx` |
