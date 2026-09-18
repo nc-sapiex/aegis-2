@@ -298,4 +298,115 @@ describe("setSectionNotApplicable", () => {
     expect(unanswered?.isNotApplicable).toBe(true);
     expect(unanswered?.notApplicableReason).toBe("Branch has no govt business");
   });
+
+  it("refuses to clear scores after the engagement is frozen", async () => {
+    const tenant = await createTenant("Frozen SectionNa Bank");
+    const cae = await createUser(tenant.id, ["CAE"]);
+
+    const seeded = await withFixtures(async () => {
+      const plan = await integrationOwner.auditPlan.create({
+        data: {
+          tenantId: tenant.id,
+          year: 2026,
+          quarter: "Q1_APR_JUN",
+          status: "PLANNED",
+        },
+        select: { id: true },
+      });
+      const branch = await integrationOwner.branch.create({
+        data: {
+          tenantId: tenant.id,
+          code: "BR-002",
+          name: "Main",
+          city: "Mumbai",
+          state: "MH",
+        },
+        select: { id: true },
+      });
+      const engagement = await integrationOwner.auditEngagement.create({
+        data: {
+          tenantId: tenant.id,
+          auditPlanId: plan.id,
+          branchId: branch.id,
+          status: "IN_PROGRESS",
+        },
+        select: { id: true },
+      });
+      const auditModule = await integrationOwner.auditModule.create({
+        data: {
+          tenantId: tenant.id,
+          code: "GOV",
+          name: "Govt Business",
+          domain: "GOVT",
+          kinds: ["CHECKLIST"],
+        },
+        select: { id: true },
+      });
+      const node = await integrationOwner.examinationNode.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: auditModule.id,
+          code: "GOV-01",
+          name: "Govt leaf",
+          path: "GOV/GOV-01",
+          depth: 1,
+          isLeaf: true,
+          weight: 1,
+        },
+        select: { id: true },
+      });
+      await integrationOwner.examinationResponse.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: engagement.id,
+          nodeId: node.id,
+          score: 1,
+          scoreLabel: "FULLY_COMPLIANT",
+        },
+      });
+      await integrationOwner.branchRbiaScore.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: engagement.id,
+          branchId: branch.id,
+          compositeScore: 1,
+          ratingBand: "VERY_GOOD",
+          moduleScores: {},
+          scoringTreeSnapshot: {},
+          frozenAt: new Date(),
+        },
+      });
+      return {
+        engagementId: engagement.id,
+        moduleId: auditModule.id,
+        nodeId: node.id,
+      };
+    });
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { setSectionNotApplicable } =
+      await import("@/actions/rbia/section-not-applicable");
+
+    const result = await setSectionNotApplicable({
+      engagementId: seeded.engagementId,
+      moduleId: seeded.moduleId,
+      reason: "Branch has no govt business",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toMatch(/frozen/i);
+
+    const leaf = await integrationOwner.examinationResponse.findUniqueOrThrow({
+      where: {
+        engagementId_nodeId: {
+          engagementId: seeded.engagementId,
+          nodeId: seeded.nodeId,
+        },
+      },
+      select: { scoreLabel: true, isNotApplicable: true },
+    });
+    expect(leaf.scoreLabel).toBe("FULLY_COMPLIANT");
+    expect(leaf.isNotApplicable).toBe(false);
+  });
 });
