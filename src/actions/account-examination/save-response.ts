@@ -83,13 +83,24 @@ export async function saveAccountExamResponse(
     // 4. Verify engagement exists, belongs to tenant, and is in scoring-allowed status
     const engagement = await db.auditEngagement.findFirst({
       where: { id: engagementId, tenantId },
-      select: { id: true, status: true },
+      select: {
+        id: true,
+        status: true,
+        branchRbiaScore: { select: { frozenAt: true } },
+      },
     });
 
     if (!engagement) {
       return {
         success: false,
         error: "Engagement not found.",
+      };
+    }
+
+    if (engagement.branchRbiaScore?.frozenAt) {
+      return {
+        success: false,
+        error: "This engagement's score is frozen. Use score revision instead.",
       };
     }
 

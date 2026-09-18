@@ -33,6 +33,19 @@ export async function setSectionNotApplicable(
       userActor(session),
       "rbia.section_marked_na",
       async (tx) => {
+        const engagement = await tx.auditEngagement.findFirst({
+          where: { id: input.engagementId, tenantId },
+          select: { branchRbiaScore: { select: { frozenAt: true } } },
+        });
+        if (!engagement) {
+          throw new Error("Engagement not found");
+        }
+        if (engagement.branchRbiaScore?.frozenAt) {
+          throw new Error(
+            "This engagement's score is frozen. Use score revision instead.",
+          );
+        }
+
         // input.moduleId is an AuditModule id; the tree walk needs the
         // depth-1 ExaminationNode it was backfilled from (module-native.ts)
         // for its materialized path.
