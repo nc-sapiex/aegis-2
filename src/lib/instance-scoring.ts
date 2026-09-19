@@ -143,21 +143,32 @@ export function computeModuleComplianceScores(
   return results;
 }
 
+export type RegisterCellCounts = {
+  sampledAccountCount: number;
+  activeQuestionCount: number;
+  notApplicableCount: number;
+  scoredCount: number;
+};
+
+/**
+ * True when every sampled account × active question cell has a recorded
+ * answer (COMPLIANT, VIOLATION, or N/A). An unanswered cell is unfinished
+ * work, not an implicit N/A — same rule freeze uses for tree leaves.
+ */
+export function isRegisterComplete(input: RegisterCellCounts): boolean {
+  const expected = input.sampledAccountCount * input.activeQuestionCount;
+  return (
+    expected > 0 && input.notApplicableCount + input.scoredCount === expected
+  );
+}
+
 /**
  * True when every sampled account × active question cell is N/A and none are
  * COMPLIANT/VIOLATION. Distinguishes "examination finished as not applicable"
  * from "not examined yet" (empty tallies look the same to scoring).
  */
-export function isCompleteExclusiveNotApplicable(input: {
-  sampledAccountCount: number;
-  activeQuestionCount: number;
-  notApplicableCount: number;
-  scoredCount: number;
-}): boolean {
-  const expected = input.sampledAccountCount * input.activeQuestionCount;
-  return (
-    expected > 0 &&
-    input.scoredCount === 0 &&
-    input.notApplicableCount === expected
-  );
+export function isCompleteExclusiveNotApplicable(
+  input: RegisterCellCounts,
+): boolean {
+  return isRegisterComplete(input) && input.scoredCount === 0;
 }
