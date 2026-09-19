@@ -70,7 +70,7 @@ excluded from both the numerator and the denominator, not treated as zero.
 **The critical-item cap is a ceiling, not a floor.** If any leaf under a
 module is flagged `isCritical` and scored `NON_COMPLIANT`, the whole module's
 score is capped at 0.5 — but only if the raw roll-up would otherwise be
-*higher* than 0.5. A module that's already scoring 0.3 stays at 0.3; the cap
+_higher_ than 0.5. A module that's already scoring 0.3 stays at 0.3; the cap
 exists to stop one severe finding from being diluted into a good-looking
 average by dozens of compliant leaves, not to punish an already-bad module
 twice. `computeModuleScore` applies the cap once, at module level — the
@@ -103,8 +103,10 @@ yield `null`). `isCompleteExclusiveNotApplicable` distinguishes them:
 means the module applies to nobody at this branch. Before freeze,
 `syncAllInstanceScores` writes those leaves as `isNotApplicable` so
 `findUnscoredLeaves` (`src/lib/rbia-completeness.ts`) lets the freeze
-through. A module with untouched questions still blocks freeze
-(`INCOMPLETE_EXAMINATION`). Do not treat an absent score as N/A.
+through. A module with unanswered sample cells — including a single
+COMPLIANT tick among empty cells — still blocks freeze
+(`INCOMPLETE_EXAMINATION` via `isRegisterComplete`). Do not treat an absent
+score as N/A, and do not compute a module score from a partial register.
 
 Post-fieldwork, `reviseScore` (`rbia:revise_score`, required reason) changes
 an existing `ExaminationResponse`; `setSectionNotApplicable` (`module:manage`)
@@ -119,7 +121,7 @@ tenant. The algorithm is **deterministic, not random** — for a fixed portfolio
 snapshot and config, the same accounts are always selected, because sampling
 that couldn't be reproduced on appeal would be useless for a regulated audit.
 
-Each bucket has its own sort order over the *whole* portfolio (e.g.
+Each bucket has its own sort order over the _whole_ portfolio (e.g.
 `DPD_WISE` sorts by days-past-due descending, tie-broken by outstanding
 amount then sanction date then account id for total stability), and buckets
 are filled largest-percentage-first so the biggest allocation gets first pick
@@ -139,8 +141,8 @@ one-off difference rather than the total silently overshooting.
 
 ## Escalation: two engines, one deliberately kept separate
 
-`escalation-engine.ts` computes *when* a compliance item escalates;
-`escalation-router.ts` computes *who gets told and what the message says*.
+`escalation-engine.ts` computes _when_ a compliance item escalates;
+`escalation-router.ts` computes _who gets told and what the message says_.
 They're split because the first is a pure days-overdue calculation that the
 daily job runs against every open item, while the second is presentation
 logic (subject lines, message templates) that only runs for items whose level
@@ -153,7 +155,7 @@ L4 at +180 — but "days overdue" is computed **signed**, then clamped to zero
 comment is explicit about why: a due date 30 days in the future is not the
 same as one 30 days in the past, and `Math.abs` would collapse that
 distinction and promote a brand-new compliance item straight to L2 on the day
-it's created. `shouldNotify` fires only when the level *increases* — the
+it's created. `shouldNotify` fires only when the level _increases_ — the
 batch job runs daily, but a level that hasn't changed since yesterday doesn't
 re-notify.
 
@@ -167,7 +169,7 @@ re-notify.
 - None of these modules touches the database directly except
   `detectRepeatFindingsForBranch`, which is intentionally the one exception —
   it needs `pg_trgm` similarity, which only Postgres can compute. The
-  instance-scoring *bridge* is applied by `src/data-access/instance-scoring.ts`
+  instance-scoring _bridge_ is applied by `src/data-access/instance-scoring.ts`
   (`syncAllInstanceScores`) before freeze.
 - Freeze completeness (`findUnscoredLeaves`) is a separate pure gate in
   `src/lib/rbia-completeness.ts`. Do not fold it into `computeNodeScore`.

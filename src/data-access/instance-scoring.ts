@@ -6,6 +6,8 @@ import type { AuthSession as Session } from "@/lib/auth";
 import {
   computeModuleComplianceScores,
   isCompleteExclusiveNotApplicable,
+  isRegisterComplete,
+  type RegisterCellCounts,
   type ResponseTally,
   type QuestionComplianceResult,
 } from "@/lib/instance-scoring";
@@ -166,6 +168,20 @@ export async function computeAndApplyInstanceScores(
     questions.map((q) => [q.id, Number(q.weight)]),
   );
 
+  // An unanswered sample cell is unfinished work. One COMPLIANT tick among
+  // empty cells would otherwise map to 100% and stamp that label on every
+  // tree leaf, letting freeze lock in an inflated official score.
+  const cellCounts = await getRegisterCellCounts(
+    db,
+    tenantId,
+    engagementId,
+    moduleId,
+    [...tallies.keys()],
+  );
+  if (!isRegisterComplete(cellCounts)) {
+    return { scoredLeafCount: 0, moduleScore: null };
+  }
+
   // Step 3: Compute weighted average numeric score from question compliance
   // Skip questions with null scoreLabel (Not Examined) — exclude from denominator
   let weightedSum = 0;
@@ -184,13 +200,7 @@ export async function computeAndApplyInstanceScores(
   // register is complete and exclusively N/A, mark the module leaves N/A so
   // freeze's completeness gate can pass. Otherwise this module is unfinished.
   if (totalWeight === 0) {
-    const fullyNotApplicable = await registerIsCompleteExclusiveNotApplicable(
-      db,
-      tenantId,
-      engagementId,
-      moduleId,
-      [...tallies.keys()],
-    );
+    const fullyNotApplicable = isCompleteExclusiveNotApplicable(cellCounts);
     if (!fullyNotApplicable) {
       return { scoredLeafCount: 0, moduleScore: null };
     }
@@ -243,21 +253,29 @@ export async function computeAndApplyInstanceScores(
   return { scoredLeafCount, moduleScore };
 }
 
-async function registerIsCompleteExclusiveNotApplicable(
+async function getRegisterCellCounts(
   db: TenantClient,
   tenantId: string,
   engagementId: string,
   moduleId: string | null,
   questionIds: string[],
-): Promise<boolean> {
-  if (!moduleId || questionIds.length === 0) return false;
+): Promise<RegisterCellCounts> {
+  const empty: RegisterCellCounts = {
+    sampledAccountCount: 0,
+    activeQuestionCount: questionIds.length,
+    notApplicableCount: 0,
+    scoredCount: 0,
+  };
+  if (!moduleId || questionIds.length === 0) return empty;
 
   const sampledRecords = await db.populationRecord.findMany({
     where: { engagementId, moduleId, isSampled: true, tenantId },
     select: { id: true },
   });
   const sampledIds = sampledRecords.map((record) => record.id);
-  if (sampledIds.length === 0) return false;
+  if (sampledIds.length === 0) {
+    return { ...empty, sampledAccountCount: 0 };
+  }
 
   const [notApplicableCount, scoredCount] = await Promise.all([
     db.accountExamResponse.count({
@@ -280,12 +298,12 @@ async function registerIsCompleteExclusiveNotApplicable(
     }),
   ]);
 
-  return isCompleteExclusiveNotApplicable({
+  return {
     sampledAccountCount: sampledIds.length,
     activeQuestionCount: questionIds.length,
     notApplicableCount,
     scoredCount,
-  });
+  };
 }
 
 async function upsertModuleLeafResponses(
@@ -427,4 +445,41 @@ export async function syncAllInstanceScores(
     modulesProcessed: moduleCodes.length,
     totalScoredLeaves,
   };
+}
+
+/**
+ * Module codes that have a sampled register which is not fully answered.
+ * Freeze must refuse these even when tree leaves already carry a score —
+ * otherwise a single COMPLIANT tick can lock in an official composite.
+ */
+export async function findIncompleteInstanceModuleCodes(
+  session: Session,
+  engagementId: string,
+): Promise<string[]> {
+  const tenantId = extractTenantId(session);
+  const db = prismaForTenant(tenantId);
+  const moduleCodes = await getCreditModuleCodes(session, engagementId);
+  const incomplete: string[] = [];
+
+  for (const moduleCode of moduleCodes) {
+    const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+    const questions = moduleId
+      ? await db.examinationQuestion.findMany({
+          where: { tenantId, moduleId, isActive: true },
+          select: { id: true },
+        })
+      : [];
+    const cellCounts = await getRegisterCellCounts(
+      db,
+      tenantId,
+      engagementId,
+      moduleId,
+      questions.map((q) => q.id),
+    );
+    if (!isRegisterComplete(cellCounts)) {
+      incomplete.push(moduleCode);
+    }
+  }
+
+  return incomplete;
 }
