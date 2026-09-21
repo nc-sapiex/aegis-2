@@ -18,6 +18,7 @@ import {
   type LeafStatus,
 } from "@/lib/rbia-completeness";
 import { parentPath } from "@/lib/examination-path";
+import { rootsForComposite } from "@/lib/rbia-module-forest";
 import {
   FreezeRbiaScoreSchema,
   type FreezeRbiaScoreInput,
@@ -157,6 +158,17 @@ export async function freezeRbiaScore(
           selections.map((s: { moduleId: string }) => s.moduleId),
         );
 
+        // Spec §6.5: one composite input per AuditModule, weighted by
+        // AuditModule.weight (bank-editable 1–100). Depth-1 pack leaves are
+        // statements, not modules — grouping happens after the tree is linked.
+        const auditModules =
+          selectedModuleIds.size === 0
+            ? []
+            : await tx.auditModule.findMany({
+                where: { tenantId, id: { in: [...selectedModuleIds] } },
+                select: { id: true, code: true, name: true, weight: true },
+              });
+
         // Spec §6.6: later catalogue edits (add bank statement, turn off,
         // pack uninstall) apply to future engagements only. Completeness and
         // scoring walk the snapshotted leaves when a snapshot exists.
@@ -271,20 +283,16 @@ export async function freezeRbiaScore(
           }
         }
 
-        // The module's own root is the depth-1 node whose moduleId points at
-        // the selected AuditModule (module-native backfill, see
-        // scripts/backfill/module-native.ts).
-        const moduleNodes: ScoredNode[] = [];
-        for (const node of nodeMap.values()) {
-          if (!leafInScope(node.isLeaf, node.nodeId)) continue;
-          if (
-            node.depth === 1 &&
-            node.moduleId &&
-            selectedModuleIds.has(node.moduleId)
-          ) {
-            moduleNodes.push(node);
-          }
-        }
+        // One tree per selected AuditModule. Core-pack statements are
+        // depth-1 leaves with no module-root node; wrapping them here
+        // keeps CASH (etc.) as a single composite term instead of one
+        // term per statement.
+        const moduleNodes = rootsForComposite(
+          [...nodeMap.values()].filter((node) =>
+            leafInScope(node.isLeaf, node.nodeId),
+          ),
+          auditModules,
+        );
 
         if (moduleNodes.length === 0) {
           throw Object.assign(
@@ -371,10 +379,10 @@ export async function freezeRbiaScore(
         for (const moduleNode of moduleNodes) {
           const moduleScore = computeModuleScore(moduleNode);
           if (moduleScore !== null) {
-            moduleScoresMap[moduleNode.code] = moduleScore;
+            moduleScoresMap[moduleNode.moduleCode] = moduleScore;
           }
           moduleScoreInputs.push({
-            weight: moduleNode.weight,
+            weight: moduleNode.compositeWeight,
             score: moduleScore,
           });
         }

@@ -731,4 +731,82 @@ describe("freezeRbiaScore completeness", () => {
       "OPS",
     ]);
   });
+
+  it("groups core-pack depth-1 leaves into one module so housing is not drowned", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+
+    const cash = await withFixtures(async () => {
+      const cashModule = await integrationOwner.auditModule.create({
+        data: {
+          tenantId: tenant.id,
+          code: "CASH",
+          name: "Cash",
+          domain: "CASH",
+          kinds: ["CHECKLIST"],
+          applicability: {},
+        },
+        select: { id: true },
+      });
+      const leaves = [];
+      for (const code of ["CASH-1", "CASH-2", "CASH-3"] as const) {
+        const leaf = await integrationOwner.examinationNode.create({
+          data: {
+            tenantId: tenant.id,
+            moduleId: cashModule.id,
+            code,
+            name: code,
+            path: `CASH/${code}`,
+            depth: 1,
+            isLeaf: true,
+            parentId: null,
+            weight: 1,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+        leaves.push(leaf);
+      }
+      await integrationOwner.engagementModule.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: cashModule.id,
+        },
+      });
+      return { leaves };
+    });
+
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+    for (const leaf of cash.leaves) {
+      await score(tenant.id, seed.engagementId, leaf.id, "NON_COMPLIANT");
+    }
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    // OPS = 1.0, CASH = 0.0, equal AuditModule.weight → 0.5.
+    // Treating each CASH-* leaf as a module would freeze at 0.25.
+    const frozen = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(frozen.success).toBe(true);
+    if (frozen.success) expect(frozen.data.compositeScore).toBe(0.5);
+
+    const snapshot = await integrationOwner.branchRbiaScore.findUniqueOrThrow({
+      where: { engagementId: seed.engagementId },
+      select: { moduleScores: true },
+    });
+    expect(Object.keys(snapshot.moduleScores as object).sort()).toEqual([
+      "CASH",
+      "OPS",
+    ]);
+  });
 });
