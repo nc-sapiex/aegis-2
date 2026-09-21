@@ -56,10 +56,13 @@ Destructive: deletes tenants and the dependent rows listed at the top of
 | Apex Sahakari Bank (primary)          | 7 users (2 multi-role), 4 zones, 12 branches, 7 audit areas, 4 fiscal-quarter audit plans, 7 engagements, 55 compliance requirements, 35 observations, 3 report templates, 6 calendar events, 1 `DRAFT` RAM assessment (BR012, FY2026-27) |
 | Test Nagari Sahakari Bank (isolation) | 1 user (`CEO`+`CAE`), 1 branch, 1 audit area, 1 plan, 1 compliance requirement, 1 observation                                                                                                                                             |
 | Global                                | 8 RBI circulars (no `tenantId`)                                                                                                                                                                                                           |
-| Both tenants                          | 19 RAM parameters, 39 v5 `ExaminationArea` rows, 568 `ExaminationItem` rows                                                                                                                                                               |
+| Both tenants                          | 19 RAM parameters                                                                                                                                                                                                                         |
 
-The v5 examination tables still seed because they remain in
-`prisma/schema.prisma`. No page or action reads them; do not build on them.
+The v5 examination tables (`ExaminationArea`, `ExaminationItem`,
+`AuditExaminationResponse`, `LoanAccount`) are gone from `schema.prisma`
+and are not seeded. RBIA checklist content comes from step 2
+(`ExaminationNode` via `scripts/seed-rbia-housing.ts`) and questions from
+step 3. Do not expect those v5 tables to exist.
 
 User emails (all password `TestPassword123!`):
 
@@ -120,7 +123,7 @@ nodes, exam questions, and RAM parameters from steps 1–3.
 | ------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | 1. RAM Assessment   | Risk scoring for Kothrud                     | 1 assessment, 19 scores (composite 3.80 → HIGH)                                                                              |
 | 2. Engagement Setup | Completed RBIA engagement                    | 1 engagement (`COMPLETED`, `RBIA/2025-26/BR-002/V1`)                                                                         |
-| 3. Audit Execution  | Exam responses, loan sampling, action points | 23 exam responses, 50 loans (10 sampled), 250 account responses (10 × 25 questions), 12 action points, 6 SMA/NPA, 2 meetings |
+| 3. Audit Execution  | Exam responses, loan sampling, action points | 23 exam responses, 50 `PopulationRecord`s (10 sampled), 250 account responses (10 × 25 questions), 12 action points, 2 meetings |
 | 4. Score Freeze     | Frozen RBIA score snapshot                   | 1 `BranchRbiaScore` (0.78 = GOOD)                                                                                            |
 | 5. Observations     | Formal 5C findings with timeline             | 6 observations + 1 E2E compliance fixture, 16 timeline entries, RBI circular linkages, 2 auditee responses                   |
 | 6. Compliance       | Full compliance lifecycle stages             | 6 items (`ACB_REVIEW` → `CLOSED`)                                                                                            |
@@ -212,7 +215,7 @@ After seeding, verify record counts:
 psql "$DATABASE_OWNER_URL" -c "
 SELECT 'RamAssessment' as tbl, COUNT(*) FROM \"RamAssessment\"
 UNION ALL SELECT 'AuditEngagement', COUNT(*) FROM \"AuditEngagement\"
-UNION ALL SELECT 'LoanAccount', COUNT(*) FROM \"LoanAccount\"
+UNION ALL SELECT 'PopulationRecord', COUNT(*) FROM \"PopulationRecord\"
 UNION ALL SELECT 'AccountExamResponse', COUNT(*) FROM \"AccountExamResponse\"
 UNION ALL SELECT 'Observation', COUNT(*) FROM \"Observation\"
 UNION ALL SELECT 'ComplianceItem', COUNT(*) FROM \"ComplianceItem\"
@@ -227,7 +230,7 @@ Use `DATABASE_OWNER_URL`, not `DATABASE_URL`. The app role (`aegis_app`) has
 session, so the same counts against `DATABASE_URL` come back as zero.
 
 **Expected minimums after the full pipeline:** RamAssessment ≥ 1,
-AuditEngagement ≥ 9 (7 from the base seed + 2 lifecycle), LoanAccount ≥ 50,
+AuditEngagement ≥ 9 (7 from the base seed + 2 lifecycle), PopulationRecord ≥ 50,
 AccountExamResponse ≥ 250, Observation ≥ 6, ComplianceItem ≥ 6,
 BoardReport ≥ 1, BranchRbiaScore ≥ 1.
 

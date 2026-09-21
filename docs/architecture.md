@@ -95,7 +95,7 @@ flowchart TD
   subgraph exec [Execution]
     Eng --> Team["AuditTeamMember<br/>EngagementMeeting"]
     Eng --> RBIA["ExaminationNode<br/>ExaminationResponse<br/>ActionPoint"]
-    Eng --> Sample["LoanAccount<br/>AccountExamResponse"]
+    Eng --> Sample["PopulationRecord<br/>AccountExamResponse"]
     Eng --> Obs["Observation"]
     Evidence["Evidence · S3 object"] --> Obs
     Evidence --> RBIA
@@ -122,8 +122,9 @@ Reading left to right:
 2. **Execution** attaches the team and meetings, runs RBIA examination
    (checklist tree plus the binary sample register at
    `.../rbia/examination/[moduleCode]`) and raises formal `Observation`
-   records (plus lighter `ActionPoint`s). Evidence lands in S3; the row
-   points at the key.
+   records (plus lighter `ActionPoint`s). Sampled accounts live in
+   `PopulationRecord` (the old `LoanAccount` name is gone). Evidence lands
+   in S3; the row points at the key.
 3. **Follow-up** appends an immutable `ObservationTimeline`, tracks remediation
    on `ComplianceItem`, and escalates through `NotificationQueue` → SES. Board
    packs and other exports read the same observations and engagements.
@@ -379,11 +380,12 @@ entirely.
 `AUDITED_TABLES` in `src/lib/audit-triggers.ts`, the `audited` array in
 `prisma/sql/020_attach_audit_triggers.sql`, and `AUDIT_TRIGGER_TABLES` in
 `prisma/sql/manifest.ts`; `src/lib/__tests__/sql-manifest.test.ts` fails the
-build if they drift. 25 tables carry the trigger, including the eight RBIA/GRC
-scoring tables an examiner would ask for a change history on (`RamAssessment`,
-`RamAssessmentScore`, `ExaminationResponse`, `AuditExaminationResponse`,
-`AccountExamResponse`, `ActionPoint`, `BranchRbiaScore`, `LoanAccount`) plus
-`EngagementSectionNa`.
+build if they drift. 25 tables carry the trigger, including the regulated
+scoring surface (`RamAssessment`, `RamAssessmentScore`, `ExaminationResponse`,
+`AccountExamResponse`, `ActionPoint`, `BranchRbiaScore`, `PopulationRecord`)
+plus `EngagementSectionNa` and `ContentPackInstall`. There is no
+`AuditExaminationResponse` or `LoanAccount` model — those names died with the
+v5 tables / the `PopulationRecord` rename.
 `src/lib/__tests__/audit-coverage.test.ts` pins that set: a regulated table
 leaving the list fails the build, and its exemption set is empty and may only
 shrink. Because the trigger fails an un-contexted write, a table can only join
@@ -461,10 +463,18 @@ the clearest example: `AUDIT_MANAGER` may close LOW/MEDIUM observations,
 `CAE` is required for HIGH/CRITICAL. That is a property of the transition, not
 of the page, so it lives in `src/lib/state-machine.ts`.
 
-> **Coverage is uneven.** 14 of 46 pages call a permission guard. The rest rely
-> on the layout's session check plus action-level and DAL-level enforcement — so
-> a user without permission cannot _do_ anything, but may be able to _load_ a
-> page. See [Where the map is thin](#where-the-map-is-thin).
+Page-guard coverage is a build gate, not a hope. Plan 7 closed the old
+"14 of 46 pages" gap: `src/lib/__tests__/authorization-gaps.test.ts` fails
+the build if a `(dashboard)` `page.tsx` has no
+`requirePermission` / `requireAnyPermission` / `requireOnboardingPermission`
+call. The allowlist is shrink-only and currently one file —
+`dashboard/page.tsx` — because a straight `requireAnyPermission` there would
+redirect an unauthorized user from `/dashboard` back to
+`/dashboard?unauthorized=true` (`ERR_TOO_MANY_REDIRECTS`). That page uses
+`hasDashboardAccess()` / `postLoginHome()` instead. Server actions are
+scanned the same way for `hasPermission(`; the one exempt file is
+`src/actions/reports/transition-report.ts`, which gates on a per-edge role
+map plus maker-checker rather than a single `Permission` key.
 
 ## The module framework
 
@@ -489,6 +499,32 @@ pack's install row) for the pack every tenant gets by default;
 `src/data-access/module-admin.ts`'s "core vs. pack" grouping keys off the
 pack's `packCode`, not bare `packId` presence, because `installPack()` stamps
 `packId` on every module it installs, core included.
+
+**Freeze and the register walk the snapshot, not the live catalogue.**
+`materializeEngagementStatements` runs when the engagement is created (and
+again when a module is added mid-engagement). `freezeRbiaScore`
+(`src/actions/rbia/freeze.ts`) then:
+
+1. Syncs instance scores for `POPULATION_SAMPLE` modules
+   (`syncAllInstanceScores`) *outside* the audited transaction.
+2. Loads `EngagementStatement` rows with a `nodeId`. Completeness and scoring
+   count only those leaves (`engagementLeafInScope` in
+   `src/lib/rbia-completeness.ts`). A bank statement added after create is
+   out of scope for this engagement; a leaf turned off since create still
+   counts if it was snapshotted.
+3. Refuses freeze (`INCOMPLETE_EXAMINATION`) if a selected module has active
+   leaves but no snapshot rows — "remove the module and add it again" so
+   materialisation can run. An empty snapshot (an engagement that never
+   materialised) falls back to the live active tree, the pre-snapshot path.
+4. Links children to parents by `parentId`, then falls back to
+   `parentPath(ExaminationNode.path)` if `parentId` is null. Pack archives
+   have no `parentId` field; a first install that left it null made freeze
+   treat the module root as childless, skip completeness, and drop housing
+   from the composite (#169).
+
+Do not freeze against `ExaminationNode` as it stands today. Spec §6.6 is
+the reason a content-pack upgrade mid-fieldwork must not move a score that
+has already been examined.
 
 Scoring stays generic over this shape: `src/lib/rbia-scoring-engine.ts`'s
 node→module roll-up (4-point scale, critical-item ceiling) and
@@ -523,6 +559,12 @@ defines the on-disk shape: a `PackManifest` (id, version, publisher,
 - **Install, upgrade, and uninstall** all go through
   `src/data-access/pack-install.ts`'s `installPack()` / `uninstallPack()`,
   wrapped in `withAuditedMutation` like any other write to an audited table.
+  Pack YAML has no `parentId`. After upserting nodes, `installPack()`
+  reconstructs `ExaminationNode.parentId` from the slash-separated `path`
+  (`parentPath` in `src/lib/examination-path.ts`) for any `PACK` row still
+  missing one. Freeze also has the same fallback so an already-installed
+  tree with null parents still scores. Do not reintroduce a pack schema
+  field for parent id — path is the source of truth.
 - **The installer**, `scripts/aegis-install.sh`, is the one-command on-prem
   bring-up: brings up `postgres`/`minio`/`mailhog`, runs `pnpm db:migrate` via
   the `migrate` one-shot service (the `app` image's runner stage has no
@@ -539,18 +581,22 @@ defines the on-disk shape: a `PackManifest` (id, version, publisher,
 `requirePermission("module:manage")`, is where a tenant admin sees every
 installed module — core and pack — with its share of the composite score
 (`computeModuleShares`), its applicability text ("All branches" or "`n` of
-`total` branches", spec §7.6's approved wireframe), and installs, upgrades,
-or uninstalls packs from the catalog. The read side is
-`src/data-access/module-admin.ts`'s `getModuleAdminView()`.
+`total` branches", spec §7.6's approved wireframe), and the catalog of
+installed / licensed / not-licensed packs. The read side is
+`src/data-access/module-admin.ts`'s `getModuleAdminView()`. The sidebar
+exposes it as **Modules** (`src/lib/nav-items.ts`, same `module:manage`
+gate) as of #165 — typing the URL is no longer the only way in.
 
-**This page is not linked from anywhere in the product.**
-`src/lib/nav-items.ts`'s `navItems` array has no entry for it, and neither
-the sidebar (`src/components/layout/app-sidebar.tsx`) nor
-`src/app/(dashboard)/settings/page.tsx` link to `/settings/modules` — checked
-directly against both files while writing this. It is reachable today only
-by typing the URL. This gap was found earlier in this program and is still
-real as of this rewrite; wiring a nav entry (or a link from the Settings
-page) is outstanding work, not a design decision to leave it hidden.
+Three gaps on that page are still real, not design decisions:
+
+- **Install pack** in the header is a disabled button. `installPackAction`
+  takes a server `filePath` under the packs directory, not an uploaded
+  `File`; there is no on-prem upload flow yet.
+- **`InstalledPacksList` is status-only.** `uninstallPackAction` exists and
+  is tested; the list does not call it.
+- **Live "would move from X to Y" weight preview** is compiled but fed an
+  empty `lastScores` map, so it degrades to "Unsaved." rather than inventing
+  a 0.0→0.0. Statement On/Off and module weight save *do* work.
 
 The reporting engine that reads this content back out is generic in the same
 sense the module framework's scoring is: `src/lib/reporting/module-section.ts`'s
@@ -642,12 +688,16 @@ pg-boss queues and schedules live in `src/lib/job-queue.ts`; handlers live in
 `src/jobs/` and are registered from `src/jobs/index.ts`. All cron is UTC; IST is
 UTC+05:30.
 
-| Job                     | Schedule (UTC) | Local         | Does                                                                                        |
-| ----------------------- | -------------- | ------------- | ------------------------------------------------------------------------------------------- |
-| `process-notifications` | `* * * * *`    | every minute  | Dequeues `NotificationQueue`, renders the template, sends via SES, marks SENT/FAILED        |
-| `deadline-check`        | `30 0 * * *`   | 06:00 IST     | Observation deadline reminders at 7/3/1 days; also runs RBIA BM-response overdue escalation |
-| `send-weekly-digest`    | `30 4 * * 1`   | Mon 10:00 IST | Per-tenant digest to CAE/CCO (who cannot opt out — regulatory)                              |
-| `snapshot-metrics`      | `30 19 * * *`  | 01:00 IST     | Writes health score, compliance summary and severity breakdown into `DashboardSnapshot`     |
+| Job                          | Schedule (UTC)   | Local            | Does                                                                                                 |
+| ---------------------------- | ---------------- | ---------------- | ---------------------------------------------------------------------------------------------------- |
+| `process-notifications`      | `* * * * *`      | every minute     | Dequeues `NotificationQueue`, renders the template, sends via SES, marks SENT/FAILED                 |
+| `deadline-check`             | `30 0 * * *`     | 06:00 IST        | Observation deadline reminders at 7/3/1 days; also runs RBIA BM-response overdue escalation          |
+| `compliance-escalation`      | `0 1 * * *`      | 06:30 IST        | Walks open `ComplianceItem`s through `escalation-engine` after the deadline job                      |
+| `send-weekly-digest`         | `30 4 * * 1`     | Mon 10:00 IST    | Per-tenant digest to CAE/CCO (who cannot opt out — regulatory)                                       |
+| `snapshot-metrics`           | `30 19 * * *`    | 01:00 IST        | Writes health score, compliance summary and severity breakdown into `DashboardSnapshot`              |
+| `verify-audit-chain`         | `30 20 * * *`    | 02:00 IST        | Incremental per-tenant SHA-256 walk from `AuditChainHead` — see [hash chain](#the-hash-chained-audit-log) |
+| `verify-audit-chain-full`    | `0 21 * * 6`     | Sun 02:30 IST    | Whole-chain walk from genesis, because the nightly run never re-hashes rows behind its checkpoint    |
+| `generate-board-report`      | *(on demand)*    | —                | Same PDF → S3 → `BoardReport` pipeline as `POST /api/reports/board-report`; no cron                  |
 
 Queues retry 3 times with backoff and delete after 30 days. Conventions vary
 more per job than you would hope:
@@ -705,6 +755,20 @@ catch.
 they produce binary payloads: ExcelJS for XLSX, `@react-pdf/renderer` for PDF.
 Both, plus `pg-boss`, are listed in `serverExternalPackages` in
 `next.config.ts` — they do not survive bundling and must be required at runtime.
+`toBuffer` in `src/lib/excel-export.ts` must copy the Node `Buffer` *view*
+(`new Uint8Array(buffer).buffer`), not return `buffer.buffer`. ExcelJS
+`writeBuffer()` is often a slice into a pooled allocation; taking the backing
+`ArrayBuffer` shipped a rotated zip that Excel rejected as corrupt (#167).
+Engagement **Generate PDF** / **Generate Excel** buttons on
+`/audit-execution/[engagementId]/report` call `generatePdfReport` /
+`generateXlsxReport` (`src/components/reports/engagement-report-actions.tsx`);
+they are not placeholders.
+
+**BM evidence on a phone.** `BmEvidenceUploadPanel` keeps the presigned-PUT
+path and, on a coarse pointer, shows a **Take photo** control that opens
+`<input capture="environment">`. There is no HEIC→JPEG conversion — Android
+emits JPEG and iOS Safari converts on the way in. This is BM action-point
+evidence only, not the observation evidence panel.
 
 **Email** is React Email templates in `src/emails/`, rendered by the
 notification processor and sent through SES. Nothing sends email synchronously
@@ -789,7 +853,7 @@ overlay the same way.
 | Unit        | Vitest                  | `src/**/__tests__/`                                        | Concentrated on the pure engines and state machines, plus route handlers with their I/O mocked                                                             |
 | Discipline  | Vitest, static analysis | `src/data-access/__tests__/`, `src/lib/__tests__/`         | Suites that read source text, no database — see below                                                                                                      |
 | Integration | Vitest, live PostgreSQL | `src/**/__integration__/`, harness in `tests/integration/` | `pnpm test:integration`: real transactions, real triggers. Global setup **resets** the `DATABASE_URL` database                                             |
-| E2E         | Playwright              | `tests/e2e/`                                               | 4 spec files (observation lifecycle, permission guards, smoke, RBIA sample register), replayed under 5 role projects (auditor, manager, cae, cco, auditee) |
+| E2E         | Playwright              | `tests/e2e/`                                               | 9 spec files. Five role projects (`auditor`, `manager`, `cae`, `cco`, `auditee`) replay smoke, observation lifecycle, permission guards, RBIA sample register, a11y, module-admin a11y, and report generation. `core-cycle.spec.ts` then `tenant-isolation.spec.ts` run once each in a separate `core` project — they mutate the database, so never reseed between them (`tests/CLAUDE.md`) |
 
 The discipline suites enforce different amounts.
 `audited-mutation-discipline.test.ts` fails the build on any unwrapped write to
@@ -815,8 +879,8 @@ advisory job, all against the merge ref (see
 Documented honestly so nobody rediscovers these the hard way. Each links to
 the section that owns the detail; the numbers live there, once.
 
-- **Permission-guard coverage is not uniform** — most pages rely on the layout
-  session check plus action- and DAL-level enforcement
+- **Page guards are machine-checked** — every `(dashboard)` `page.tsx` must
+  call a guard; the one allowlisted exception is `/dashboard` itself
   → [Invariant 3](#invariant-3--authorization).
 - **Legacy audit writes** — some action files still hand-roll `setAuditContext`
   under a shrink-only allowlist the discipline test derives from remaining
@@ -835,16 +899,17 @@ the section that owns the detail; the numbers live there, once.
   are still review → [Invariant 1](#invariant-1--tenant-isolation).
 - **The DAL is a shared-query library, not a strict gateway** — most actions
   query directly → [`src/data-access/README.md`](../src/data-access/README.md).
-- **E2E coverage is four spec files** — lifecycle, permission guards, smoke,
-  and the RBIA sample register; most modules have none →
-  [Testing strategy](#testing-strategy).
+- **E2E is nine spec files, not four** — the core cycle, tenant isolation,
+  report generation, and module-admin a11y landed with Plan 7 / Plan 6; most
+  other modules still have none → [Testing strategy](#testing-strategy).
 - **Dead demo JSON.** `src/data/index.ts` still exports DEPRECATED seed JSON
   (`findings`, `auditPlans`, `bankProfile`, …), but the chain is orphaned: its
   consumers have no importers, and the live dashboard reads the database
   through `components/dashboard/widgets/*`. Prefer deleting over reviving.
-- ~~The module admin page has no nav entry.~~ Fixed 2026-09-16 (#33,
-  #165): `/settings/modules` now has a sidebar `NavItem` gated on
-  `module:manage` → [Module admin and the generic reporting engine](#module-admin-and-the-generic-reporting-engine).
+- **Module admin nav is wired; pack upload is not.** `/settings/modules` has a
+  sidebar item. The header **Install pack** button is disabled, the catalog
+  list cannot uninstall, and the live weight-share preview has no last-
+  engagement scores → [Module admin and the generic reporting engine](#module-admin-and-the-generic-reporting-engine).
 
 ## Adding a feature
 

@@ -18,6 +18,12 @@ assessment, an annual plan, an engagement — so replaying them under five role
 projects against one database is not deterministic, and the isolation check
 is only meaningful after the cycle has run. Never reseed between the two.
 
+Nine specs live under `tests/e2e/`: the five-role set (smoke, observation
+lifecycle, permission guards, RBIA sample register, a11y, module-admin a11y,
+report generation) plus the `core` pair above. `report-generation.spec.ts`
+clicks the real Generate PDF / Excel buttons; `module-admin-a11y.spec.ts`
+opens `/settings/modules` from the sidebar.
+
 ## The seed chain, not just `pnpm db:seed`
 
 E2E fixtures come from all four seed steps:

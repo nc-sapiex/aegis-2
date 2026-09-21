@@ -35,21 +35,21 @@ reporting engine).
 
 ## Development status
 
-_Last verified 2026-09-15 against `main`._
+_Last verified 2026-09-21 against `main`._
 
 Seven implementation plans (78 tasks total) carry the rest of the design to
 first-customer readiness (`docs/superpowers/plans/`), tracked as GitHub issues
 numbered per plan.
 
-| Plan                               | Scope                                                                         | Status                                                                                                                                                     |
-| ---------------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Tenant isolation (RLS)          | Per-tenant Prisma client, load spike, RLS policies, static/integration suites | **Done on `main`** — tenant client, ADR 0001, `aegis_app`/`aegis_system`, `FORCE ROW LEVEL SECURITY`, harness split, `TENANT_CLIENT` toggle removed (#128) |
-| 2. Audit chain                     | Hash-chained `AuditLog`, nightly verification, attestation export             | **Done on `main`** — per-tenant SHA-256 chain, append-only rules, nightly + weekly verify, `/admin/audit-chain` (#144). Lockout events unchained (#143)    |
-| 3. Adapters, migrations, licensing | Storage/mail adapters, `prisma migrate`, signed license file                  | **Done on `main`** — `ObjectStore`/`Mailer`, password reset, migrate baseline, Ed25519 license, feature flags (#139)                                       |
-| 4. Module-native framework         | `AuditModule`, five-point scale, statement snapshots, register UI             | **Done on `main`** (#130, #93, #94), except row verbs and evidence camera capture (#76)                                                                    |
-| 5. Content packs                   | Signed `.aegispack` format, CLI, the `core` pack                              | **Done on `main`** (#137, via #130)                                                                                                                        |
-| 6. Module admin & reporting        | Weight editor, pack install UI, data-driven PDF/XLSX reports                  | **Done on `main`** (#145), except weight preview, pack install/uninstall UI, statement turn-on (#33)                                                       |
-| 7. E2E, deployment drills, runbook | Full-cycle E2E, on-prem installer, backup/restore drills                      | In progress, not yet on `main` (#42–#61)                                                                                                                   |
+| Plan                               | Scope                                                                         | Status                                                                                                                                                              |
+| ---------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Tenant isolation (RLS)          | Per-tenant Prisma client, load spike, RLS policies, static/integration suites | **Done on `main`** — tenant client, ADR 0001, `aegis_app`/`aegis_system`, `FORCE ROW LEVEL SECURITY`, harness split, `TENANT_CLIENT` toggle removed (#128)          |
+| 2. Audit chain                     | Hash-chained `AuditLog`, nightly verification, attestation export             | **Done on `main`** — per-tenant SHA-256 chain, append-only rules, nightly + weekly verify, `/admin/audit-chain` (#144). Lockout events unchained (#143)             |
+| 3. Adapters, migrations, licensing | Storage/mail adapters, `prisma migrate`, signed license file                  | **Done on `main`** — `ObjectStore`/`Mailer`, password reset, migrate baseline, Ed25519 license, feature flags (#139)                                                |
+| 4. Module-native framework         | `AuditModule`, five-point scale, statement snapshots, register UI             | **Done on `main`** (#130, #93, #94). BM-evidence camera capture on touch devices (#164). Register row verbs still outstanding (#76)                                 |
+| 5. Content packs                   | Signed `.aegispack` format, CLI, the `core` pack                              | **Done on `main`** (#137, via #130). Install now sets `ExaminationNode.parentId` from `path` so freeze can roll up housing-style trees (#169)                       |
+| 6. Module admin & reporting        | Weight editor, pack install UI, data-driven PDF/XLSX reports                  | **Done on `main`** (#145). Sidebar nav to `/settings/modules` (#165). Statement On/Off landed. Still outstanding (#33): pack file-upload install, uninstall UI, live weight-share preview from last engagement |
+| 7. E2E, deployment drills, runbook | Full-cycle E2E, on-prem installer, backup/restore drills                      | **Done on `main`** (#160) — `core-cycle` + tenant-isolation E2E, on-prem installer, backup/restore drills, runbook, VPS overlay                                     |
 
 Parked branches for closed, pending-Plan-1 attempts still exist on the remote
 (`copilot/plan-<N>-task-<M>-*`) and can be reopened once the source issue is
