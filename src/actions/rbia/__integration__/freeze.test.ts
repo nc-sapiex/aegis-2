@@ -418,6 +418,122 @@ describe("freezeRbiaScore completeness", () => {
     }
   });
 
+  it("instance-scores a snapshotted question after the live catalogue turns it off", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    const questions = await withFixtures(async () => {
+      await integrationOwner.engagementModule.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: seed.creditModule.id,
+        },
+      });
+      const record = await integrationOwner.populationRecord.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: seed.creditModule.id,
+          branchId: seed.branchId,
+          recordKey: "LN-SNAP-001",
+          displayName: "Borrower",
+          amount: 1_000_000,
+          date: new Date("2025-01-15"),
+          classification: "STANDARD",
+          isSampled: true,
+        },
+        select: { id: true },
+      });
+      const compliant = await integrationOwner.examinationQuestion.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: seed.creditModule.id,
+          text: "Is the sanction complete?",
+          weight: 1,
+        },
+        select: { id: true },
+      });
+      const violating = await integrationOwner.examinationQuestion.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: seed.creditModule.id,
+          text: "Is valuation independent?",
+          weight: 1,
+        },
+        select: { id: true },
+      });
+      await integrationOwner.accountExamResponse.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          recordId: record.id,
+          questionId: compliant.id,
+          status: "COMPLIANT",
+          isNotApplicable: false,
+          respondedById: cae.id,
+        },
+      });
+      await integrationOwner.accountExamResponse.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          recordId: record.id,
+          questionId: violating.id,
+          status: "VIOLATION",
+          isNotApplicable: false,
+          respondedById: cae.id,
+        },
+      });
+      return { violatingId: violating.id };
+    });
+
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+    await withFixtures(() =>
+      integrationOwner.examinationQuestion.update({
+        where: { id: questions.violatingId },
+        data: { isActive: false },
+      }),
+    );
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(true);
+
+    const creditResponse =
+      await integrationOwner.examinationResponse.findUniqueOrThrow({
+        where: {
+          engagementId_nodeId: {
+            engagementId: seed.engagementId,
+            nodeId: seed.creditLeaf.id,
+          },
+        },
+        select: { scoreLabel: true },
+      });
+    // Live catalogue would drop the VIOLATION question and freeze 100%.
+    // The snapshot still has both answers, so the module is PARTIALLY_COMPLIANT.
+    expect(creditResponse.scoreLabel).toBe("PARTIALLY_COMPLIANT");
+
+    const snapshot = await integrationOwner.branchRbiaScore.findUniqueOrThrow({
+      where: { engagementId: seed.engagementId },
+      select: { moduleScores: true },
+    });
+    expect((snapshot.moduleScores as Record<string, number>).CREDIT).toBe(
+      SCORE_VALUES.PARTIALLY_COMPLIANT,
+    );
+  });
+
   it("snapshots only the added module's statements when a module is added after create", async () => {
     const tenant = await createTenant();
     const cae = await createUser(tenant.id, ["CAE"]);
