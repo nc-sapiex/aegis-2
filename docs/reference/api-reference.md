@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `5e4e756` (worktree-e2e-deployment-drills+foundation)
+> Source commit: `439d823` (cursor/critical-bug-management-3a2e)
 
 AEGIS has two callable surfaces.
 
@@ -181,8 +181,8 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 
 | Module | Audited | Exported functions | Tables touched |
 |---|---|---|---|
-| `ram/approve-assessment.ts` | yes | `approveRamAssessment` | RamAssessment |
-| `ram/compute-assessment.ts` | yes | `computeRamAssessment` | Branch, RamAssessment |
+| `ram/approve-assessment.ts` | yes | `approveRamAssessment` | Branch, RamAssessment |
+| `ram/compute-assessment.ts` | yes | `computeRamAssessment` | RamAssessment, RamParameterConfig |
 | `ram/create-assessment.ts` | yes | `createRamAssessment` | Branch, RamAssessment |
 | `ram/save-scores.ts` | yes | `saveRamScores` | RamAssessment, RamAssessmentScore |
 

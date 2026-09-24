@@ -33,7 +33,9 @@ export default async function RamAssessmentDetailPage({ params }: PageProps) {
   const canEdit =
     hasPermission(userRoles, "ram:create") && assessment.status === "DRAFT";
   const canCompute =
-    hasPermission(userRoles, "ram:create") && assessment.scores.length > 0;
+    hasPermission(userRoles, "ram:create") &&
+    allParams.length > 0 &&
+    assessment.scores.length === allParams.length;
   const canApprove =
     hasPermission(userRoles, "ram:approve") && assessment.status === "COMPUTED";
 

@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `5e4e756` (worktree-e2e-deployment-drills+foundation)
+> Source commit: `439d823` (cursor/critical-bug-management-3a2e)
 
 Which processes read and write which tables.
 
@@ -28,7 +28,7 @@ reachability graph.
 | `loan-portfolio` | 3 | `AuditEngagement`, `AuditModule`, `PopulationRecord` |
 | `module-admin` | 7 | `AuditModule`, `ExaminationNode` |
 | `observations` | 3 | `ComplianceItem`, `Observation`, `ObservationTimeline` |
-| `ram` | 4 | `Branch`, `RamAssessment`, `RamAssessmentScore` |
+| `ram` | 4 | `Branch`, `RamAssessment`, `RamAssessmentScore`, `RamParameterConfig` |
 | `rbia` | 8 | `ActionPoint`, `AuditEngagement`, `AuditModule`, `BmResponseBatch`, `BranchRbiaScore`, `EngagementMeeting`, `EngagementModule`, `EngagementSectionNa`, `EngagementStatement`, `Evidence`, `ExaminationNode`, `ExaminationResponse`, `Observation` |
 | `repeat-findings` | 2 | `Observation`, `ObservationTimeline` |
 | `reports` | 3 | `AuditEngagement`, `BoardReport`, `ReportTemplate` |

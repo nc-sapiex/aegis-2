@@ -11,6 +11,8 @@ import { AssessmentIdSchema } from "./schemas";
  * Approve a computed RAM assessment.
  * Security: Requires ram:approve permission (CAE only).
  * Maker-checker: Approver cannot be the same as the computer.
+ * Side effects: Publishes compositeScore and auditFrequency onto Branch,
+ * which annual planning and analytics read as the official risk cache.
  */
 export async function approveRamAssessment(input: { assessmentId: string }) {
   const session = await getRequiredSession();
@@ -50,8 +52,14 @@ export async function approveRamAssessment(input: { assessmentId: string }) {
             "The person who computed the assessment cannot approve it",
           );
         }
+        if (
+          assessment.compositeScore == null ||
+          assessment.auditFrequency == null
+        ) {
+          throw new Error("Assessment has no computed score");
+        }
 
-        return tx.ramAssessment.update({
+        const updated = await tx.ramAssessment.update({
           where: { id: assessment.id },
           data: {
             status: "APPROVED",
@@ -59,6 +67,16 @@ export async function approveRamAssessment(input: { assessmentId: string }) {
             approvedAt: new Date(),
           },
         });
+
+        await tx.branch.update({
+          where: { id: assessment.branchId },
+          data: {
+            ramScore: assessment.compositeScore,
+            auditFrequency: assessment.auditFrequency,
+          },
+        });
+
+        return updated;
       },
     );
 
