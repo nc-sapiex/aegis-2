@@ -202,19 +202,23 @@ async function upsertPack(
       },
     });
     const idByPath = new Map(installed.map((n) => [n.path, n.id]));
-    const idsByParentId = new Map<string, string[]>();
+    const idsByParentId = new Map<string | null, string[]>();
     for (const row of installed) {
       if (row.origin !== "PACK" || !packNodeCodeSet.has(row.code)) continue;
       const parent = parentPath(row.path);
-      const parentId = parent ? idByPath.get(parent) : undefined;
-      if (!parentId || parentId === row.parentId) continue;
+      // No parent segment left (a pack upgrade promoted this node to a
+      // root) resolves to parentId: null; a parent segment that doesn't
+      // match any known row (dependency not installed yet) resolves to
+      // undefined and is left alone rather than guessed at.
+      const parentId = parent ? (idByPath.get(parent) ?? undefined) : null;
+      if (parentId === undefined || parentId === row.parentId) continue;
       const ids = idsByParentId.get(parentId) ?? [];
       ids.push(row.id);
       idsByParentId.set(parentId, ids);
     }
     for (const [parentId, ids] of idsByParentId) {
       await tx.examinationNode.updateMany({
-        where: { id: { in: ids } },
+        where: { id: { in: ids }, tenantId },
         data: { parentId },
       });
     }
