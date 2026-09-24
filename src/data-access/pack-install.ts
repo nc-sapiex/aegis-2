@@ -169,21 +169,52 @@ async function upsertPack(
   // can walk the tree (housing is depth-1 module → depth-2 sections →
   // depth-3 leaves). A first install that left parentId null made freeze
   // treat the module root as childless, skip completeness, and drop the
-  // module from the composite.
+  // module from the composite. Re-derive on every install, not only when
+  // parentId is still null, so a later pack version that restructures the
+  // tree doesn't leave a stale parentId that no longer matches path; resolve
+  // against the whole tenant tree (not just this pack's own codes) so a
+  // dependent pack can link under a base pack's already-installed nodes.
   const packNodeCodes = files.nodes.map((n) => n.code);
+  const packNodeCodeSet = new Set(packNodeCodes);
   if (packNodeCodes.length > 0) {
+    const ancestorPaths = new Set<string>();
+    for (const n of files.nodes) {
+      let p = parentPath(n.path);
+      while (p && !ancestorPaths.has(p)) {
+        ancestorPaths.add(p);
+        p = parentPath(p);
+      }
+    }
     const installed = await tx.examinationNode.findMany({
-      where: { tenantId, code: { in: packNodeCodes } },
-      select: { id: true, path: true, parentId: true, origin: true },
+      where: {
+        tenantId,
+        OR: [
+          { code: { in: packNodeCodes } },
+          { path: { in: Array.from(ancestorPaths) } },
+        ],
+      },
+      select: {
+        id: true,
+        code: true,
+        path: true,
+        parentId: true,
+        origin: true,
+      },
     });
     const idByPath = new Map(installed.map((n) => [n.path, n.id]));
+    const idsByParentId = new Map<string, string[]>();
     for (const row of installed) {
-      if (row.origin !== "PACK" || row.parentId) continue;
+      if (row.origin !== "PACK" || !packNodeCodeSet.has(row.code)) continue;
       const parent = parentPath(row.path);
       const parentId = parent ? idByPath.get(parent) : undefined;
-      if (!parentId) continue;
-      await tx.examinationNode.update({
-        where: { id: row.id },
+      if (!parentId || parentId === row.parentId) continue;
+      const ids = idsByParentId.get(parentId) ?? [];
+      ids.push(row.id);
+      idsByParentId.set(parentId, ids);
+    }
+    for (const [parentId, ids] of idsByParentId) {
+      await tx.examinationNode.updateMany({
+        where: { id: { in: ids } },
         data: { parentId },
       });
     }

@@ -224,6 +224,7 @@ export async function freezeRbiaScore(
             parentId: string | null;
             name: string;
             moduleId: string | null;
+            path: string;
           }
         >();
         for (const n of allNodes) {
@@ -241,11 +242,13 @@ export async function freezeRbiaScore(
             depth: n.depth,
             parentId: n.parentId,
             moduleId: n.moduleId,
+            path: n.path,
           } as ScoredNode & {
             depth: number;
             parentId: string | null;
             name: string;
             moduleId: string | null;
+            path: string;
           });
         }
 
@@ -254,13 +257,11 @@ export async function freezeRbiaScore(
         // Pack install historically left parentId null; fall back to the
         // slash-separated path so a housing-style tree still rolls up.
         const idByPath = new Map(allNodes.map((n) => [n.path, n.id]));
-        const pathById = new Map(allNodes.map((n) => [n.id, n.path]));
         for (const node of nodeMap.values()) {
           if (!leafInScope(node.isLeaf, node.nodeId)) continue;
           let parent = node.parentId ? nodeMap.get(node.parentId) : undefined;
           if (!parent) {
-            const path = pathById.get(node.nodeId);
-            const parentP = path ? parentPath(path) : null;
+            const parentP = parentPath(node.path);
             const parentIdFromPath = parentP
               ? idByPath.get(parentP)
               : undefined;

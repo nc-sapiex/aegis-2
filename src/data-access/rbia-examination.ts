@@ -7,6 +7,7 @@ import {
   type BranchProfile,
 } from "@/lib/module-applicability";
 import { materializeEngagementStatements } from "@/data-access/engagement-statements";
+import { parentPath } from "@/lib/examination-path";
 import type { Prisma } from "@/generated/prisma/client";
 
 /**
@@ -94,18 +95,29 @@ export function buildTree(flatNodes: FlatNode[]): ExaminationTreeNode[] {
     });
   }
 
-  // Second pass: link children to parents
+  // Second pass: link children to parents. Pack install historically left
+  // parentId null; fall back to the slash-separated path (see freeze.ts's
+  // identical fallback) so a housing-style tree still nests instead of
+  // flattening every node into its own root.
+  const idByPath = new Map(flatNodes.map((n) => [n.path, n.id]));
   const roots: ExaminationTreeNode[] = [];
   for (const treeNode of nodeMap.values()) {
-    if (treeNode.parentId === null) {
-      roots.push(treeNode);
-    } else {
-      const parent = nodeMap.get(treeNode.parentId);
-      if (parent) {
-        parent.children.push(treeNode);
-      }
-      // Orphaned node (parent inactive) — skip silently
+    const isRootByParentId = treeNode.parentId === null;
+    let parent = treeNode.parentId
+      ? nodeMap.get(treeNode.parentId)
+      : undefined;
+    if (!parent) {
+      const parentP = parentPath(treeNode.path);
+      const parentIdFromPath = parentP ? idByPath.get(parentP) : undefined;
+      if (parentIdFromPath) parent = nodeMap.get(parentIdFromPath);
     }
+    if (parent && parent.id !== treeNode.id) {
+      parent.children.push(treeNode);
+    } else if (isRootByParentId) {
+      roots.push(treeNode);
+    }
+    // else: parentId points at an inactive/missing node with no
+    // path-derivable parent either — orphaned, skip silently
   }
 
   // Sort children by displayOrder at each level
