@@ -103,9 +103,7 @@ export function buildTree(flatNodes: FlatNode[]): ExaminationTreeNode[] {
   const roots: ExaminationTreeNode[] = [];
   for (const treeNode of nodeMap.values()) {
     const isRootByParentId = treeNode.parentId === null;
-    let parent = treeNode.parentId
-      ? nodeMap.get(treeNode.parentId)
-      : undefined;
+    let parent = treeNode.parentId ? nodeMap.get(treeNode.parentId) : undefined;
     if (!parent) {
       const parentP = parentPath(treeNode.path);
       const parentIdFromPath = parentP ? idByPath.get(parentP) : undefined;
