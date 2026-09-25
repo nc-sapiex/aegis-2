@@ -17,7 +17,7 @@ import {
   engagementLeafInScope,
   type LeafStatus,
 } from "@/lib/rbia-completeness";
-import { parentPath } from "@/lib/examination-path";
+import { resolveParentId } from "@/lib/examination-path";
 import {
   FreezeRbiaScoreSchema,
   type FreezeRbiaScoreInput,
@@ -217,16 +217,14 @@ export async function freezeRbiaScore(
         }
 
         // Build tree using same two-pass Map approach as buildTree in rbia-examination.ts
-        const nodeMap = new Map<
-          string,
-          ScoredNode & {
-            depth: number;
-            parentId: string | null;
-            name: string;
-            moduleId: string | null;
-            path: string;
-          }
-        >();
+        type ScoredTreeNode = ScoredNode & {
+          depth: number;
+          parentId: string | null;
+          name: string;
+          moduleId: string | null;
+          path: string;
+        };
+        const nodeMap = new Map<string, ScoredTreeNode>();
         for (const n of allNodes) {
           const resp = responseMap.get(n.id);
           const snap = snapshotByNodeId.get(n.id);
@@ -243,13 +241,7 @@ export async function freezeRbiaScore(
             parentId: n.parentId,
             moduleId: n.moduleId,
             path: n.path,
-          } as ScoredNode & {
-            depth: number;
-            parentId: string | null;
-            name: string;
-            moduleId: string | null;
-            path: string;
-          });
+          } as ScoredTreeNode);
         }
 
         // Link children → parents. Skip live leaves that are not in this
@@ -259,14 +251,12 @@ export async function freezeRbiaScore(
         const idByPath = new Map(allNodes.map((n) => [n.path, n.id]));
         for (const node of nodeMap.values()) {
           if (!leafInScope(node.isLeaf, node.nodeId)) continue;
-          let parent = node.parentId ? nodeMap.get(node.parentId) : undefined;
-          if (!parent) {
-            const parentP = parentPath(node.path);
-            const parentIdFromPath = parentP
-              ? idByPath.get(parentP)
-              : undefined;
-            if (parentIdFromPath) parent = nodeMap.get(parentIdFromPath);
-          }
+          const parentId = resolveParentId(
+            node,
+            (id) => nodeMap.has(id),
+            idByPath,
+          );
+          const parent = parentId ? nodeMap.get(parentId) : undefined;
           if (parent && parent.nodeId !== node.nodeId) {
             parent.children.push(node);
           }

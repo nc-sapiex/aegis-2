@@ -80,26 +80,23 @@ export async function addBankStatement(
           select: { depth: true, parentId: true, path: true },
         });
         const depth = referenceLeaf?.depth ?? 1;
+        // The parent's path is always referenceLeaf's own path minus its
+        // last segment (the same invariant freeze.ts/buildTree/pack-install
+        // rely on), so it needs no extra query even when parentId does.
+        const derivedParentPath = referenceLeaf
+          ? parentPath(referenceLeaf.path)
+          : null;
         let parentId = referenceLeaf?.parentId ?? null;
-        if (referenceLeaf && !parentId) {
-          const derivedParentPath = parentPath(referenceLeaf.path);
-          if (derivedParentPath) {
-            const derivedParent = await tx.examinationNode.findFirst({
-              where: { tenantId, path: derivedParentPath },
-              select: { id: true },
-            });
-            if (derivedParent) parentId = derivedParent.id;
-          }
+        if (referenceLeaf && !parentId && derivedParentPath) {
+          const derivedParent = await tx.examinationNode.findFirst({
+            where: { tenantId, path: derivedParentPath },
+            select: { id: true },
+          });
+          if (derivedParent) parentId = derivedParent.id;
         }
         // Use the resolved parent's own path (not the raw sectionCode input)
         // so the new node's path reflects its real nesting depth.
-        const parentNode = parentId
-          ? await tx.examinationNode.findFirst({
-              where: { id: parentId, tenantId },
-              select: { path: true },
-            })
-          : null;
-        const parentPathValue = parentNode?.path ?? input.sectionCode;
+        const parentPathValue = derivedParentPath ?? input.sectionCode;
         const maxOrder = await tx.examinationNode.aggregate({
           where: {
             tenantId,
