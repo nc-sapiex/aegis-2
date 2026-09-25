@@ -4,6 +4,7 @@ import { getRequiredSession } from "@/data-access/session";
 import { hasPermission } from "@/lib/permissions";
 import { prismaForTenant } from "@/lib/prisma";
 import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
+import { parentPath } from "@/lib/examination-path";
 import { revalidatePath } from "next/cache";
 
 export async function reorderStatement(
@@ -37,16 +38,40 @@ export async function reorderStatement(
       // with a leaf under a *different* sub-module, corrupting both groups'
       // ordering — depth/isLeaf alone only rules out swapping across levels,
       // not across sibling groups at the same level.
-      const siblings = await tx.examinationNode.findMany({
-        where: {
-          tenantId,
-          moduleId: node.moduleId,
-          parentId: node.parentId,
-          depth: node.depth,
-          isLeaf: node.isLeaf,
+      //
+      // Pack install historically left parentId null, so two nodes can share
+      // parentId: null while belonging to different sections; resolve each
+      // candidate's own path-derived parent (see freeze.ts's identical
+      // fallback) instead of trusting a raw parentId match.
+      const moduleNodes = await tx.examinationNode.findMany({
+        where: { tenantId, moduleId: node.moduleId },
+        select: {
+          id: true,
+          parentId: true,
+          path: true,
+          depth: true,
+          isLeaf: true,
+          displayOrder: true,
         },
-        orderBy: { displayOrder: "asc" },
       });
+      const idByPath = new Map(moduleNodes.map((n) => [n.path, n.id]));
+      const resolveParentId = (n: {
+        parentId: string | null;
+        path: string;
+      }): string | null => {
+        if (n.parentId) return n.parentId;
+        const parentP = parentPath(n.path);
+        return parentP ? (idByPath.get(parentP) ?? null) : null;
+      };
+      const nodeParentId = resolveParentId(node);
+      const siblings = moduleNodes
+        .filter(
+          (n) =>
+            n.depth === node.depth &&
+            n.isLeaf === node.isLeaf &&
+            resolveParentId(n) === nodeParentId,
+        )
+        .sort((a, b) => a.displayOrder - b.displayOrder);
       const index = siblings.findIndex((s) => s.id === nodeId);
       const swapIndex = direction === "up" ? index - 1 : index + 1;
       if (swapIndex < 0 || swapIndex >= siblings.length) {

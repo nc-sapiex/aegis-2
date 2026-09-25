@@ -4,6 +4,7 @@ import { getRequiredSession } from "@/data-access/session";
 import { hasPermission } from "@/lib/permissions";
 import { prismaForTenant } from "@/lib/prisma";
 import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
+import { parentPath } from "@/lib/examination-path";
 import { revalidatePath } from "next/cache";
 
 type AddBankStatementInput = {
@@ -33,6 +34,9 @@ export async function addBankStatement(
     input.weight > 3.0
   ) {
     return { success: false, error: "Weight must be between 0.5 and 3.0." };
+  }
+  if (!input.sectionCode.trim()) {
+    return { success: false, error: "Section is required." };
   }
 
   const tenantId = session.user.tenantId;
@@ -66,12 +70,36 @@ export async function addBankStatement(
         // reorderStatement's parentId+depth-scoped sibling query can never
         // see this statement alongside them (it defaults to depth 1, no
         // parent, for a module with no leaves yet — the flat pack convention).
+        // Pack install historically left parentId null; fall back to the
+        // reference leaf's own path (see freeze.ts's identical fallback) so
+        // a nested (housing-style) module still links the new statement to
+        // its real section instead of leaving parentId null permanently —
+        // BANK-origin rows are never touched by pack-install's backfill.
         const referenceLeaf = await tx.examinationNode.findFirst({
           where: { tenantId, moduleId: input.moduleId, isLeaf: true },
-          select: { depth: true, parentId: true },
+          select: { depth: true, parentId: true, path: true },
         });
         const depth = referenceLeaf?.depth ?? 1;
-        const parentId = referenceLeaf?.parentId ?? null;
+        let parentId = referenceLeaf?.parentId ?? null;
+        if (referenceLeaf && !parentId) {
+          const derivedParentPath = parentPath(referenceLeaf.path);
+          if (derivedParentPath) {
+            const derivedParent = await tx.examinationNode.findFirst({
+              where: { tenantId, path: derivedParentPath },
+              select: { id: true },
+            });
+            if (derivedParent) parentId = derivedParent.id;
+          }
+        }
+        // Use the resolved parent's own path (not the raw sectionCode input)
+        // so the new node's path reflects its real nesting depth.
+        const parentNode = parentId
+          ? await tx.examinationNode.findFirst({
+              where: { id: parentId, tenantId },
+              select: { path: true },
+            })
+          : null;
+        const parentPathValue = parentNode?.path ?? input.sectionCode;
         const maxOrder = await tx.examinationNode.aggregate({
           where: {
             tenantId,
@@ -90,7 +118,7 @@ export async function addBankStatement(
             moduleId: input.moduleId,
             code,
             name: input.text.slice(0, 60),
-            path: `${input.sectionCode}/${code}`,
+            path: `${parentPathValue}/${code}`,
             depth,
             parentId,
             isLeaf: true,
