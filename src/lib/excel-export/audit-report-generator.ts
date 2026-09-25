@@ -205,11 +205,13 @@ async function addObservationsBySeveritySheet(
 
   const severities = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
 
-  severities.forEach((severity, idx) => {
+  // Lay sections out sequentially. A fixed stride (previously 20 rows)
+  // overwrites the next severity's title onto the tail of any band with
+  // 19+ observations — a routine UCB RBIA produces that many MEDIUMs.
+  let startRow = 1;
+  for (const severity of severities) {
     const filtered =
       data.observations?.filter((o: any) => o.severity === severity) || [];
-
-    const startRow = idx * 20 + 1; // Space between sections
 
     // Section title
     sheet.mergeCells(`A${startRow}:D${startRow}`);
@@ -251,7 +253,9 @@ async function addObservationsBySeveritySheet(
         obs.recommendation,
       ];
     });
-  });
+
+    startRow = headerRow + filtered.length + 2;
+  }
 
   sheet.getColumn(1).width = 6;
   sheet.getColumn(2).width = 40;
