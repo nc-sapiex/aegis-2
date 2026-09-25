@@ -21,6 +21,22 @@ export function parentPath(path: string): string | null {
   return path.slice(0, i);
 }
 
+/**
+ * Resolve a node's effective parent id: trust `parentId` when it points to
+ * a node in the loaded set (`hasId`), otherwise derive it from `path` via
+ * `idByPath`. Returns null for a true root or an orphan with no
+ * path-derivable parent either.
+ */
+export function resolveParentId(
+  node: { parentId: string | null; path: string },
+  hasId: (id: string) => boolean,
+  idByPath: Map<string, string>,
+): string | null {
+  if (node.parentId && hasId(node.parentId)) return node.parentId;
+  const parent = parentPath(node.path);
+  return parent ? (idByPath.get(parent) ?? null) : null;
+}
+
 /** True when `leafPath` is the module itself or a child under it. */
 export function isDescendantPath(
   leafPath: string,

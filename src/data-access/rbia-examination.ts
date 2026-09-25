@@ -7,7 +7,7 @@ import {
   type BranchProfile,
 } from "@/lib/module-applicability";
 import { materializeEngagementStatements } from "@/data-access/engagement-statements";
-import { parentPath } from "@/lib/examination-path";
+import { resolveParentId } from "@/lib/examination-path";
 import type { Prisma } from "@/generated/prisma/client";
 
 /**
@@ -103,12 +103,12 @@ export function buildTree(flatNodes: FlatNode[]): ExaminationTreeNode[] {
   const roots: ExaminationTreeNode[] = [];
   for (const treeNode of nodeMap.values()) {
     const isRootByParentId = treeNode.parentId === null;
-    let parent = treeNode.parentId ? nodeMap.get(treeNode.parentId) : undefined;
-    if (!parent) {
-      const parentP = parentPath(treeNode.path);
-      const parentIdFromPath = parentP ? idByPath.get(parentP) : undefined;
-      if (parentIdFromPath) parent = nodeMap.get(parentIdFromPath);
-    }
+    const parentId = resolveParentId(
+      treeNode,
+      (id) => nodeMap.has(id),
+      idByPath,
+    );
+    const parent = parentId ? nodeMap.get(parentId) : undefined;
     if (parent && parent.id !== treeNode.id) {
       parent.children.push(treeNode);
     } else if (isRootByParentId) {
