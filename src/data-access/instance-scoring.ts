@@ -40,6 +40,59 @@ function extractTenantId(session: Session): string {
   return session.user.tenantId;
 }
 
+type InstanceScoringQuestion = { id: string; weight: number };
+
+/**
+ * Questions that feed instance scoring for one engagement module.
+ *
+ * Spec §6.6: later catalogue edits apply to future engagements only. When
+ * this module has EngagementStatement rows for questions, those ids and
+ * weights are the ground truth — a question turned off or reweighted after
+ * snapshot must still count at freeze. No snapshot for this module: fall
+ * back to live active questions so pre-snapshot fixtures still score.
+ */
+async function getInstanceScoringQuestions(
+  db: TenantClient,
+  tenantId: string,
+  engagementId: string,
+  moduleId: string | null,
+): Promise<InstanceScoringQuestion[]> {
+  if (!moduleId) return [];
+
+  const snapshotRows = await db.engagementStatement.findMany({
+    where: {
+      tenantId,
+      engagementId,
+      questionId: { not: null },
+    },
+    select: { questionId: true, weight: true },
+  });
+
+  if (snapshotRows.length > 0) {
+    const snapshotIds = snapshotRows
+      .map((row) => row.questionId)
+      .filter((id): id is string => id != null);
+    const inModule = await db.examinationQuestion.findMany({
+      where: { tenantId, moduleId, id: { in: snapshotIds } },
+      select: { id: true },
+    });
+    const inModuleIds = new Set(inModule.map((q) => q.id));
+    if (inModuleIds.size > 0) {
+      return snapshotRows.flatMap((row) =>
+        row.questionId && inModuleIds.has(row.questionId)
+          ? [{ id: row.questionId, weight: Number(row.weight) }]
+          : [],
+      );
+    }
+  }
+
+  const live = await db.examinationQuestion.findMany({
+    where: { tenantId, moduleId, isActive: true },
+    select: { id: true, weight: true },
+  });
+  return live.map((q) => ({ id: q.id, weight: Number(q.weight) }));
+}
+
 // Re-export types for consumers
 export type { ResponseTally, QuestionComplianceResult };
 
@@ -48,9 +101,10 @@ export type { ResponseTally, QuestionComplianceResult };
 /**
  * Returns AccountExamResponse tallies grouped by questionId for a credit module.
  *
- * Fetches all active questions for the module, then all AccountExamResponse
- * records for this engagement + those question IDs. Groups responses by
- * questionId in a Map — questions with zero responses get empty arrays.
+ * Fetches the engagement's snapshotted questions when present (live active
+ * questions otherwise), then all AccountExamResponse records for this
+ * engagement + those question IDs. Groups responses by questionId in a Map —
+ * questions with zero responses get empty arrays.
  * Including empty arrays is critical for "Not Examined" display in the UI
  * and ensures computeModuleComplianceScores returns null (not 0%) for
  * unexamined questions.
@@ -68,14 +122,12 @@ export async function getQuestionResponseTallies(
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
   const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
-
-  // Get all active questions for this module
-  const questions = moduleId
-    ? await db.examinationQuestion.findMany({
-        where: { tenantId, moduleId, isActive: true },
-        select: { id: true },
-      })
-    : [];
+  const questions = await getInstanceScoringQuestions(
+    db,
+    tenantId,
+    engagementId,
+    moduleId,
+  );
 
   const questionIds = questions.map((q) => q.id);
 
@@ -157,16 +209,14 @@ export async function computeAndApplyInstanceScores(
   );
   const complianceResults = computeModuleComplianceScores(tallies);
 
-  // Step 2: Get question weights for weighted average
-  const questions = moduleId
-    ? await db.examinationQuestion.findMany({
-        where: { tenantId, moduleId, isActive: true },
-        select: { id: true, weight: true },
-      })
-    : [];
-  const questionWeightMap = new Map(
-    questions.map((q) => [q.id, Number(q.weight)]),
+  // Step 2: Weights from the same snapshot-or-live set used for tallies
+  const questions = await getInstanceScoringQuestions(
+    db,
+    tenantId,
+    engagementId,
+    moduleId,
   );
+  const questionWeightMap = new Map(questions.map((q) => [q.id, q.weight]));
 
   // An unanswered sample cell is unfinished work. One COMPLIANT tick among
   // empty cells would otherwise map to 100% and stamp that label on every
