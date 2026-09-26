@@ -74,7 +74,7 @@ export function ModuleAdminPage({
         </div>
       </div>
 
-      <InstalledPacksList catalog={catalog} />
+      <InstalledPacksList catalog={catalog} onStatus={showStatus} />
 
       <ModuleTable
         modules={modules}
