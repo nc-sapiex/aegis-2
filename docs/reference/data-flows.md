@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `1ce9198` (sapiex/gracious-cannon-l0ko3z)
+> Source commit: `97cf51b` (sapiex/gracious-cannon-l0ko3z)
 
 Which processes read and write which tables.
 
