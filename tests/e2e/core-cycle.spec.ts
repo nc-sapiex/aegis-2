@@ -1,4 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "../../src/generated/prisma/client";
 
 /**
  * The full RBIA cycle in one deterministic run (spec §10). Tagged @smoke —
@@ -114,6 +116,35 @@ async function chooseOption(page: Page, placeholder: string, option: RegExp) {
  */
 function expectStatusBadge(page: Page, status: string) {
   return expect(page.getByText(status, { exact: true }).first()).toBeVisible();
+}
+
+/**
+ * #196's discriminator. Bypasses the UI/optimistic-update path entirely and
+ * counts scored rows straight from Postgres, as the table owner rather than
+ * `aegis_app` — a plain app-role query would return zero under FORCE ROW
+ * LEVEL SECURITY with no `app.current_tenant_id` set (CLAUDE.md gotcha), and
+ * that would misread as total data loss. Tells apart genuine write loss (the
+ * DB count itself stays short) from a UI/poll timing gap (the DB count is
+ * already 23 while the rendered card still lags behind it). `DATABASE_OWNER_URL`
+ * is only present in CI's `e2e.yml` job env, matching this session's own
+ * inability to run `test:e2e` against a local database.
+ */
+async function countScoredResponses(engagementId: string): Promise<number> {
+  const connectionString = process.env.DATABASE_OWNER_URL;
+  if (!connectionString) {
+    throw new Error(
+      "DATABASE_OWNER_URL is not set — cannot run the #196 discriminator",
+    );
+  }
+  const adapter = new PrismaPg({ connectionString, max: 1 });
+  const prisma = new PrismaClient({ adapter });
+  try {
+    return await prisma.examinationResponse.count({
+      where: { engagementId, scoreLabel: { not: null } },
+    });
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 test.describe.serial("@smoke core cycle", () => {
@@ -371,6 +402,26 @@ test.describe.serial("@smoke core cycle", () => {
           .click();
       }
 
+      const engagementIdMatch = seededEngagementUrl.match(
+        /\/audit-execution\/([a-f0-9-]+)\/rbia$/,
+      );
+      if (!engagementIdMatch) {
+        throw new Error(
+          `Could not extract the engagement id from ${seededEngagementUrl}`,
+        );
+      }
+      const engagementId = engagementIdMatch[1];
+
+      // #196 discriminator, data point 1: how many of the 23 writes have
+      // already landed the instant the click loop returns, before either the
+      // UI or Postgres gets any more time. Not asserted on — this is a
+      // side-by-side comparison with the counts below, to see whether the gap
+      // (if any) closes over time (test-timing) or stays fixed (write loss).
+      const immediateCount = await countScoredResponses(engagementId);
+      console.log(
+        `[#196] scored rows immediately after the 23 clicks: ${immediateCount}/23`,
+      );
+
       // FULLY_COMPLIANT needs no remarks (src/lib/statement-state.ts:19-23,
       // 39-43 — remarks are only due at PARTIALLY_COMPLIANT and below), so
       // every row should read back as scored rather than "Remarks due".
@@ -383,7 +434,14 @@ test.describe.serial("@smoke core cycle", () => {
       // page reads whatever had committed at that instant (22/23 is the usual
       // near-miss); the progress card only re-reads the database on navigation,
       // so the retry has to include the navigation.
-      await expect
+      //
+      // #196: on a failure here, the UI card alone can't tell a genuinely
+      // dropped write (P0 — scoreStatement/handleScoreScale silently loses a
+      // write in a regulated scoring path) apart from a rendering/poll lag
+      // (P1 — the UI just hasn't caught up). Query Postgres directly, as the
+      // table owner so FORCE ROW LEVEL SECURITY can't return a false zero,
+      // and let that count settle which one this run hit.
+      const uiPollError = await expect
         .poll(
           async () => {
             await page.goto(seededEngagementUrl);
@@ -394,7 +452,22 @@ test.describe.serial("@smoke core cycle", () => {
           },
           { timeout: 30_000, message: "every statement should persist" },
         )
-        .toContain("23 / 23 items scored");
+        .toContain("23 / 23 items scored")
+        .then(
+          () => null,
+          (e: unknown) => e,
+        );
+      if (uiPollError) {
+        const dbCount = await countScoredResponses(engagementId);
+        const verdict =
+          dbCount < 23
+            ? `writes lost (P0 per #196) — Postgres has ${dbCount}/23 scored`
+            : `test-timing (P1 per #196) — Postgres already has ${dbCount}/23 scored, only the UI poll never saw it`;
+        throw new Error(
+          `#196 discriminator: ${verdict}. Original UI poll failure: ${String(uiPollError)}`,
+        );
+      }
+      expect(await countScoredResponses(engagementId)).toBe(23);
 
       await expect(
         page.locator("a[href*='/rbia/module/CRD-HLN']").first(),
