@@ -1,6 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../src/generated/prisma/client";
+import { Client } from "pg";
 
 /**
  * The full RBIA cycle in one deterministic run (spec §10). Tagged @smoke —
@@ -128,6 +127,12 @@ function expectStatusBadge(page: Page, status: string) {
  * already 23 while the rendered card still lags behind it). `DATABASE_OWNER_URL`
  * is only present in CI's `e2e.yml` job env, matching this session's own
  * inability to run `test:e2e` against a local database.
+ *
+ * Raw `pg`, not the generated Prisma client: that client's ESM output
+ * crashes Playwright's spec loader (`Cannot use 'import.meta' outside a
+ * module`) — it isn't built for the module system Playwright's own
+ * TypeScript transform uses for test files. `pg` is already a direct
+ * dependency (Prisma's own driver adapter sits on top of it).
  */
 async function countScoredResponses(engagementId: string): Promise<number> {
   const connectionString = process.env.DATABASE_OWNER_URL;
@@ -136,14 +141,16 @@ async function countScoredResponses(engagementId: string): Promise<number> {
       "DATABASE_OWNER_URL is not set — cannot run the #196 discriminator",
     );
   }
-  const adapter = new PrismaPg({ connectionString, max: 1 });
-  const prisma = new PrismaClient({ adapter });
+  const client = new Client({ connectionString });
+  await client.connect();
   try {
-    return await prisma.examinationResponse.count({
-      where: { engagementId, scoreLabel: { not: null } },
-    });
+    const result = await client.query<{ count: number }>(
+      `SELECT COUNT(*)::int AS count FROM "ExaminationResponse" WHERE "engagementId" = $1::uuid AND "scoreLabel" IS NOT NULL`,
+      [engagementId],
+    );
+    return result.rows[0].count;
   } finally {
-    await prisma.$disconnect();
+    await client.end();
   }
 }
 
