@@ -451,6 +451,156 @@ describe("freezeRbiaScore completeness", () => {
     expect(creditResponse).toBeNull();
   });
 
+  it("does not rewrite instance-scored leaves when freeze is retried", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    const question = await withFixtures(async () => {
+      await integrationOwner.engagementModule.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: seed.creditModule.id,
+        },
+      });
+      const record = await integrationOwner.populationRecord.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: seed.creditModule.id,
+          branchId: seed.branchId,
+          recordKey: "LN-001",
+          displayName: "Borrower",
+          amount: 1_000_000,
+          date: new Date("2025-01-15"),
+          classification: "STANDARD",
+          isSampled: true,
+        },
+        select: { id: true },
+      });
+      const q = await integrationOwner.examinationQuestion.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: seed.creditModule.id,
+          text: "Is the sanction complete?",
+        },
+        select: { id: true },
+      });
+      await integrationOwner.accountExamResponse.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          recordId: record.id,
+          questionId: q.id,
+          status: "COMPLIANT",
+          isNotApplicable: false,
+          respondedById: cae.id,
+        },
+      });
+      return { recordId: record.id, questionId: q.id };
+    });
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const frozen = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(frozen.success).toBe(true);
+
+    const beforeRetry =
+      await integrationOwner.examinationResponse.findUniqueOrThrow({
+        where: {
+          engagementId_nodeId: {
+            engagementId: seed.engagementId,
+            nodeId: seed.creditLeaf.id,
+          },
+        },
+        select: { scoreLabel: true, remarks: true },
+      });
+    expect(beforeRetry.scoreLabel).toBe("FULLY_COMPLIANT");
+
+    // Post-freeze account-exam edits would change the instance-derived score
+    // if syncAllInstanceScores ran again on retry.
+    await withFixtures(() =>
+      integrationOwner.accountExamResponse.update({
+        where: {
+          engagementId_recordId_questionId: {
+            engagementId: seed.engagementId,
+            recordId: question.recordId,
+            questionId: question.questionId,
+          },
+        },
+        data: { status: "VIOLATION" },
+      }),
+    );
+
+    const retry = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(retry.success).toBe(false);
+    if (!retry.success) expect(retry.code).toBe("SCORE_FROZEN");
+
+    const afterRetry =
+      await integrationOwner.examinationResponse.findUniqueOrThrow({
+        where: {
+          engagementId_nodeId: {
+            engagementId: seed.engagementId,
+            nodeId: seed.creditLeaf.id,
+          },
+        },
+        select: { scoreLabel: true, remarks: true },
+      });
+    expect(afterRetry.scoreLabel).toBe(beforeRetry.scoreLabel);
+    expect(afterRetry.remarks).toBe(beforeRetry.remarks);
+  });
+
+  it("refuses saveExaminationResponse after freeze", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+    const frozen = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(frozen.success).toBe(true);
+
+    const { saveExaminationResponse } = await import("../examination");
+    const result = await saveExaminationResponse({
+      engagementId: seed.engagementId,
+      nodeId: seed.opsA.id,
+      scoreLabel: "NON_COMPLIANT",
+      workingNotes:
+        "Trying to rewrite a frozen leaf after the official freeze. ".repeat(
+          10,
+        ),
+      isNotApplicable: false,
+      flagForObservation: false,
+      flagForActionPoint: false,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe("SCORE_FROZEN");
+      expect(result.error).toMatch(/frozen/i);
+    }
+
+    const leaf = await integrationOwner.examinationResponse.findUniqueOrThrow({
+      where: {
+        engagementId_nodeId: {
+          engagementId: seed.engagementId,
+          nodeId: seed.opsA.id,
+        },
+      },
+      select: { scoreLabel: true },
+    });
+    expect(leaf.scoreLabel).toBe("FULLY_COMPLIANT");
+  });
+
   it("does not require a live leaf added after the engagement snapshot", async () => {
     const tenant = await createTenant();
     const cae = await createUser(tenant.id, ["CAE"]);

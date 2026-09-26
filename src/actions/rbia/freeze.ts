@@ -29,6 +29,7 @@ import {
   findIncompleteInstanceModuleCodes,
   syncAllInstanceScores,
 } from "@/data-access/instance-scoring";
+import { prismaForTenant } from "@/data-access/prisma";
 
 // ─── freezeRbiaScore (EXAM-10, FIND-02, BMRP-01) ───────────────────────────
 
@@ -90,6 +91,29 @@ export async function freezeRbiaScore(
   }
 
   const validated = parsed.data;
+
+  // Freeze is irreversible (BranchRbiaScore trigger). syncAllInstanceScores
+  // upserts ExaminationResponse for credit-module leaves *before* the
+  // transaction that checks frozenAt. A retry after freeze would rewrite
+  // those working papers while the official snapshot stays put, so later
+  // reports (which read live responses) would disagree with the frozen rating.
+  const alreadyFrozen = await prismaForTenant(
+    tenantId,
+  ).branchRbiaScore.findFirst({
+    where: {
+      engagementId: validated.engagementId,
+      tenantId,
+      frozenAt: { not: null },
+    },
+    select: { id: true },
+  });
+  if (alreadyFrozen) {
+    return {
+      success: false as const,
+      error: "Score has already been frozen for this engagement",
+      code: "SCORE_FROZEN",
+    };
+  }
 
   // 4. Pre-transaction: sync instance-based scores for credit modules
   //

@@ -478,6 +478,15 @@ export async function syncAllInstanceScores(
   session: Session,
   engagementId: string,
 ): Promise<{ modulesProcessed: number; totalScoredLeaves: number }> {
+  const tenantId = extractTenantId(session);
+  const frozen = await prismaForTenant(tenantId).branchRbiaScore.findFirst({
+    where: { engagementId, tenantId, frozenAt: { not: null } },
+    select: { id: true },
+  });
+  if (frozen) {
+    return { modulesProcessed: 0, totalScoredLeaves: 0 };
+  }
+
   const moduleCodes = await getCreditModuleCodes(session, engagementId);
 
   let totalScoredLeaves = 0;

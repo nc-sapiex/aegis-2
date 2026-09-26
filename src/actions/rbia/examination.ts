@@ -104,11 +104,27 @@ export async function saveExaminationResponse(
         // Verify engagement exists and belongs to tenant
         const engagement = await tx.auditEngagement.findFirst({
           where: { id: validated.engagementId, tenantId },
-          select: { id: true, status: true, branchId: true },
+          select: {
+            id: true,
+            status: true,
+            branchId: true,
+            branchRbiaScore: { select: { frozenAt: true } },
+          },
         });
 
         if (!engagement) {
           throw new Error("Engagement not found");
+        }
+
+        // ExaminationResponse has no freeze trigger (only BranchRbiaScore
+        // does). After freeze, the only write path is rbia:revise_score.
+        if (engagement.branchRbiaScore?.frozenAt) {
+          throw Object.assign(
+            new Error(
+              "This engagement's score is frozen. Use score revision instead.",
+            ),
+            { code: "SCORE_FROZEN" },
+          );
         }
 
         // Verify the examination node belongs to this tenant before referencing it
@@ -230,6 +246,17 @@ export async function saveExaminationResponse(
 
     return { success: true, data: { id: response.id } };
   } catch (error) {
+    const thrownCode =
+      error instanceof Error && (error as { code?: string }).code
+        ? (error as { code?: string }).code
+        : undefined;
+    if (thrownCode === "SCORE_FROZEN") {
+      return {
+        success: false,
+        error: (error as Error).message,
+        code: "SCORE_FROZEN",
+      };
+    }
     const message =
       error instanceof Error
         ? error.message

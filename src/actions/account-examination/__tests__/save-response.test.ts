@@ -42,12 +42,14 @@ const INPUT = {
   note: "Valuation report older than the sanction date.",
 };
 
-function examinationDb(question: { id: string } | null) {
+function examinationDb(question: { id: string } | null, frozen = false) {
   return fakeDb({
     auditEngagement: {
-      findFirst: vi
-        .fn()
-        .mockResolvedValue({ id: ENGAGEMENT_A, status: "IN_PROGRESS" }),
+      findFirst: vi.fn().mockResolvedValue({
+        id: ENGAGEMENT_A,
+        status: "IN_PROGRESS",
+        branchRbiaScore: frozen ? { frozenAt: new Date() } : null,
+      }),
     },
     populationRecord: {
       findFirst: vi.fn().mockResolvedValue({
@@ -191,5 +193,21 @@ describe("saveAccountExamResponse", () => {
     expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith(
       `/audit-execution/${ENGAGEMENT_A}/rbia/examination/CRD-HLN`,
     );
+  });
+
+  it("refuses writes after the engagement score is frozen", async () => {
+    vi.mocked(getRequiredSession).mockResolvedValue(
+      fakeSession({ roles: ["FIELD_AUDITOR"] }) as never,
+    );
+    const db = examinationDb({ id: QUESTION_A }, true);
+    vi.mocked(prismaForTenant).mockReturnValue(db);
+
+    const result = await saveAccountExamResponse(INPUT);
+
+    expect(result).toEqual({
+      success: false,
+      error: "This engagement's score is frozen. Use score revision instead.",
+    });
+    expect(db.accountExamResponse.upsert).not.toHaveBeenCalled();
   });
 });
