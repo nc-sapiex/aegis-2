@@ -114,6 +114,7 @@ export async function confirmRepeatFinding(
         const updated = await tx.observation.updateMany({
           where: { id: observationId, tenantId, version },
           data: {
+            repeatOfId,
             ...(wasEscalated ? { severity: escalatedSeverity } : {}),
             version: { increment: 1 },
           },
@@ -222,18 +223,25 @@ export async function dismissRepeatFinding(
       return { success: false, error: "Observation not found" };
     }
 
-    // Create timeline entry for dismissal
-    await db.observationTimeline.create({
-      data: {
-        observationId,
-        tenantId,
-        event: "repeat_dismissed",
-        oldValue: null,
-        newValue: repeatOfId,
-        comment: "Repeat finding suggestion dismissed by auditor",
-        createdById: session.user.id,
+    // ObservationTimeline is audited — the trigger rejects writes that
+    // do not set session context first.
+    await withAuditedMutation(
+      userActor(session),
+      "observation.repeat_dismissed",
+      async (tx) => {
+        await tx.observationTimeline.create({
+          data: {
+            observationId,
+            tenantId,
+            event: "repeat_dismissed",
+            oldValue: null,
+            newValue: repeatOfId,
+            comment: "Repeat finding suggestion dismissed by auditor",
+            createdById: session.user.id,
+          },
+        });
       },
-    });
+    );
 
     revalidatePath("/findings");
     revalidatePath(`/findings/${observationId}`);
