@@ -63,11 +63,6 @@ export const env = createEnv({
     LICENSE_FILE_PATH: z.string().min(1).optional(),
     LICENSE_PUBLIC_KEY: z.string().min(1).optional(),
 
-    // Sentry Error Tracking
-    // Optional — error tracking degrades gracefully when not configured
-    SENTRY_DSN: z.string().url().optional(),
-    SENTRY_AUTH_TOKEN: z.string().min(1).optional(), // For source map upload in CI
-
     // Application
     NODE_ENV: z
       .enum(["development", "test", "production"])
@@ -80,7 +75,6 @@ export const env = createEnv({
    */
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url(),
-    NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
   },
 
   /**
@@ -116,13 +110,10 @@ export const env = createEnv({
     SMTP_PASSWORD: process.env.SMTP_PASSWORD,
     LICENSE_FILE_PATH: process.env.LICENSE_FILE_PATH,
     LICENSE_PUBLIC_KEY: process.env.LICENSE_PUBLIC_KEY,
-    SENTRY_DSN: process.env.SENTRY_DSN,
-    SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
     NODE_ENV: process.env.NODE_ENV,
 
     // Client vars
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
   },
 
   /**

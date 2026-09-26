@@ -147,3 +147,12 @@ Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/do
   the on-prem plus VPS Compose deployment targets. Keep it current as each new
   implementation plan lands; trust the spec where they disagree in the
   meantime.
+- An AI coding session cannot verify `pnpm test:integration` or the E2E suite
+  **locally** against this repo: both reset a database via
+  `prisma db push --force-reset`, and that command is blocked for an AI
+  agent by two independent, stacked guards — Prisma's own AI-agent consent
+  gate, then (even after explicit human consent is given) a harness-level
+  classifier that refuses setting the consent bypass env var at all. The
+  practical workflow is push → let CI run `integration-test`/`e2e-smoke` →
+  read the result; do not claim a local integration/E2E run happened when it
+  did not.
