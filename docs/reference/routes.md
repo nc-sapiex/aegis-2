@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `97cf51b` (sapiex/gracious-cannon-l0ko3z)
+> Source commit: `508c397` (sapiex/gracious-cannon-l0ko3z)
 
 Every addressable path in the application: **51 pages** and
 **10 HTTP endpoints**.
