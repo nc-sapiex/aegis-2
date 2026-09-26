@@ -5,6 +5,7 @@ vi.mock("@/data-access/session", () => ({ getRequiredSession: vi.fn() }));
 vi.mock("@/data-access/prisma", () => ({ prismaForTenant: vi.fn() }));
 vi.mock("@/data-access/instance-scoring", () => ({
   syncAllInstanceScores: vi.fn(),
+  findIncompleteInstanceModuleCodes: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("@/data-access/audited-mutation", () => ({
   withAuditedMutation: vi.fn(),
