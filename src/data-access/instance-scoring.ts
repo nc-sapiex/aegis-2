@@ -6,6 +6,8 @@ import type { AuthSession as Session } from "@/lib/auth";
 import {
   computeModuleComplianceScores,
   isCompleteExclusiveNotApplicable,
+  isRegisterComplete,
+  type RegisterCellCounts,
   type ResponseTally,
   type QuestionComplianceResult,
 } from "@/lib/instance-scoring";
@@ -38,6 +40,59 @@ function extractTenantId(session: Session): string {
   return session.user.tenantId;
 }
 
+type InstanceScoringQuestion = { id: string; weight: number };
+
+/**
+ * Questions that feed instance scoring for one engagement module.
+ *
+ * Spec §6.6: later catalogue edits apply to future engagements only. When
+ * this module has EngagementStatement rows for questions, those ids and
+ * weights are the ground truth — a question turned off or reweighted after
+ * snapshot must still count at freeze. No snapshot for this module: fall
+ * back to live active questions so pre-snapshot fixtures still score.
+ */
+async function getInstanceScoringQuestions(
+  db: TenantClient,
+  tenantId: string,
+  engagementId: string,
+  moduleId: string | null,
+): Promise<InstanceScoringQuestion[]> {
+  if (!moduleId) return [];
+
+  const snapshotRows = await db.engagementStatement.findMany({
+    where: {
+      tenantId,
+      engagementId,
+      questionId: { not: null },
+    },
+    select: { questionId: true, weight: true },
+  });
+
+  if (snapshotRows.length > 0) {
+    const snapshotIds = snapshotRows
+      .map((row) => row.questionId)
+      .filter((id): id is string => id != null);
+    const inModule = await db.examinationQuestion.findMany({
+      where: { tenantId, moduleId, id: { in: snapshotIds } },
+      select: { id: true },
+    });
+    const inModuleIds = new Set(inModule.map((q) => q.id));
+    if (inModuleIds.size > 0) {
+      return snapshotRows.flatMap((row) =>
+        row.questionId && inModuleIds.has(row.questionId)
+          ? [{ id: row.questionId, weight: Number(row.weight) }]
+          : [],
+      );
+    }
+  }
+
+  const live = await db.examinationQuestion.findMany({
+    where: { tenantId, moduleId, isActive: true },
+    select: { id: true, weight: true },
+  });
+  return live.map((q) => ({ id: q.id, weight: Number(q.weight) }));
+}
+
 // Re-export types for consumers
 export type { ResponseTally, QuestionComplianceResult };
 
@@ -46,9 +101,10 @@ export type { ResponseTally, QuestionComplianceResult };
 /**
  * Returns AccountExamResponse tallies grouped by questionId for a credit module.
  *
- * Fetches all active questions for the module, then all AccountExamResponse
- * records for this engagement + those question IDs. Groups responses by
- * questionId in a Map — questions with zero responses get empty arrays.
+ * Fetches the engagement's snapshotted questions when present (live active
+ * questions otherwise), then all AccountExamResponse records for this
+ * engagement + those question IDs. Groups responses by questionId in a Map —
+ * questions with zero responses get empty arrays.
  * Including empty arrays is critical for "Not Examined" display in the UI
  * and ensures computeModuleComplianceScores returns null (not 0%) for
  * unexamined questions.
@@ -66,14 +122,12 @@ export async function getQuestionResponseTallies(
   const tenantId = extractTenantId(session);
   const db = prismaForTenant(tenantId);
   const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
-
-  // Get all active questions for this module
-  const questions = moduleId
-    ? await db.examinationQuestion.findMany({
-        where: { tenantId, moduleId, isActive: true },
-        select: { id: true },
-      })
-    : [];
+  const questions = await getInstanceScoringQuestions(
+    db,
+    tenantId,
+    engagementId,
+    moduleId,
+  );
 
   const questionIds = questions.map((q) => q.id);
 
@@ -155,16 +209,28 @@ export async function computeAndApplyInstanceScores(
   );
   const complianceResults = computeModuleComplianceScores(tallies);
 
-  // Step 2: Get question weights for weighted average
-  const questions = moduleId
-    ? await db.examinationQuestion.findMany({
-        where: { tenantId, moduleId, isActive: true },
-        select: { id: true, weight: true },
-      })
-    : [];
-  const questionWeightMap = new Map(
-    questions.map((q) => [q.id, Number(q.weight)]),
+  // Step 2: Weights from the same snapshot-or-live set used for tallies
+  const questions = await getInstanceScoringQuestions(
+    db,
+    tenantId,
+    engagementId,
+    moduleId,
   );
+  const questionWeightMap = new Map(questions.map((q) => [q.id, q.weight]));
+
+  // An unanswered sample cell is unfinished work. One COMPLIANT tick among
+  // empty cells would otherwise map to 100% and stamp that label on every
+  // tree leaf, letting freeze lock in an inflated official score.
+  const cellCounts = await getRegisterCellCounts(
+    db,
+    tenantId,
+    engagementId,
+    moduleId,
+    [...tallies.keys()],
+  );
+  if (!isRegisterComplete(cellCounts)) {
+    return { scoredLeafCount: 0, moduleScore: null };
+  }
 
   // Step 3: Compute weighted average numeric score from question compliance
   // Skip questions with null scoreLabel (Not Examined) — exclude from denominator
@@ -184,13 +250,7 @@ export async function computeAndApplyInstanceScores(
   // register is complete and exclusively N/A, mark the module leaves N/A so
   // freeze's completeness gate can pass. Otherwise this module is unfinished.
   if (totalWeight === 0) {
-    const fullyNotApplicable = await registerIsCompleteExclusiveNotApplicable(
-      db,
-      tenantId,
-      engagementId,
-      moduleId,
-      [...tallies.keys()],
-    );
+    const fullyNotApplicable = isCompleteExclusiveNotApplicable(cellCounts);
     if (!fullyNotApplicable) {
       return { scoredLeafCount: 0, moduleScore: null };
     }
@@ -243,21 +303,29 @@ export async function computeAndApplyInstanceScores(
   return { scoredLeafCount, moduleScore };
 }
 
-async function registerIsCompleteExclusiveNotApplicable(
+async function getRegisterCellCounts(
   db: TenantClient,
   tenantId: string,
   engagementId: string,
   moduleId: string | null,
   questionIds: string[],
-): Promise<boolean> {
-  if (!moduleId || questionIds.length === 0) return false;
+): Promise<RegisterCellCounts> {
+  const empty: RegisterCellCounts = {
+    sampledAccountCount: 0,
+    activeQuestionCount: questionIds.length,
+    notApplicableCount: 0,
+    scoredCount: 0,
+  };
+  if (!moduleId || questionIds.length === 0) return empty;
 
   const sampledRecords = await db.populationRecord.findMany({
     where: { engagementId, moduleId, isSampled: true, tenantId },
     select: { id: true },
   });
   const sampledIds = sampledRecords.map((record) => record.id);
-  if (sampledIds.length === 0) return false;
+  if (sampledIds.length === 0) {
+    return { ...empty, sampledAccountCount: 0 };
+  }
 
   const [notApplicableCount, scoredCount] = await Promise.all([
     db.accountExamResponse.count({
@@ -280,12 +348,12 @@ async function registerIsCompleteExclusiveNotApplicable(
     }),
   ]);
 
-  return isCompleteExclusiveNotApplicable({
+  return {
     sampledAccountCount: sampledIds.length,
     activeQuestionCount: questionIds.length,
     notApplicableCount,
     scoredCount,
-  });
+  };
 }
 
 async function upsertModuleLeafResponses(
@@ -410,6 +478,15 @@ export async function syncAllInstanceScores(
   session: Session,
   engagementId: string,
 ): Promise<{ modulesProcessed: number; totalScoredLeaves: number }> {
+  const tenantId = extractTenantId(session);
+  const frozen = await prismaForTenant(tenantId).branchRbiaScore.findFirst({
+    where: { engagementId, tenantId, frozenAt: { not: null } },
+    select: { id: true },
+  });
+  if (frozen) {
+    return { modulesProcessed: 0, totalScoredLeaves: 0 };
+  }
+
   const moduleCodes = await getCreditModuleCodes(session, engagementId);
 
   let totalScoredLeaves = 0;
@@ -427,4 +504,41 @@ export async function syncAllInstanceScores(
     modulesProcessed: moduleCodes.length,
     totalScoredLeaves,
   };
+}
+
+/**
+ * Module codes that have a sampled register which is not fully answered.
+ * Freeze must refuse these even when tree leaves already carry a score —
+ * otherwise a single COMPLIANT tick can lock in an official composite.
+ */
+export async function findIncompleteInstanceModuleCodes(
+  session: Session,
+  engagementId: string,
+): Promise<string[]> {
+  const tenantId = extractTenantId(session);
+  const db = prismaForTenant(tenantId);
+  const moduleCodes = await getCreditModuleCodes(session, engagementId);
+  const incomplete: string[] = [];
+
+  for (const moduleCode of moduleCodes) {
+    const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
+    const questions = moduleId
+      ? await db.examinationQuestion.findMany({
+          where: { tenantId, moduleId, isActive: true },
+          select: { id: true },
+        })
+      : [];
+    const cellCounts = await getRegisterCellCounts(
+      db,
+      tenantId,
+      engagementId,
+      moduleId,
+      questions.map((q) => q.id),
+    );
+    if (!isRegisterComplete(cellCounts)) {
+      incomplete.push(moduleCode);
+    }
+  }
+
+  return incomplete;
 }

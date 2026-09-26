@@ -18,13 +18,18 @@ import {
   type LeafStatus,
 } from "@/lib/rbia-completeness";
 import { resolveParentId } from "@/lib/examination-path";
+import { rootsForComposite } from "@/lib/rbia-module-forest";
 import {
   FreezeRbiaScoreSchema,
   type FreezeRbiaScoreInput,
   type ActionResult,
   type ActionErrorCode,
 } from "./schemas";
-import { syncAllInstanceScores } from "@/data-access/instance-scoring";
+import {
+  findIncompleteInstanceModuleCodes,
+  syncAllInstanceScores,
+} from "@/data-access/instance-scoring";
+import { prismaForTenant } from "@/data-access/prisma";
 
 // ─── freezeRbiaScore (EXAM-10, FIND-02, BMRP-01) ───────────────────────────
 
@@ -87,6 +92,29 @@ export async function freezeRbiaScore(
 
   const validated = parsed.data;
 
+  // Freeze is irreversible (BranchRbiaScore trigger). syncAllInstanceScores
+  // upserts ExaminationResponse for credit-module leaves *before* the
+  // transaction that checks frozenAt. A retry after freeze would rewrite
+  // those working papers while the official snapshot stays put, so later
+  // reports (which read live responses) would disagree with the frozen rating.
+  const alreadyFrozen = await prismaForTenant(
+    tenantId,
+  ).branchRbiaScore.findFirst({
+    where: {
+      engagementId: validated.engagementId,
+      tenantId,
+      frozenAt: { not: null },
+    },
+    select: { id: true },
+  });
+  if (alreadyFrozen) {
+    return {
+      success: false as const,
+      error: "Score has already been frozen for this engagement",
+      code: "SCORE_FROZEN",
+    };
+  }
+
   // 4. Pre-transaction: sync instance-based scores for credit modules
   //
   // This ensures ExaminationResponse records reflect the latest compliance data
@@ -101,6 +129,20 @@ export async function freezeRbiaScore(
 
   try {
     await syncAllInstanceScores(session, validated.engagementId);
+
+    currentStep = "checking_completeness";
+    const incompleteSampleModules = await findIncompleteInstanceModuleCodes(
+      session,
+      validated.engagementId,
+    );
+    if (incompleteSampleModules.length > 0) {
+      throw Object.assign(
+        new Error(
+          `Cannot freeze: sample examination is incomplete for ${incompleteSampleModules.join(", ")}`,
+        ),
+        { code: "INCOMPLETE_EXAMINATION" },
+      );
+    }
 
     // 5. Transaction with step tracking
     const result = await withAuditedMutation(
@@ -156,6 +198,17 @@ export async function freezeRbiaScore(
         const selectedModuleIds = new Set<string>(
           selections.map((s: { moduleId: string }) => s.moduleId),
         );
+
+        // Spec §6.5: one composite input per AuditModule, weighted by
+        // AuditModule.weight (bank-editable 1–100). Depth-1 pack leaves are
+        // statements, not modules — grouping happens after the tree is linked.
+        const auditModules =
+          selectedModuleIds.size === 0
+            ? []
+            : await tx.auditModule.findMany({
+                where: { tenantId, id: { in: [...selectedModuleIds] } },
+                select: { id: true, code: true, name: true, weight: true },
+              });
 
         // Spec §6.6: later catalogue edits (add bank statement, turn off,
         // pack uninstall) apply to future engagements only. Completeness and
@@ -262,20 +315,16 @@ export async function freezeRbiaScore(
           }
         }
 
-        // The module's own root is the depth-1 node whose moduleId points at
-        // the selected AuditModule (module-native backfill, see
-        // scripts/backfill/module-native.ts).
-        const moduleNodes: ScoredNode[] = [];
-        for (const node of nodeMap.values()) {
-          if (!leafInScope(node.isLeaf, node.nodeId)) continue;
-          if (
-            node.depth === 1 &&
-            node.moduleId &&
-            selectedModuleIds.has(node.moduleId)
-          ) {
-            moduleNodes.push(node);
-          }
-        }
+        // One tree per selected AuditModule. Core-pack statements are
+        // depth-1 leaves with no module-root node; wrapping them here
+        // keeps CASH (etc.) as a single composite term instead of one
+        // term per statement.
+        const moduleNodes = rootsForComposite(
+          [...nodeMap.values()].filter((node) =>
+            leafInScope(node.isLeaf, node.nodeId),
+          ),
+          auditModules,
+        );
 
         if (moduleNodes.length === 0) {
           throw Object.assign(
@@ -362,10 +411,10 @@ export async function freezeRbiaScore(
         for (const moduleNode of moduleNodes) {
           const moduleScore = computeModuleScore(moduleNode);
           if (moduleScore !== null) {
-            moduleScoresMap[moduleNode.code] = moduleScore;
+            moduleScoresMap[moduleNode.moduleCode] = moduleScore;
           }
           moduleScoreInputs.push({
-            weight: moduleNode.weight,
+            weight: moduleNode.compositeWeight,
             score: moduleScore,
           });
         }

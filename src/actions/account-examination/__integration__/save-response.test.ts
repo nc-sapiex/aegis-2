@@ -318,4 +318,52 @@ describe("saveAccountExamResponse", () => {
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toMatch(/not found/i);
   });
+
+  it("refuses to record account exam responses after freeze", async () => {
+    const tenant = await createTenant();
+    const auditor = await createUser(tenant.id, ["FIELD_AUDITOR"]);
+    const engagement = await seedEngagement(tenant.id);
+    await addTeamMember(tenant.id, engagement.id, auditor.id);
+    const account = await seedPopulationRecord(tenant.id, engagement.id, true);
+    const question = await seedQuestion(tenant.id);
+
+    await withFixtures(async () => {
+      const row = await integrationOwner.auditEngagement.findUniqueOrThrow({
+        where: { id: engagement.id },
+        select: { branchId: true },
+      });
+      await integrationOwner.branchRbiaScore.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: engagement.id,
+          branchId: row.branchId!,
+          compositeScore: 1,
+          ratingBand: "VERY_GOOD",
+          moduleScores: {},
+          scoringTreeSnapshot: {},
+          frozenAt: new Date(),
+        },
+      });
+    });
+
+    mockSessionModule(
+      fakeSession({
+        id: auditor.id,
+        tenantId: tenant.id,
+        roles: ["FIELD_AUDITOR"],
+      }),
+    );
+    const { saveAccountExamResponse } = await import("../save-response");
+
+    const result = await saveAccountExamResponse({
+      engagementId: engagement.id,
+      recordId: account.id,
+      questionId: question.id,
+      status: "COMPLIANT",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toMatch(/frozen/i);
+    expect(await integrationOwner.accountExamResponse.count()).toBe(0);
+  });
 });

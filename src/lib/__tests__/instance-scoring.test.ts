@@ -4,6 +4,7 @@ import {
   mapComplianceToScoreLabel,
   computeModuleComplianceScores,
   isCompleteExclusiveNotApplicable,
+  isRegisterComplete,
   type ResponseTally,
   type QuestionComplianceResult,
 } from "@/lib/instance-scoring";
@@ -357,6 +358,41 @@ describe("isCompleteExclusiveNotApplicable", () => {
       isCompleteExclusiveNotApplicable({
         sampledAccountCount: 2,
         activeQuestionCount: 0,
+        notApplicableCount: 0,
+        scoredCount: 0,
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("isRegisterComplete", () => {
+  it("is true when every sampled cell is answered, including mixed N/A and scored", () => {
+    expect(
+      isRegisterComplete({
+        sampledAccountCount: 2,
+        activeQuestionCount: 3,
+        notApplicableCount: 2,
+        scoredCount: 4,
+      }),
+    ).toBe(true);
+  });
+
+  it("is false when one COMPLIANT cell is the only answer in a larger register", () => {
+    expect(
+      isRegisterComplete({
+        sampledAccountCount: 10,
+        activeQuestionCount: 5,
+        notApplicableCount: 0,
+        scoredCount: 1,
+      }),
+    ).toBe(false);
+  });
+
+  it("is false when the register has not been touched", () => {
+    expect(
+      isRegisterComplete({
+        sampledAccountCount: 2,
+        activeQuestionCount: 3,
         notApplicableCount: 0,
         scoredCount: 0,
       }),
