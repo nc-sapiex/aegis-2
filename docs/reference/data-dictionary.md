@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `215d3a0` (sapiex/gracious-cannon-l0ko3z)
+> Source commit: `1ce9198` (sapiex/gracious-cannon-l0ko3z)
 
 Every table AEGIS maintains, with its columns, types and relationships.
 **77 models** and **25 enumerations**.

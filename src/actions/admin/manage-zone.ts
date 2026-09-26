@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { prismaForTenant } from "@/data-access/prisma";
-import { setAuditContext } from "@/data-access/audit-context";
+import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
 import { getRequiredSession } from "@/data-access/session";
 import { hasPermission, type Role } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
@@ -41,44 +41,39 @@ export async function manageZone(input: ManageZoneInput) {
     return { success: false as const, error: parsed.error.issues[0].message };
   }
 
-  const db = prismaForTenant(tenantId);
-
   try {
-    const zone = await db.$transaction(async (tx: any) => {
-      await setAuditContext(tx, {
-        actionType: parsed.data.zoneId ? "zone.updated" : "zone.created",
-        userId: session.user.id,
-        tenantId,
-        sessionId: session.session.id,
-      });
+    const zone = await withAuditedMutation(
+      userActor(session),
+      parsed.data.zoneId ? "zone.updated" : "zone.created",
+      async (tx) => {
+        if (parsed.data.zoneId) {
+          // Update existing zone — verify it belongs to the tenant
+          const existing = await tx.zone.findFirst({
+            where: { id: parsed.data.zoneId, tenantId },
+          });
+          if (!existing) {
+            throw new Error("Zone not found");
+          }
 
-      if (parsed.data.zoneId) {
-        // Update existing zone — verify it belongs to the tenant
-        const existing = await tx.zone.findFirst({
-          where: { id: parsed.data.zoneId, tenantId },
-        });
-        if (!existing) {
-          throw new Error("Zone not found");
+          return tx.zone.update({
+            where: { id: parsed.data.zoneId },
+            data: {
+              code: parsed.data.code,
+              name: parsed.data.name,
+            },
+          });
         }
 
-        return tx.zone.update({
-          where: { id: parsed.data.zoneId },
+        // Create new zone
+        return tx.zone.create({
           data: {
+            tenantId,
             code: parsed.data.code,
             name: parsed.data.name,
           },
         });
-      }
-
-      // Create new zone
-      return tx.zone.create({
-        data: {
-          tenantId,
-          code: parsed.data.code,
-          name: parsed.data.name,
-        },
-      });
-    });
+      },
+    );
 
     logger.info(
       { zoneId: zone.id, action: parsed.data.zoneId ? "updated" : "created" },
@@ -143,16 +138,13 @@ export async function deleteZone(zoneId: string) {
       };
     }
 
-    await db.$transaction(async (tx: any) => {
-      await setAuditContext(tx, {
-        actionType: "zone.deleted",
-        userId: session.user.id,
-        tenantId,
-        sessionId: session.session.id,
-      });
-
-      await tx.zone.delete({ where: { id: zoneId } });
-    });
+    await withAuditedMutation(
+      userActor(session),
+      "zone.deleted",
+      async (tx) => {
+        await tx.zone.delete({ where: { id: zoneId } });
+      },
+    );
 
     logger.info({ zoneId }, "Zone deleted");
     revalidatePath("/admin/zones");

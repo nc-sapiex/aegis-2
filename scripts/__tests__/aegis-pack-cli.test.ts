@@ -47,12 +47,15 @@ function runCli(...args: string[]): string {
 }
 
 describe("aegis-pack CLI", () => {
+  // Three `npx tsx` spawns in one test; a cold cache (fresh CI runner, no
+  // prior npx/tsx resolution this run) can exceed Vitest's 5s default.
+  // Matches the beforeAll hook's own 30s timeout above.
   it("build then sign then verify round-trips", () => {
     runCli("build", sourceDir, "--out", packFile);
     runCli("sign", packFile, "--key", privateKeyPath);
     const output = runCli("verify", packFile, "--public-key", publicKeyPath);
     expect(output).toContain("valid");
-  });
+  }, 30_000);
 
   it("verify fails against the wrong public key", () => {
     const { publicKey: wrongKey } = generateKeyPairSync("ed25519");
