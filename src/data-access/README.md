@@ -45,7 +45,7 @@ SECURITY` and no tenant GUC. The GUC contract, the removed per-query
 Every **new** DAL function must follow these five steps (source comments cite
 this as "the canonical DAL 5-step pattern"). Be honest about the existing
 stock: steps 0–3 are near-universal, but the step-4 runtime assertion exists in
-only two of the 44 modules today (`settings.ts`, `audit-trail.ts`) — treat it
+only two of the 52 modules today (`settings.ts`, `audit-trail.ts`) — treat it
 as required going forward, not as a net already in place behind older code.
 
 ```typescript

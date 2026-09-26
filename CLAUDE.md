@@ -142,8 +142,8 @@ Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/do
   e2e-deployment-drills plan) to describe 2.0 as it actually is: the
   1.x-inherited drift (i18n, Sentry, v5 sections) is gone, and it now covers
   RLS tenant isolation, the hash-chained audit log, the module framework,
-  content packs, the module admin page (flagged there as unreachable from
-  nav), the generic reporting engine, licensing/feature flags, and the
-  on-prem plus VPS Compose deployment targets. Keep it current as each new
+  content packs, the module admin page (sidebar `Modules` item, gated on
+  `module:manage`), the generic reporting engine, licensing/feature flags, and
+  the on-prem plus VPS Compose deployment targets. Keep it current as each new
   implementation plan lands; trust the spec where they disagree in the
   meantime.

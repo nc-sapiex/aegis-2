@@ -106,6 +106,18 @@ means the module applies to nobody at this branch. Before freeze,
 through. A module with untouched questions still blocks freeze
 (`INCOMPLETE_EXAMINATION`). Do not treat an absent score as N/A.
 
+**Freeze scores the engagement snapshot.** `findUnscoredLeaves` walks the
+tree `freezeRbiaScore` built from `EngagementStatement`, not the live
+`ExaminationNode` catalogue. `engagementLeafInScope` drops a live leaf that
+is not in the snapshot (a bank statement added after create) and keeps a
+snapshotted leaf that has since been turned off. A selected module with
+active leaves but no snapshot rows is refused — re-add the module so
+`materializeEngagementStatements` can run. When `parentId` is null (pack
+install historically omitted it), freeze reconstructs the parent from
+`ExaminationNode.path` via `parentPath`; otherwise a housing-style
+depth-3 tree scores as a childless module root and drops out of the
+composite.
+
 Post-fieldwork, `reviseScore` (`rbia:revise_score`, required reason) changes
 an existing `ExaminationResponse`; `setSectionNotApplicable` (`module:manage`)
 marks a whole section. Neither un-freezes `BranchRbiaScore`.

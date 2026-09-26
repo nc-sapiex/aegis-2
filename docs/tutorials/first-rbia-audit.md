@@ -22,7 +22,11 @@ haven't onboarded a tenant yet, do that first —
 Go to **`/ram`**. This page requires `ram:read`; the "New Assessment" action
 requires `ram:create`.
 
-1. Create a new assessment for a branch. It starts in `DRAFT`
+1. Create a new assessment for a branch. The year field is a **fiscal-year
+   select** (`YYYY-YY`, e.g. `2025-26`) built by `getFiscalYearWindow` in
+   `src/lib/fiscal-year.ts` — not a number input. A `type="number"` year
+   can never satisfy the `YYYY-YY` schema, so the Create button stayed
+   disabled (#163). It starts in `DRAFT`
    (`src/app/(dashboard)/ram/page.tsx`).
 2. Open the assessment (`/ram/[assessmentId]`) and enter scores for each RAM
    parameter in the form. Until you've entered at least one score, only
@@ -30,7 +34,7 @@ requires `ram:create`.
 3. Click **Compute**. This runs the RAM scoring engine
    (`src/lib/ram-engine.ts`) and moves the assessment to `COMPUTED`, showing
    a composite score, risk category, and derived audit frequency — see
-   [`docs/explanation/scoring-engines.md`](../explanation/scoring-engines.md#ram-engine-risk-assessment-model)
+   [`docs/explanation/scoring-engines.md`](../explanation/scoring-engines.md#ram-branch-risk-scoring-srclibram-engints)
    for how that math works.
 4. A second user holding `ram:approve` clicks **Approve**. The assessment
    moves to `APPROVED`, and the page shows a green "Ready for Audit
@@ -108,12 +112,14 @@ whole examination surface:
   client-side (`src/lib/loan-portfolio/`), then submit
   `importLoanPortfolio` (`src/actions/loan-portfolio/import-loan-portfolio.ts`).
   Replacement is blocked if any imported account already has an examination
-  response. Do not use `importLoanReviewCsv` — that writes the unused v5
-  `LoanReview` table.
+  response. Do not use `importLoanReviewCsv` — it still calls
+  `tx.loanReview`, but the `LoanReview` model was removed with the v5
+  tables and the action will fail. `importLoanPortfolio` writes
+  `PopulationRecord`.
 - **Sampling** — runs the deterministic bucket-fill sampling algorithm
   (`src/lib/sampling-engine.ts`) against the imported loan portfolio to pick
   which accounts get examined —
-  [`docs/explanation/scoring-engines.md`](../explanation/scoring-engines.md#sampling-engine)
+  [`docs/explanation/scoring-engines.md`](../explanation/scoring-engines.md#sampling-deterministic-bucket-fill-srclibsampling-engints)
   covers the algorithm.
 - **Account Exam** — from a module card, open
   `.../rbia/examination/[moduleCode]`. Sampled accounts sit in an
@@ -136,7 +142,11 @@ Work through enough modules and sampled accounts to get a composite score,
 then move to step 6 before freezing — freezing is a one-way door. A credit
 module whose sampled register is **complete and exclusively N/A** is
 examined-N/A and may freeze; a module with untouched questions still blocks
-freeze (`findUnscoredLeaves` / `isCompleteExclusiveNotApplicable`).
+freeze (`findUnscoredLeaves` / `isCompleteExclusiveNotApplicable`). Freeze
+walks this engagement's `EngagementStatement` snapshot, not the live
+catalogue: a statement added after the engagement was created does not
+block freeze, and a selected module with no snapshot rows must be removed
+and added again.
 
 ## 6. Raise a finding (observation)
 
@@ -176,11 +186,21 @@ Freezing is also the prerequisite the engagement state machine checks before
 `REPORT_DRAFT → COMPLETED` can happen, so do this before your exit meeting if
 you want to close the engagement out.
 
-Freeze refuses while any selected leaf is neither scored nor marked N/A
+Freeze refuses while any *snapshotted* leaf is neither scored nor marked N/A
 (`INCOMPLETE_EXAMINATION`). It does **not** refuse a credit module whose
 binary register is complete with only N/A answers — those leaves are marked
 not-applicable during the pre-freeze instance-score sync, then excluded from
-the composite denominator like any other N/A.
+the composite denominator like any other N/A. It also does not refuse a
+leaf that was added to the live catalogue after this engagement started;
+that leaf is out of scope. See
+[`docs/explanation/scoring-engines.md`](../explanation/scoring-engines.md#instance-scoring-sample-register--tree-srclibinstance-scoringts)
+and [`docs/architecture.md` § The module framework](../architecture.md#the-module-framework).
+
+After freeze, **Generate PDF Report** and **Generate Excel Report** on
+`/audit-execution/[engagementId]/report` call `generatePdfReport` /
+`generateXlsxReport` (`report:generate`). RBIA engagements render through
+the generic module engine, not a hand-coded document. The buttons stay
+disabled without that permission; they are not placeholders.
 
 ## 8. Watch the finding become a compliance obligation
 
@@ -203,7 +223,7 @@ page). From here:
 If a compliance item sits in `BRANCH_RESPONSE_DUE` past its due date, the
 escalation engine (not the observation state machine) takes over — L0
 through L4, notifying progressively senior roles — see
-[`docs/explanation/scoring-engines.md`](../explanation/scoring-engines.md#compliance-escalation-engine-vs-escalation-router)
+[`docs/explanation/scoring-engines.md`](../explanation/scoring-engines.md#escalation-two-engines-one-deliberately-kept-separate)
 for exactly how that's triggered and who gets notified.
 
 ## What you just did
