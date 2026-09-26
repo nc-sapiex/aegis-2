@@ -74,7 +74,8 @@ const RUNTIME_ASSERTION_ALLOWLIST = new Set<string>([
   "src/data-access/zones.ts",
 ]);
 
-const READ_VERB = /\.(findMany|findFirst|findUnique|count|aggregate|groupBy)\s*\(/;
+const READ_VERB =
+  /\.(findMany|findFirst|findUnique|count|aggregate|groupBy)\s*\(/;
 const ASSERTION_MARKER = "Data isolation violation detected";
 
 function topLevelDalFiles(): string[] {
