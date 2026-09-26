@@ -51,3 +51,30 @@ export function simulateWeightChange(
 
   return { from: compositeOf(current), to: compositeOf(proposed) };
 }
+
+/**
+ * Coerces a frozen BranchRbiaScore.moduleScores JSON blob (freeze.ts writes
+ * `{ "OPS": 0.85, "CREDIT": 0.72, ... }`) into the Record simulateWeightChange
+ * expects. Defensive rather than a direct cast: the column is `Json`, which
+ * Prisma types as the much looser `Prisma.JsonValue` on the way back out.
+ */
+export function parseLastModuleScores(
+  moduleScores: unknown,
+): Record<string, number> {
+  if (
+    !moduleScores ||
+    typeof moduleScores !== "object" ||
+    Array.isArray(moduleScores)
+  ) {
+    return {};
+  }
+  const result: Record<string, number> = {};
+  for (const [code, value] of Object.entries(
+    moduleScores as Record<string, unknown>,
+  )) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      result[code] = value;
+    }
+  }
+  return result;
+}

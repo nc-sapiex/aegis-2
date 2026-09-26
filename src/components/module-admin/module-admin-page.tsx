@@ -13,9 +13,11 @@ export type StatusTone = "ok" | "error";
 export function ModuleAdminPage({
   modules,
   catalog,
+  lastScores,
 }: {
   modules: ModuleAdminRow[];
   catalog: CatalogEntry[];
+  lastScores: Record<string, number>;
 }) {
   // null = closed; "" = open with no module chosen yet (header action);
   // a real id = open pre-scoped to that module's row.
@@ -78,6 +80,7 @@ export function ModuleAdminPage({
 
       <ModuleTable
         modules={modules}
+        lastScores={lastScores}
         onAddStatement={(moduleId) => setPanelModuleId(moduleId)}
         onStatus={showStatus}
       />

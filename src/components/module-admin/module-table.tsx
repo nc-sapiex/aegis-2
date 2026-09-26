@@ -17,10 +17,12 @@ const HEADER_CELL =
 
 export function ModuleTable({
   modules,
+  lastScores,
   onAddStatement,
   onStatus,
 }: {
   modules: ModuleAdminRow[];
+  lastScores: Record<string, number>;
   onAddStatement: (moduleId: string) => void;
   onStatus: (text: string, tone?: StatusTone) => void;
 }) {
@@ -31,12 +33,11 @@ export function ModuleTable({
   >({});
   const [saving, setSaving] = React.useState(false);
 
-  // Most recent engagement's per-module scores, for the live "would move
-  // from X to Y" preview (spec §7.6). Not threaded through this task's DAL
-  // read (getModuleAdminView returns admin rows, not score history) — see
-  // task-7-report.md concerns. Left empty rather than wired to zero, so the
-  // preview degrades to "Unsaved." instead of printing a fabricated 0.0→0.0.
-  const lastScores: Record<string, number> = {};
+  // lastScores is the tenant's most recent frozen engagement's per-module
+  // scores (getLastFrozenModuleScores), for the live "would move from X to
+  // Y" preview (spec §7.6). A tenant with no frozen engagement yet gets {},
+  // and the preview degrades to "Unsaved." instead of printing a fabricated
+  // 0.0→0.0.
   const hasScores = Object.keys(lastScores).length > 0;
 
   const grouped = {
