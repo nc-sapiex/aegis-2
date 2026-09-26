@@ -559,6 +559,7 @@ describe("freezeRbiaScore completeness", () => {
   it("refuses saveExaminationResponse after freeze", async () => {
     const tenant = await createTenant();
     const cae = await createUser(tenant.id, ["CAE"]);
+    const auditor = await createUser(tenant.id, ["FIELD_AUDITOR"]);
     const seed = await seedExamination(tenant.id, cae.id);
     await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
     await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
@@ -570,6 +571,16 @@ describe("freezeRbiaScore completeness", () => {
     const frozen = await freezeRbiaScore({ engagementId: seed.engagementId });
     expect(frozen.success).toBe(true);
 
+    // saveExaminationResponse requires rbia:examine, which CAE does not
+    // hold (only LEAD_AUDITOR/FIELD_AUDITOR) — switch to a role that can
+    // reach the frozen-engagement check this test is actually exercising.
+    mockSessionModule(
+      fakeSession({
+        id: auditor.id,
+        tenantId: tenant.id,
+        roles: ["FIELD_AUDITOR"],
+      }),
+    );
     const { saveExaminationResponse } = await import("../examination");
     const result = await saveExaminationResponse({
       engagementId: seed.engagementId,
