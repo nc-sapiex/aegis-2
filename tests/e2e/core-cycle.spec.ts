@@ -175,10 +175,10 @@ test.describe.serial("@smoke core cycle", () => {
       await expect(computeButton).toBeVisible();
       await computeButton.click();
 
-      // ram/[assessmentId]/page.tsx:51-65 — the result card only renders once
+      // ram/[assessmentId]/page.tsx — the result card only renders once
       // compositeScore is set, and the status line is the server's own word
-      // for it. compute-assessment.ts:116 also writes Branch.ramScore, which
-      // is what the annual plan generator schedules from.
+      // for it. Branch.ramScore is published on CAE approval, which is what
+      // the annual plan generator schedules from.
       await expect(page.getByText(/Status: COMPUTED/)).toBeVisible();
 
       // The approver must be someone else (approve-assessment.ts:48), so the

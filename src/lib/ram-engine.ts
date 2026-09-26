@@ -36,6 +36,23 @@ export interface RamComputationResultWithUplift extends RamComputationResult {
  * Normalizes by total weight to handle cases where weights
  * don't sum exactly to 1.0 (e.g., some params inactive).
  */
+/**
+ * True when every active parameter has a saved score.
+ *
+ * `computeCompositeScore` normalizes over the weights it is given, so a
+ * one-parameter subset produces a plausible-looking 1.00–5.00 composite.
+ * Callers that persist that number onto Branch.ramScore must refuse the
+ * subset — annual planning reads the cached score as the official risk.
+ */
+export function areAllActiveParametersScored(
+  activeParamIds: readonly string[],
+  scoredParamIds: readonly string[],
+): boolean {
+  if (activeParamIds.length === 0) return false;
+  const scored = new Set(scoredParamIds);
+  return activeParamIds.every((id) => scored.has(id));
+}
+
 export function computeCompositeScore(scores: RamScoreInput[]): number {
   if (scores.length === 0) {
     throw new Error("Cannot compute composite score with zero parameters");

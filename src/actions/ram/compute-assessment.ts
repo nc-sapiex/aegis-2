@@ -6,7 +6,7 @@ import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
 import { hasPermission, type Role } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
 import {
-  computeRam,
+  areAllActiveParametersScored,
   computeRamWithUplift,
   computeCompositeScore,
   type RamScoreInput,
@@ -19,9 +19,10 @@ import { AssessmentIdSchema } from "./schemas";
 
 /**
  * Compute composite score for a RAM assessment.
- * Reads all saved scores, runs computation engine, updates assessment + branch.
+ * Reads saved scores, runs the computation engine, updates the assessment.
  * Security: Requires ram:create permission.
- * Side effects: Updates Branch.ramScore and Branch.auditFrequency.
+ * Does not publish Branch.ramScore — that happens on CAE approval, which
+ * is the gate the RAM page labels "Ready for Audit Planning".
  */
 export async function computeRamAssessment(input: { assessmentId: string }) {
   const session = await getRequiredSession();
@@ -63,20 +64,30 @@ export async function computeRamAssessment(input: { assessmentId: string }) {
         if (assessment.status === "APPROVED") {
           throw new Error("Cannot re-compute an approved assessment");
         }
-        if (assessment.scores.length === 0) {
-          throw new Error(
-            "No scores entered. Please score all parameters before computing.",
-          );
+
+        const activeParams = await tx.ramParameterConfig.findMany({
+          where: { tenantId, isActive: true },
+          select: { id: true },
+        });
+        const activeParamIds = activeParams.map((p) => p.id);
+        const scoredParamIds = assessment.scores.map(
+          (s: { paramConfigId: string }) => s.paramConfigId,
+        );
+        if (!areAllActiveParametersScored(activeParamIds, scoredParamIds)) {
+          throw new Error("Please score all parameters before computing.");
         }
 
-        // Prepare score inputs for engine
-        const scoreInputs: RamScoreInput[] = assessment.scores.map(
-          (s: any) => ({
+        const activeIdSet = new Set(activeParamIds);
+        // Prepare score inputs for engine — ignore deactivated params
+        const scoreInputs: RamScoreInput[] = assessment.scores
+          .filter((s: { paramConfigId: string }) =>
+            activeIdSet.has(s.paramConfigId),
+          )
+          .map((s: any) => ({
             paramCode: s.paramConfig.code,
             score: Number(s.score),
             weight: Number(s.paramConfig.weight),
-          }),
-        );
+          }));
 
         // Step: Detect repeat findings for this branch
         const repeatSummary = await detectRepeatFindingsForBranch(
@@ -93,7 +104,8 @@ export async function computeRamAssessment(input: { assessmentId: string }) {
         const result = computeRamWithUplift(scoreInputs, uplift);
         const { compositeScore, riskCategory, auditFrequency } = result;
 
-        // Update assessment
+        // Update assessment only. Branch.ramScore / auditFrequency stay
+        // on the last APPROVED assessment until CAE signs this one off.
         const updated = await tx.ramAssessment.update({
           where: { id: assessment.id },
           data: {
@@ -106,15 +118,6 @@ export async function computeRamAssessment(input: { assessmentId: string }) {
             status: "COMPUTED",
             computedById: session.user.id,
             computedAt: new Date(),
-          },
-        });
-
-        // Update branch cached fields
-        await tx.branch.update({
-          where: { id: assessment.branchId },
-          data: {
-            ramScore: compositeScore,
-            auditFrequency,
           },
         });
 
