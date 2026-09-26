@@ -1,6 +1,9 @@
 import "server-only";
 import { prismaForTenant } from "@/lib/prisma";
-import { computeModuleShares } from "@/lib/module-shares";
+import {
+  computeModuleShares,
+  parseLastModuleScores,
+} from "@/lib/module-shares";
 import { evaluateApplicability } from "@/lib/module-applicability";
 
 export type ModuleAdminRow = {
@@ -88,4 +91,22 @@ export async function getModuleAdminView(
       applicabilityText: applicabilityText(m.applicability),
     };
   });
+}
+
+/**
+ * Per-module scores from the tenant's most recently frozen engagement, for
+ * the module table's live "would move from X to Y" weight-change preview
+ * (spec §7.6). Tenant-wide, not per-branch — a directional preview, not a
+ * per-branch recomputation.
+ */
+export async function getLastFrozenModuleScores(
+  tenantId: string,
+): Promise<Record<string, number>> {
+  const db = prismaForTenant(tenantId);
+  const last = await db.branchRbiaScore.findFirst({
+    where: { tenantId, frozenAt: { not: null } },
+    orderBy: { frozenAt: "desc" },
+    select: { moduleScores: true },
+  });
+  return parseLastModuleScores(last?.moduleScores);
 }
