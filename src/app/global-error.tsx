@@ -6,7 +6,8 @@ import { useEffect } from "react";
  * Global Error Boundary
  *
  * Catches errors at the root layout level.
- * Reports to Sentry when configured, falls back to console.error.
+ * Logs to console.error — no error-tracking service is configured (Sentry
+ * was removed in the 2.0 seed, see CLAUDE.md).
  * Provides minimal fallback UI with retry functionality.
  */
 export default function GlobalError({

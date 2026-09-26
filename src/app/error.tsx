@@ -16,7 +16,8 @@ import { AlertCircle } from "@/lib/icons";
  * Error Boundary
  *
  * Catches errors in the application and displays a user-friendly error message.
- * Reports to Sentry when configured, falls back to console.error.
+ * Logs to console.error — no error-tracking service is configured (Sentry
+ * was removed in the 2.0 seed, see CLAUDE.md).
  * Provides a "Try again" button to reset the error boundary.
  */
 export default function Error({

@@ -2,9 +2,11 @@
  * Next.js instrumentation hook.
  *
  * Runs once on server start. Initializes:
- * - Sentry error tracking (server/edge runtimes)
  * - pg-boss job queue and scheduled workers
  * - Signal handlers that stop those workers before the process exits
+ *
+ * No error-tracking service is configured; error boundaries fall back to
+ * console.error (Sentry was removed in the 2.0 seed, see CLAUDE.md).
  */
 
 /** Module-level so dev-server hot reloads do not stack handlers. */

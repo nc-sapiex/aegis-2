@@ -16,7 +16,9 @@ import { AlertCircle, RotateCcw } from "@/lib/icons";
  * Dashboard Error Boundary
  *
  * Catches errors within the dashboard layout, keeping the sidebar and
- * navigation visible. Reports to Sentry and provides a retry option.
+ * navigation visible. Logs to console.error — no error-tracking service is
+ * configured (Sentry was removed in the 2.0 seed, see CLAUDE.md) — and
+ * provides a retry option.
  */
 export default function DashboardError({
   error,
