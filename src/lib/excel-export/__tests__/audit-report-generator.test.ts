@@ -30,7 +30,10 @@ function reportData(
     teamMembers: [],
     modules: [],
     observations,
-  } as ReportInput;
+    // Real callers build this from getAuditReportData(), a large DAL-derived
+    // shape this test doesn't otherwise need — only the severity-tab layout
+    // under test reads `observations`. Cast through `unknown` deliberately.
+  } as unknown as ReportInput;
 }
 
 async function loadSeveritySheet(
@@ -38,7 +41,11 @@ async function loadSeveritySheet(
 ) {
   const buffer = await generateAuditReportXLSX(reportData(observations));
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(Buffer.from(buffer));
+  // ExcelJS's bundled types don't match @types/node's generic Buffer;
+  // same `as any` idiom already used at every other xlsx.load() call site
+  // in this codebase (excel-export.test.ts, org-structure-parser.ts,
+  // loan-portfolio/excel-parser.ts, reporting-engine.test.ts).
+  await workbook.xlsx.load(buffer as any);
   const sheet = workbook.getWorksheet("Observations by Severity");
   expect(sheet).toBeDefined();
   return sheet!;

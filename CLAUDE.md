@@ -60,6 +60,17 @@ SESSION_COOKIE='...' ENGAGEMENT_ID=<uuid> pnpm spike:rls  # load check before ea
   something CI didn't catch (in that case hold the merge and report the
   finding instead of merging past it).
 - After merging, delete the remote branch and prune local worktrees.
+  GitHub auto-deletes the head branch of a *merged* PR, but not a branch
+  whose PR was closed without merging — those pile up (13 accumulated
+  before a manual sweep caught them). `git push origin --delete <branch>`
+  has 403'd from at least one automated session on this repo even though
+  ordinary pushes and branch creation succeeded over the same connection
+  and the session's collaborator permission showed `admin: true` — most
+  likely a branch-protection ruleset restricting deletion, not a token
+  scope gap, though this wasn't confirmed against the repo's actual Settings
+  → Rules. Periodically sweep closed-and-unmerged bot/agent branches by
+  hand (or from a context with full repo-settings access) rather than
+  assuming merge-time cleanup covers them.
 
 ## Invariants (enforced by tests that fail the build)
 

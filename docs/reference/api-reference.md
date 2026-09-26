@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `215d3a0` (sapiex/gracious-cannon-l0ko3z)
+> Source commit: `1ce9198` (sapiex/gracious-cannon-l0ko3z)
 
 AEGIS has two callable surfaces.
 
@@ -112,7 +112,7 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 | `admin/manage-branch.ts` | yes | `updateBranchProfile` | Branch |
 | `admin/manage-calendar.ts` | — | `createCalendarEvent`, `updateCalendarEvent`, `deleteCalendarEvent` | AuditCalendar |
 | `admin/manage-templates.ts` | — | `createReportTemplate`, `deactivateTemplate` | ReportTemplate |
-| `admin/manage-zone.ts` | — | `manageZone`, `deleteZone` | Zone |
+| `admin/manage-zone.ts` | yes | `manageZone`, `deleteZone` | Zone |
 
 ### audit-execution
 
