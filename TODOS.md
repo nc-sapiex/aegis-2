@@ -46,3 +46,26 @@ cons, context, depends on.
 - **Context:** the register explains effects live in the band; reports are
   read without the auditor present.
 - **Depends on:** reporting engine §6.2, T12 formatScore.
+
+## docker-compose.vps.yml verification disclaimer (codebase review, 2026-09-26)
+
+- **What:** a header comment on `docker-compose.vps.yml` stating it was
+  verified against one specific external host (`vps-control`) on one
+  specific date (2026-09-16), not a claim about current deployment state
+  generally.
+- **Why:** `docs/architecture.md` § Deployment targets says this overlay was
+  "verified live against vps-control," while `CLAUDE.md`, `AGENTS.md` and
+  `README.md` all repeatedly state AEGIS is "not deployed anywhere." Someone
+  reading the compose file on its own, without also reading architecture.md's
+  caveat, would reasonably conclude more than is true.
+- **Pros:** one comment, no code change, removes a real inconsistency
+  between the authoritative docs and a config file without requiring anyone
+  to decide deployment policy first.
+- **Cons:** a comment doesn't stay fresh on its own — if the file is edited
+  again without updating the disclaimer's date/host, it becomes stale in the
+  same way; doesn't address architecture.md's separate note that "nothing
+  yet automates the VPS overlay" the way the on-prem installer does.
+- **Context:** three Compose overlays exist (base, on-prem, VPS); this is the
+  newest one and the only one verified against a live, named external host
+  rather than purely local/on-prem tooling.
+- **Depends on:** nothing — purely additive documentation.
