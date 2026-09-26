@@ -25,7 +25,10 @@ import {
   type ActionResult,
   type ActionErrorCode,
 } from "./schemas";
-import { syncAllInstanceScores } from "@/data-access/instance-scoring";
+import {
+  findIncompleteInstanceModuleCodes,
+  syncAllInstanceScores,
+} from "@/data-access/instance-scoring";
 
 // ─── freezeRbiaScore (EXAM-10, FIND-02, BMRP-01) ───────────────────────────
 
@@ -102,6 +105,20 @@ export async function freezeRbiaScore(
 
   try {
     await syncAllInstanceScores(session, validated.engagementId);
+
+    currentStep = "checking_completeness";
+    const incompleteSampleModules = await findIncompleteInstanceModuleCodes(
+      session,
+      validated.engagementId,
+    );
+    if (incompleteSampleModules.length > 0) {
+      throw Object.assign(
+        new Error(
+          `Cannot freeze: sample examination is incomplete for ${incompleteSampleModules.join(", ")}`,
+        ),
+        { code: "INCOMPLETE_EXAMINATION" },
+      );
+    }
 
     // 5. Transaction with step tracking
     const result = await withAuditedMutation(

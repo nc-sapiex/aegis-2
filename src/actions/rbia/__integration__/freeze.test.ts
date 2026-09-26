@@ -364,6 +364,93 @@ describe("freezeRbiaScore completeness", () => {
     expect(creditResponse.scoreLabel).toBeNull();
   });
 
+  it("refuses to freeze when a sampled credit register is only partly answered", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    await withFixtures(async () => {
+      await integrationOwner.engagementModule.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: seed.creditModule.id,
+        },
+      });
+      const record = await integrationOwner.populationRecord.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: seed.creditModule.id,
+          branchId: seed.branchId,
+          recordKey: "LN-PARTIAL-001",
+          displayName: "Partial Borrower",
+          amount: 1_000_000,
+          date: new Date("2025-01-15"),
+          classification: "STANDARD",
+          isSampled: true,
+        },
+        select: { id: true },
+      });
+      const questionA = await integrationOwner.examinationQuestion.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: seed.creditModule.id,
+          text: "Is the sanction within policy?",
+        },
+        select: { id: true },
+      });
+      await integrationOwner.examinationQuestion.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: seed.creditModule.id,
+          text: "Is the valuation on file?",
+        },
+      });
+      await integrationOwner.accountExamResponse.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          recordId: record.id,
+          questionId: questionA.id,
+          status: "COMPLIANT",
+          isNotApplicable: false,
+          respondedById: cae.id,
+        },
+      });
+    });
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe("INCOMPLETE_EXAMINATION");
+      expect(result.error).toContain("CREDIT");
+    }
+
+    const frozen = await integrationOwner.branchRbiaScore.count({
+      where: { engagementId: seed.engagementId },
+    });
+    expect(frozen).toBe(0);
+
+    const creditResponse =
+      await integrationOwner.examinationResponse.findUnique({
+        where: {
+          engagementId_nodeId: {
+            engagementId: seed.engagementId,
+            nodeId: seed.creditLeaf.id,
+          },
+        },
+      });
+    expect(creditResponse).toBeNull();
+  });
+
   it("does not require a live leaf added after the engagement snapshot", async () => {
     const tenant = await createTenant();
     const cae = await createUser(tenant.id, ["CAE"]);
