@@ -782,6 +782,187 @@ describe("freezeRbiaScore completeness", () => {
     );
   });
 
+  // T0: findIncompleteInstanceModuleCodes (the freeze completeness gate) must
+  // agree with computeAndApplyInstanceScores (actual scoring) about which
+  // questions are in scope. Before this fix the gate queried live
+  // `isActive: true` questions while scoring used the engagement's snapshot,
+  // so the two disagreed whenever the catalogue changed after materialization.
+
+  it("does not block freeze on a question added to the catalogue after the engagement snapshot", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    await withFixtures(async () => {
+      await integrationOwner.engagementModule.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: seed.creditModule.id,
+        },
+      });
+      const record = await integrationOwner.populationRecord.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: seed.creditModule.id,
+          branchId: seed.branchId,
+          recordKey: "LN-LATEQ-001",
+          displayName: "Borrower",
+          amount: 1_000_000,
+          date: new Date("2025-01-15"),
+          classification: "STANDARD",
+          isSampled: true,
+        },
+        select: { id: true },
+      });
+      const original = await integrationOwner.examinationQuestion.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: seed.creditModule.id,
+          text: "Is the sanction complete?",
+          weight: 1,
+        },
+        select: { id: true },
+      });
+      await integrationOwner.accountExamResponse.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          recordId: record.id,
+          questionId: original.id,
+          status: "COMPLIANT",
+          isNotApplicable: false,
+          respondedById: cae.id,
+        },
+      });
+    });
+
+    // Snapshot the engagement while only `original` exists.
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+
+    // Spec §6.6: a catalogue addition after this point applies to future
+    // engagements only. This question has no snapshot row and no answer.
+    await withFixtures(() =>
+      integrationOwner.examinationQuestion.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: seed.creditModule.id,
+          text: "Is the collateral revalued annually?",
+          weight: 1,
+        },
+      }),
+    );
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(true);
+  });
+
+  it("refuses to freeze when a snapshotted question is deactivated but never answered", async () => {
+    const tenant = await createTenant();
+    const cae = await createUser(tenant.id, ["CAE"]);
+    const seed = await seedExamination(tenant.id, cae.id);
+    await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
+    await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
+
+    const unansweredId = await withFixtures(async () => {
+      await integrationOwner.engagementModule.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: seed.creditModule.id,
+        },
+      });
+      const record = await integrationOwner.populationRecord.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          moduleId: seed.creditModule.id,
+          branchId: seed.branchId,
+          recordKey: "LN-DEACT-001",
+          displayName: "Borrower",
+          amount: 1_000_000,
+          date: new Date("2025-01-15"),
+          classification: "STANDARD",
+          isSampled: true,
+        },
+        select: { id: true },
+      });
+      const answered = await integrationOwner.examinationQuestion.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: seed.creditModule.id,
+          text: "Is the sanction complete?",
+          weight: 1,
+        },
+        select: { id: true },
+      });
+      const unanswered = await integrationOwner.examinationQuestion.create({
+        data: {
+          tenantId: tenant.id,
+          moduleId: seed.creditModule.id,
+          text: "Is the valuation on file?",
+          weight: 1,
+        },
+        select: { id: true },
+      });
+      await integrationOwner.accountExamResponse.create({
+        data: {
+          tenantId: tenant.id,
+          engagementId: seed.engagementId,
+          recordId: record.id,
+          questionId: answered.id,
+          status: "COMPLIANT",
+          isNotApplicable: false,
+          respondedById: cae.id,
+        },
+      });
+      return unanswered.id;
+    });
+
+    // Snapshot while both questions are active; `unanswered` never gets a
+    // response before or after.
+    await materializeEngagementStatements(
+      integrationOwner as never,
+      seed.engagementId,
+      tenant.id,
+    );
+    await withFixtures(() =>
+      integrationOwner.examinationQuestion.update({
+        where: { id: unansweredId },
+        data: { isActive: false },
+      }),
+    );
+
+    mockSessionModule(
+      fakeSession({ id: cae.id, tenantId: tenant.id, roles: ["CAE"] }),
+    );
+    const { freezeRbiaScore } = await import("../freeze");
+
+    const result = await freezeRbiaScore({ engagementId: seed.engagementId });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.code).toBe("INCOMPLETE_EXAMINATION");
+      expect(result.error).toContain("CREDIT");
+    }
+
+    const frozen = await integrationOwner.branchRbiaScore.count({
+      where: { engagementId: seed.engagementId },
+    });
+    expect(frozen).toBe(0);
+  });
+
   it("snapshots only the added module's statements when a module is added after create", async () => {
     const tenant = await createTenant();
     const cae = await createUser(tenant.id, ["CAE"]);
