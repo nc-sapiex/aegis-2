@@ -559,6 +559,9 @@ describe("freezeRbiaScore completeness", () => {
   it("refuses saveExaminationResponse after freeze", async () => {
     const tenant = await createTenant();
     const cae = await createUser(tenant.id, ["CAE"]);
+    // CAE can freeze but does not hold rbia:examine. The freeze guard is
+    // only reachable for an examiner who would otherwise be allowed to save.
+    const auditor = await createUser(tenant.id, ["LEAD_AUDITOR"]);
     const seed = await seedExamination(tenant.id, cae.id);
     await score(tenant.id, seed.engagementId, seed.opsA.id, "FULLY_COMPLIANT");
     await score(tenant.id, seed.engagementId, seed.opsB.id, "FULLY_COMPLIANT");
@@ -570,6 +573,14 @@ describe("freezeRbiaScore completeness", () => {
     const frozen = await freezeRbiaScore({ engagementId: seed.engagementId });
     expect(frozen.success).toBe(true);
 
+    vi.resetModules();
+    mockSessionModule(
+      fakeSession({
+        id: auditor.id,
+        tenantId: tenant.id,
+        roles: ["LEAD_AUDITOR"],
+      }),
+    );
     const { saveExaminationResponse } = await import("../examination");
     const result = await saveExaminationResponse({
       engagementId: seed.engagementId,
