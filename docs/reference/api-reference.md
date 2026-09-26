@@ -4,15 +4,15 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `97cf51b` (sapiex/gracious-cannon-l0ko3z)
+> Source commit: `508c397` (sapiex/gracious-cannon-l0ko3z)
 
 AEGIS has two callable surfaces.
 
 **HTTP endpoints** (10) are conventional routes under `/api`, used
 for file downloads, streamed exports and health checks.
 
-**Server actions** (100 exported
-functions across 61 modules) are the primary surface. They are
+**Server actions** (101 exported
+functions across 62 modules) are the primary surface. They are
 invoked directly from React components rather than over HTTP, so they have no
 URL — the function signature is the contract. Every one runs on the server and
 derives the caller's tenant from the session.
@@ -168,6 +168,7 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 | `module-admin/save-module-weights.ts` | yes | `saveModuleWeights` | AuditModule |
 | `module-admin/toggle-module.ts` | yes | `toggleModule` | AuditModule |
 | `module-admin/uninstall-pack.ts` | yes | `uninstallPackAction` | — |
+| `module-admin/upload-pack.ts` | — | `uploadPackAction` | — |
 
 ### observations
 

@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { ModuleAdminRow } from "@/data-access/module-admin";
 import type { CatalogEntry } from "@/data-access/pack-catalog";
+import { uploadPackAction } from "@/actions/module-admin/upload-pack";
 import { InstalledPacksList } from "./installed-packs-list";
 import { ModuleTable } from "./module-table";
 import { AddStatementPanel } from "./add-statement-panel";
@@ -19,6 +21,7 @@ export function ModuleAdminPage({
   catalog: CatalogEntry[];
   lastScores: Record<string, number>;
 }) {
+  const router = useRouter();
   // null = closed; "" = open with no module chosen yet (header action);
   // a real id = open pre-scoped to that module's row.
   const [panelModuleId, setPanelModuleId] = React.useState<string | null>(null);
@@ -27,6 +30,8 @@ export function ModuleAdminPage({
     tone: StatusTone;
   } | null>(null);
   const statusTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const packFileInput = React.useRef<HTMLInputElement>(null);
+  const [uploadingPack, setUploadingPack] = React.useState(false);
 
   const showStatus = React.useCallback(
     (text: string, tone: StatusTone = "ok") => {
@@ -44,6 +49,20 @@ export function ModuleAdminPage({
     [],
   );
 
+  async function handlePackFile(file: File) {
+    setUploadingPack(true);
+    const formData = new FormData();
+    formData.set("pack", file);
+    const result = await uploadPackAction(formData);
+    setUploadingPack(false);
+    if (!result.success) {
+      showStatus(result.error, "error");
+      return;
+    }
+    showStatus("Pack installed.");
+    router.refresh();
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -54,17 +73,24 @@ export function ModuleAdminPage({
           </p>
         </div>
         <div className="flex gap-3">
-          {/* ponytail: install-pack action needs a file-upload flow the
-              brief for this task never wires (installPackAction takes a
-              server filePath, not an uploaded File) — left inert here;
-              see task-7-report.md concerns. */}
+          <input
+            ref={packFileInput}
+            type="file"
+            accept=".aegispack"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void handlePackFile(file);
+            }}
+          />
           <button
             type="button"
-            disabled
-            title="Not wired in this task — see report"
+            disabled={uploadingPack}
+            onClick={() => packFileInput.current?.click()}
             className="rounded-[2px] border border-[color:hsl(var(--border-strong))] px-3 py-1.5 text-[13px] text-[color:hsl(var(--foreground))] disabled:opacity-40"
           >
-            Install pack
+            {uploadingPack ? "Installing…" : "Install pack"}
           </button>
           <button
             type="button"
