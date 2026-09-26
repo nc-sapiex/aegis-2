@@ -522,12 +522,18 @@ export async function findIncompleteInstanceModuleCodes(
 
   for (const moduleCode of moduleCodes) {
     const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
-    const questions = moduleId
-      ? await db.examinationQuestion.findMany({
-          where: { tenantId, moduleId, isActive: true },
-          select: { id: true },
-        })
-      : [];
+    // Spec §6.6: the completeness gate must agree with what scoring actually
+    // counts. Fetching live `isActive: true` questions here — rather than the
+    // engagement's snapshot — made this gate disagree with
+    // computeAndApplyInstanceScores whenever the catalogue changed after
+    // materialization: a catalogue addition wrongly blocked freeze, and a
+    // snapshotted-but-since-deactivated question wrongly passed.
+    const questions = await getInstanceScoringQuestions(
+      db,
+      tenantId,
+      engagementId,
+      moduleId,
+    );
     const cellCounts = await getRegisterCellCounts(
       db,
       tenantId,
