@@ -105,8 +105,12 @@ means the module applies to nobody at this branch. Before freeze,
 `findUnscoredLeaves` (`src/lib/rbia-completeness.ts`) lets the freeze
 through. A module with unanswered sample cells — including a single
 COMPLIANT tick among empty cells — still blocks freeze
-(`INCOMPLETE_EXAMINATION` via `isRegisterComplete`). Do not treat an absent
-score as N/A, and do not compute a module score from a partial register.
+(`INCOMPLETE_EXAMINATION` via `isRegisterComplete`). That completeness
+gate uses the same snapshotted-or-live question set as instance scoring —
+a question added after `materializeEngagementStatements` does not block
+freeze, and a snapshotted question later turned off still counts. Do not
+treat an absent score as N/A, and do not compute a module score from a
+partial register.
 
 **Freeze scores the engagement snapshot.** `findUnscoredLeaves` walks the
 tree `freezeRbiaScore` built from `EngagementStatement`, not the live

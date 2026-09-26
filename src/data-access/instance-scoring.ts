@@ -522,12 +522,15 @@ export async function findIncompleteInstanceModuleCodes(
 
   for (const moduleCode of moduleCodes) {
     const moduleId = await getModuleIdByCode(db, tenantId, moduleCode);
-    const questions = moduleId
-      ? await db.examinationQuestion.findMany({
-          where: { tenantId, moduleId, isActive: true },
-          select: { id: true },
-        })
-      : [];
+    // Same snapshot-or-live set computeAndApplyInstanceScores uses. A
+    // question added after materialise must not block freeze; a snapshotted
+    // question turned off must still count as unanswered work (spec §6.6).
+    const questions = await getInstanceScoringQuestions(
+      db,
+      tenantId,
+      engagementId,
+      moduleId,
+    );
     const cellCounts = await getRegisterCellCounts(
       db,
       tenantId,
