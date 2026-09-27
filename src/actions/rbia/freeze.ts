@@ -43,6 +43,9 @@ import { prismaForTenant } from "@/data-access/prisma";
  *   Step 2: Build scored examination tree
  *   Step 3: Compute per-module scores, composite score, and rating band
  *   Step 4: Upsert BranchRbiaScore snapshot (immutable after freeze)
+ *           and stamp AuditEngagement.overallRiskRating so official
+ *           XLSX/PDF reports and next-year pre-audit profiling read
+ *           the same band the score page just locked
  *   Step 5: Issue all DRAFT ActionPoints (DRAFT -> ISSUED)
  *   Step 6: Upsert BmResponseBatch with 15-day deadline
  *
@@ -467,6 +470,16 @@ export async function freezeRbiaScore(
             frozenAt: new Date(),
             frozenById: session.user.id,
           },
+        });
+
+        // Official XLSX/PDF, the report workflow header, and next-year
+        // pre-audit profiling read AuditEngagement.overallRiskRating —
+        // not BranchRbiaScore.ratingBand. Freeze is the only runtime
+        // writer of that column; leaving it null makes every generated
+        // report say "Not Computed" after a successful freeze.
+        await tx.auditEngagement.updateMany({
+          where: { id: validated.engagementId, tenantId },
+          data: { overallRiskRating: ratingBand },
         });
 
         // ── Step 5: Issue all DRAFT ActionPoints (DRAFT -> ISSUED) ──

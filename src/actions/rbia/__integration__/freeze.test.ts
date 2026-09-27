@@ -244,7 +244,21 @@ describe("freezeRbiaScore completeness", () => {
     const result = await freezeRbiaScore({ engagementId: seed.engagementId });
 
     expect(result.success).toBe(true);
-    if (result.success) expect(result.data.compositeScore).toBe(1);
+    if (result.success) {
+      expect(result.data.compositeScore).toBe(1);
+      expect(result.data.ratingBand).toBe("VERY_GOOD");
+    }
+
+    // Official reports and next-year pre-audit profiling read this
+    // column, not BranchRbiaScore.ratingBand. Freeze used to leave it
+    // null, so every generated XLSX/PDF said "Not Computed".
+    const engagement = await integrationOwner.auditEngagement.findUniqueOrThrow(
+      {
+        where: { id: seed.engagementId },
+        select: { overallRiskRating: true },
+      },
+    );
+    expect(engagement.overallRiskRating).toBe("VERY_GOOD");
   });
 
   it("does not require leaves of modules outside the engagement's selection", async () => {
