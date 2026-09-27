@@ -80,3 +80,36 @@ describe("generateAuditReportXLSX — Observations by Severity", () => {
     expect(texts).toContain("LOW finding 1");
   });
 });
+
+describe("generateAuditReportXLSX — Audit Summary rating", () => {
+  async function summaryTexts(overallRiskRating: string | null) {
+    const buffer = await generateAuditReportXLSX({
+      ...reportData([]),
+      overallRiskRating,
+    });
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer as any);
+    const sheet = workbook.getWorksheet("Audit Summary");
+    expect(sheet).toBeDefined();
+    const texts: string[] = [];
+    sheet!.eachRow((row) => {
+      row.eachCell((cell) => {
+        if (cell.value != null) texts.push(String(cell.value));
+      });
+    });
+    return texts;
+  }
+
+  it("prints Not Computed when freeze never stamped overallRiskRating", async () => {
+    const texts = await summaryTexts(null);
+    expect(texts).toContain("Overall Risk Rating:");
+    expect(texts).toContain("Not Computed");
+  });
+
+  it("prints the frozen band when overallRiskRating is set", async () => {
+    const texts = await summaryTexts("VERY_GOOD");
+    expect(texts).toContain("Overall Risk Rating:");
+    expect(texts).toContain("VERY_GOOD");
+    expect(texts).not.toContain("Not Computed");
+  });
+});
