@@ -35,9 +35,13 @@ detected and reported by the verify job, both when it edits a middle row
 (reported by row) and when it deletes one (reported by both a sequence gap
 and a broken hash link).
 
-Known gap, not yet closed: pre-auth account-lockout events are not
-currently tamper-evident the same way (tracked as issue #143). Do not
-represent lockout events as covered by this guarantee until that lands.
+Known gap, closed as design rather than a chain: pre-auth account-lockout
+events (`src/lib/auth-lockout-plugin.ts`) are written under the all-zero
+sentinel `tenantId` with `prevHash`/`rowHash` NULL. They cannot join a
+tenant chain because `audit_chain_insert()`'s `AuditChainHead` upsert is
+FK'd to a real `Tenant` row and a lockout has none. The verify job
+enumerates real tenants, so it never visits those rows. Do not represent
+lockout events as covered by this guarantee.
 
 ## Data at rest
 

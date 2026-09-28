@@ -45,8 +45,11 @@ SECURITY` and no tenant GUC. The GUC contract, the removed per-query
 Every **new** DAL function must follow these five steps (source comments cite
 this as "the canonical DAL 5-step pattern"). Be honest about the existing
 stock: steps 0–3 are near-universal, but the step-4 runtime assertion exists in
-only two of the 52 modules today (`settings.ts`, `audit-trail.ts`) — treat it
-as required going forward, not as a net already in place behind older code.
+only two of the 52 modules today (`settings.ts`, `audit-trail.ts`). Retrofitting
+the rest is out of scope; `__tests__/read-side-assertion-discipline.test.ts`
+holds a shrink-only allowlist of the other 46 so a *new* module that reads
+tenant data must carry the assertion from day one. Treat step 4 as required
+going forward, not as a net already in place behind older code.
 
 ```typescript
 import "server-only"; // 0. cannot be imported client-side

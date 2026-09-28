@@ -29,23 +29,30 @@ requires `ram:create`.
    disabled (#163). It starts in `DRAFT`
    (`src/app/(dashboard)/ram/page.tsx`).
 2. Open the assessment (`/ram/[assessmentId]`) and enter scores for each RAM
-   parameter in the form. Until you've entered at least one score, only
-   "edit" is available — "Compute" appears once `scores.length > 0`.
+   parameter in the form. **Compute** stays hidden until every active
+   parameter has a saved score (`assessment.scores.length === allParams.length`
+   in `src/app/(dashboard)/ram/[assessmentId]/page.tsx`). A partial set is
+   refused by `areAllActiveParametersScored` even if you call the action
+   directly — the engine would otherwise produce a plausible composite from
+   the scored subset.
 3. Click **Compute**. This runs the RAM scoring engine
    (`src/lib/ram-engine.ts`) and moves the assessment to `COMPUTED`, showing
    a composite score, risk category, and derived audit frequency — see
    [`docs/explanation/scoring-engines.md`](../explanation/scoring-engines.md#ram-branch-risk-scoring-srclibram-engints)
-   for how that math works.
-4. A second user holding `ram:approve` clicks **Approve**. The assessment
-   moves to `APPROVED`, and the page shows a green "Ready for Audit
-   Planning" banner with a direct link to `/audit-plans`.
+   for how that math works. Compute does **not** write `Branch.ramScore`.
+4. A second user holding `ram:approve` (and who is not the computer) clicks
+   **Approve**. The assessment moves to `APPROVED`, `Branch.ramScore` and
+   `Branch.auditFrequency` are published from the computed values, and the
+   page shows a green "Ready for Audit Planning" banner with a direct link
+   to `/audit-plans`. Annual plan generation reads that branch cache, not
+   the COMPUTED assessment.
 
 **Why a separate approver:** RAM scores drive audit frequency and, later, an
 auditee's compliance obligations — the same maker-checker discipline covered
 in
 [`docs/explanation/state-machines-and-maker-checker.md`](../explanation/state-machines-and-maker-checker.md)
 applies here even though RAM approval isn't one of that document's two named
-state machines.
+state machines. The computer of this assessment cannot approve it.
 
 ## 2. Generate the annual audit plan
 

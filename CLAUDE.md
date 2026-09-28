@@ -167,3 +167,10 @@ Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/do
   practical workflow is push → let CI run `integration-test`/`e2e-smoke` →
   read the result; do not claim a local integration/E2E run happened when it
   did not.
+- Module admin **Install pack** (`uploadPackAction`) needs
+  `LICENSE_PUBLIC_KEY` in `.env` and writes the archive to `PACKS_DIR`
+  (default `packs/`), not S3. `installPackAction` only accepts a basename
+  under that directory. The `core` pack cannot be uninstalled; uninstall
+  deactivates modules, it does not delete rows. Weight-share preview reads
+  the tenant's last frozen `BranchRbiaScore.moduleScores`, so a tenant with
+  no freeze yet shows "Unsaved." rather than a fabricated 0.0→0.0.
