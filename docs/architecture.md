@@ -440,6 +440,15 @@ empty string, matching how `session-context.ts` leaves
 `app.current_user_id` genuinely unset for system-attributed writes rather
 than writing `""`.
 
+Pre-auth account-lockout rows (`src/lib/auth-lockout-plugin.ts`) are the
+exception that is allowed to stay off the chain: they are written through
+`prismaSystem` under the all-zero sentinel `tenantId`, with `prevHash` /
+`rowHash` NULL, because `audit_chain_insert()`'s `AuditChainHead` upsert
+is FK'd to a real `Tenant` row and a lockout has none. The verify job
+enumerates real tenants, so it never visits those rows. A NULL hash
+*inside* a real tenant is still a break. Do not represent lockout events
+as tamper-evident.
+
 ## Invariant 3 — authorization
 
 Roles are a Prisma enum (17 of them); permissions are a TypeScript union (80) in
@@ -587,16 +596,39 @@ installed / licensed / not-licensed packs. The read side is
 exposes it as **Modules** (`src/lib/nav-items.ts`, same `module:manage`
 gate) as of #165 — typing the URL is no longer the only way in.
 
-Three gaps on that page are still real, not design decisions:
+The three actions that used to be stubs are now wired:
 
-- **Install pack** in the header is a disabled button. `installPackAction`
-  takes a server `filePath` under the packs directory, not an uploaded
-  `File`; there is no on-prem upload flow yet.
-- **`InstalledPacksList` is status-only.** `uninstallPackAction` exists and
-  is tested; the list does not call it.
-- **Live "would move from X to Y" weight preview** is compiled but fed an
-  empty `lastScores` map, so it degrades to "Unsaved." rather than inventing
-  a 0.0→0.0. Statement On/Off and module weight save *do* work.
+- **Install pack** opens a hidden `.aegispack` file picker
+  (`module-admin-page.tsx`). `uploadPackAction` writes the file under
+  `PACKS_DIR` (default `packs/`, **local disk, not S3** — on-prem Compose
+  has no object store), verifies the archive (`readPackArchive`) and the
+  Ed25519 signature (`verifyPackManifest`) itself, then calls
+  `installPackAction(basename(storedPath))`. `installPackAction` still
+  path-joins through `basename` so a caller filename cannot leave
+  `PACKS_DIR`, and re-verifies both checks — that duplication is
+  deliberate: an on-prem admin can still drop a file into `PACKS_DIR` and
+  install it without going through the upload action. Both actions refuse
+  without `LICENSE_PUBLIC_KEY`. Unsigned / corrupt uploads never reach
+  `installPack`.
+- **Uninstall** is on each non-`core` installed catalog row
+  (`InstalledPacksList` → `confirmAndUninstall` → `uninstallPackAction`).
+  Confirm copy matches spec §7.3: modules turn off for engagements created
+  from now on; an in-flight engagement keeps its snapshot.
+  `uninstallPack` deactivates the pack's modules / nodes / questions and
+  sets `ContentPackInstall.uninstalledAt` — it never deletes. The `core`
+  pack is refused in the action (`"The core pack cannot be uninstalled."`).
+- **Live "would move from X to Y" weight preview** reads
+  `getLastFrozenModuleScores(tenantId)` — the tenant's most recently frozen
+  `BranchRbiaScore.moduleScores` JSON, coerced by `parseLastModuleScores`.
+  It is tenant-wide, not per-branch: a directional preview, not a
+  recomputation of every branch. A tenant with no freeze yet still gets
+  `{}` and the table degrades to "Unsaved." rather than inventing a
+  0.0→0.0. Statement On/Off and module weight save work independently of
+  that preview.
+
+Content changes on this page never rewrite `EngagementStatement`. The
+footer on the page is the contract: a bank statement, a pack weight, or a
+module On/Off applies to engagements created from now on.
 
 The reporting engine that reads this content back out is generic in the same
 sense the module framework's scoring is: `src/lib/reporting/module-section.ts`'s
@@ -640,7 +672,7 @@ and reviewed against RBI policy without reading Prisma code.
 
 | Module                            | Computes                                 | Rule of note                                                                                                                                                                               |
 | --------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `lib/ram-engine.ts`               | Branch risk composite score              | Weighted average of 1–5 parameter scores, normalised by total weight. HIGH >3.5 → 12mo, MEDIUM 2.5–3.5 → 18mo, LOW <2.5 → 24mo audit frequency. Repeat findings apply a 1.5× uplift.       |
+| `lib/ram-engine.ts`               | Branch risk composite score              | Weighted average of 1–5 parameter scores, normalised by total weight. HIGH >3.5 → 12mo, MEDIUM 2.5–3.5 → 18mo, LOW <2.5 → 24mo audit frequency. Repeat findings apply a 1.5× uplift. `computeRamAssessment` refuses a partial parameter set (`areAllActiveParametersScored`) and does **not** write `Branch.ramScore` — that cache is published only on CAE `approveRamAssessment` (#183). |
 | `lib/rbia-scoring-engine.ts`      | RBIA node → module roll-up               | 4-point scale (1.0 / 0.75 / 0.5 / 0.0). A critical item scored NON_COMPLIANT **caps** the module at 0.5 — a ceiling, not a floor.                                                          |
 | `lib/instance-scoring.ts`         | Per-question compliance % → `ScoreLabel` | Bridges sample-based account responses into the RBIA scoring engine. A register that is complete and exclusively N/A is examined-N/A, not unfinished (`isCompleteExclusiveNotApplicable`). |
 | `lib/sampling-engine.ts`          | Deterministic sample selection           | Bucket-fill across five criteria buckets whose percentages must sum to 100.                                                                                                                |
@@ -902,14 +934,25 @@ the section that owns the detail; the numbers live there, once.
 - **E2E is nine spec files, not four** — the core cycle, tenant isolation,
   report generation, and module-admin a11y landed with Plan 7 / Plan 6; most
   other modules still have none → [Testing strategy](#testing-strategy).
-- **Dead demo JSON.** `src/data/index.ts` still exports DEPRECATED seed JSON
-  (`findings`, `auditPlans`, `bankProfile`, …), but the chain is orphaned: its
-  consumers have no importers, and the live dashboard reads the database
-  through `components/dashboard/widgets/*`. Prefer deleting over reviving.
-- **Module admin nav is wired; pack upload is not.** `/settings/modules` has a
-  sidebar item. The header **Install pack** button is disabled, the catalog
-  list cannot uninstall, and the live weight-share preview has no last-
-  engagement scores → [Module admin and the generic reporting engine](#module-admin-and-the-generic-reporting-engine).
+- **Dead demo JSON still has a live importer.** `src/data/index.ts` still
+  exports DEPRECATED seed JSON (`findings`, `auditPlans`, `bankProfile`,
+  `demoComplianceRequirements`). The old dashboard cards
+  (`findings-count-cards.tsx`, `risk-indicator-panel.tsx`,
+  `audit-coverage-chart.tsx`, `health-score-card.tsx`,
+  `regulatory-calendar.tsx`) import it but nothing imports *those* cards —
+  the live dashboard is `dashboard-composer.tsx` + `widgets/*`. The remaining
+  live reader is `src/lib/report-utils.ts`, consumed by five unused
+  `src/components/reports/*` panels. Prefer deleting over reviving; do not
+  treat a number from those panels as tenant data.
+- **Module admin pack upload / uninstall / weight preview are wired**
+  (#217, #215, #216). Remaining constraints, not gaps: `LICENSE_PUBLIC_KEY`
+  is required, uploads land in `PACKS_DIR` not S3, `core` cannot be
+  uninstalled, uninstall deactivates rather than deletes, weight preview is
+  tenant-wide last-freeze → [Module admin and the generic reporting engine](#module-admin-and-the-generic-reporting-engine).
+- **Register row verbs are still not wired.** `ExaminationRegister` has no
+  "raise action point / finding" side panel; `suggestSeverity` exists and
+  `FindingForm` accepts `suggestedSeverity`, but the register never calls
+  either. Camera capture on the BM evidence panel did land (#164).
 
 ## Adding a feature
 

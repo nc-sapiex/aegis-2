@@ -194,6 +194,26 @@ Full sequence: [release-checklist.md](release-checklist.md).
 
 ---
 
+## Installing a content pack
+
+Two equivalent paths, both requiring `LICENSE_PUBLIC_KEY` and
+`module:manage`:
+
+1. **UI** — Settings → Modules → **Install pack**. Picks a `.aegispack`,
+   writes it under `PACKS_DIR` (default `packs/`, local disk, not S3),
+   verifies archive + signature, then installs. Unsigned or corrupt files
+   never reach `installPack`.
+2. **Drop-in** — place the file in `PACKS_DIR` and call
+   `installPackAction` with the basename, or use `aegis-pack install`
+   (`scripts/aegis-pack/cli.ts`).
+
+Uninstall is the catalog row's **Uninstall** link. The `core` pack cannot
+be uninstalled. Uninstall deactivates the pack's modules / nodes /
+questions and stamps `uninstalledAt`; it does not delete rows. An
+engagement already underway keeps the statement set it started with.
+
+---
+
 ## Integration and Merge
 
 1. Open a pull request. CI runs on the **merge ref**, so a green check

@@ -57,6 +57,19 @@ score, not the raw one: `computeRamWithUplift` returns both so the UI can show
 "raised from 2.9 to 4.35 because of 2 repeat findings," but only the adjusted
 figure drives scheduling.
 
+**Compute does not publish the branch cache.** `computeRamAssessment` writes
+the composite onto `RamAssessment` only, and only after
+`areAllActiveParametersScored` — the engine normalises over the weights it
+is given, so a one-parameter subset would otherwise look like a legitimate
+1.00–5.00 composite. Annual planning (`getBranchesForAnnualPlan`),
+analytics, and the branch heatmap read `Branch.ramScore` /
+`Branch.auditFrequency`, which are written solely by
+`approveRamAssessment` (`ram:approve`, CAE, maker ≠ computer). A COMPUTED
+assessment that nobody has approved leaves the last *approved* cache in
+place. The RAM page's Compute button itself is gated the same way
+(`scores.length === allParams.length`); do not document it as appearing
+after the first tick.
+
 ## RBIA scoring: examination tree roll-up (`src/lib/rbia-scoring-engine.ts`)
 
 RBIA examinations score a hierarchical tree of `ExaminationNode`s (variable
@@ -177,7 +190,8 @@ re-notify.
   an assessment from stored parameter scores. The uplift-aware
   `computeRamWithUplift` is the one actually called when a new assessment is
   created; do not call the plain `computeRam` from new code that has repeat
-  findings to consider.
+  findings to consider. Publishing onto `Branch.ramScore` is
+  `approveRamAssessment`'s job, not the engine's.
 - None of these modules touches the database directly except
   `detectRepeatFindingsForBranch`, which is intentionally the one exception —
   it needs `pg_trgm` similarity, which only Postgres can compute. The
