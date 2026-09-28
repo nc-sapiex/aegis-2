@@ -8,6 +8,7 @@ vi.mock("node:fs/promises", () => ({
 vi.mock("@/data-access/session", () => ({ getRequiredSession: vi.fn() }));
 vi.mock("@/lib/pack/inspect", () => ({ readPackArchive: vi.fn() }));
 vi.mock("@/lib/pack/sign", () => ({ verifyPackManifest: vi.fn() }));
+vi.mock("@/lib/pack/hash", () => ({ packContentsMatchManifest: vi.fn() }));
 vi.mock("../install-pack", () => ({ installPackAction: vi.fn() }));
 
 import { uploadPackAction } from "../upload-pack";
@@ -15,6 +16,7 @@ import { installPackAction } from "../install-pack";
 import { getRequiredSession } from "@/data-access/session";
 import { readPackArchive } from "@/lib/pack/inspect";
 import { verifyPackManifest } from "@/lib/pack/sign";
+import { packContentsMatchManifest } from "@/lib/pack/hash";
 import { fakeSession } from "@/test/factories";
 
 function packFormData(name = "example-forex-1.0.0.aegispack") {
@@ -30,6 +32,7 @@ describe("uploadPackAction", () => {
       fakeSession({ roles: ["CAE"] }) as never,
     );
     process.env.LICENSE_PUBLIC_KEY = "test-key";
+    vi.mocked(packContentsMatchManifest).mockReturnValue(true);
   });
 
   it("rejects a session without module:manage", async () => {
@@ -91,6 +94,22 @@ describe("uploadPackAction", () => {
     const result = await uploadPackAction(packFormData());
 
     expect(result).toEqual({ success: false, error: "Signature invalid." });
+    expect(installPackAction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a signed archive whose files do not match contentHash", async () => {
+    vi.mocked(readPackArchive).mockResolvedValue({
+      manifest: { id: "example-forex", version: "1.0.0" },
+    } as never);
+    vi.mocked(verifyPackManifest).mockReturnValue(true);
+    vi.mocked(packContentsMatchManifest).mockReturnValue(false);
+
+    const result = await uploadPackAction(packFormData());
+
+    expect(result).toEqual({
+      success: false,
+      error: "Content hash mismatch.",
+    });
     expect(installPackAction).not.toHaveBeenCalled();
   });
 
