@@ -1,8 +1,9 @@
 import { generateKeyPairSync } from "node:crypto";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
+import { create as createTar, extract } from "tar";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 let sourceDir: string;
@@ -74,5 +75,31 @@ describe("aegis-pack CLI", () => {
     const output = runCli("inspect", packFile);
     expect(output).toContain("example-forex");
     expect(output).toContain("1.0.0");
+  });
+
+  it("verify fails when nodes.json is tampered after signing", async () => {
+    const tamperDir = await mkdtemp(join(tmpdir(), "cli-tamper-"));
+    try {
+      await extract({ file: packFile, cwd: tamperDir });
+      const nodesPath = join(tamperDir, "nodes.json");
+      const nodes = JSON.parse(await readFile(nodesPath, "utf8")) as Array<{
+        description: string;
+      }>;
+      nodes[0].description = "attacker-controlled statement";
+      await writeFile(nodesPath, JSON.stringify(nodes, null, 2));
+      const tampered = join(sourceDir, "tampered.aegispack");
+      await createTar({ gzip: true, file: tampered, cwd: tamperDir }, [
+        "manifest.json",
+        "modules.json",
+        "nodes.json",
+        "questions.json",
+        "population-schemas.json",
+      ]);
+      expect(() =>
+        runCli("verify", tampered, "--public-key", publicKeyPath),
+      ).toThrow(/Content hash mismatch/);
+    } finally {
+      await rm(tamperDir, { recursive: true, force: true });
+    }
   });
 });

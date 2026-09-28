@@ -4,7 +4,12 @@ import type { PackManifest } from "./types";
 /**
  * The pack signature covers only contentHash + identity fields, not the
  * (already-hashed) file bodies — the hash is the commitment, the signature
- * proves who made it. Same Ed25519 one-shot sign()/verify() approach the
+ * proves who made it. Callers that trust a pack (installPack, CLI verify)
+ * MUST recompute the hash from the extracted files via
+ * packContentsMatchManifest; verifying the signature alone accepts a
+ * tampered nodes.json that kept the original signed manifest.
+ *
+ * Same Ed25519 one-shot sign()/verify() approach the
  * adapters-migrations-licensing plan's src/lib/license.ts uses, deliberately:
  * one key pair, one verification pattern to audit, per spec §7.1
  * ("signature (Ed25519, same key as the license)"). That plan hasn't landed

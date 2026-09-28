@@ -1,8 +1,8 @@
 import { generateKeyPairSync } from "node:crypto";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { create as createTar } from "tar";
+import { create as createTar, extract } from "tar";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildPackArchive } from "@/lib/pack/build";
 import { signPackManifest } from "@/lib/pack/sign";
@@ -164,6 +164,40 @@ describe("installPack", () => {
       wrongKey.export({ type: "spki", format: "pem" }).toString(),
     );
     expect(result).toEqual({ success: false, error: "Signature invalid" });
+  });
+
+  it("rejects a pack whose files do not match the signed contentHash", async () => {
+    const tamperDir = await mkdtemp(join(tmpdir(), "pack-tamper-"));
+    const tamperedFile = join(tamperDir, "tampered.aegispack");
+    try {
+      await extract({ file: packFile, cwd: tamperDir });
+      const nodesPath = join(tamperDir, "nodes.json");
+      const nodes = JSON.parse(await readFile(nodesPath, "utf8")) as Array<{
+        description: string;
+      }>;
+      nodes[0].description = "attacker-controlled statement";
+      await writeFile(nodesPath, JSON.stringify(nodes, null, 2));
+      await createTar({ gzip: true, file: tamperedFile, cwd: tamperDir }, [
+        "manifest.json",
+        "modules.json",
+        "nodes.json",
+        "questions.json",
+        "population-schemas.json",
+      ]);
+      const result = await installPack(
+        tenantId,
+        actorFor(userId, tenantId),
+        tamperedFile,
+        publicKeyPem,
+        ["pack:example-forex@*"],
+      );
+      expect(result).toEqual({
+        success: false,
+        error: "Content hash mismatch",
+      });
+    } finally {
+      await rm(tamperDir, { recursive: true, force: true });
+    }
   });
 
   it("preserves a bank-edited weight across a reinstall of the same version", async () => {

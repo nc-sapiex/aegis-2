@@ -5,6 +5,7 @@ import { withAuditedMutation } from "@/data-access/audited-mutation";
 import type { Actor } from "@/lib/session-context";
 import { readPackArchive } from "@/lib/pack/inspect";
 import { verifyPackManifest } from "@/lib/pack/sign";
+import { packContentsMatchManifest } from "@/lib/pack/hash";
 import { checkEntitlement } from "@/lib/pack/entitlement";
 import type { PackFiles } from "@/lib/pack/types";
 import { parentPath } from "@/lib/examination-path";
@@ -24,6 +25,9 @@ export async function installPack(
 
   if (!verifyPackManifest(files.manifest, licensePublicKeyPem)) {
     return { success: false, error: "Signature invalid" };
+  }
+  if (!packContentsMatchManifest(files)) {
+    return { success: false, error: "Content hash mismatch" };
   }
   if (
     !checkEntitlement(

@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { create as createTar, extract } from "tar";
 import { buildPackArchive } from "../../src/lib/pack/build";
 import { signPackManifest, verifyPackManifest } from "../../src/lib/pack/sign";
+import { packContentsMatchManifest } from "../../src/lib/pack/hash";
 import { readPackArchive } from "../../src/lib/pack/inspect";
 
 const [command, ...rest] = process.argv.slice(2);
@@ -57,13 +58,20 @@ async function main() {
         throw new Error("Usage: aegis-pack verify <file> --public-key <path>");
       }
       const publicKeyPem = await readFile(keyPath, "utf8");
-      const { manifest } = await readPackArchive(file);
-      if (!verifyPackManifest(manifest, publicKeyPem)) {
+      const files = await readPackArchive(file);
+      if (!verifyPackManifest(files.manifest, publicKeyPem)) {
         throw new Error(
-          `Signature invalid for ${manifest.id}@${manifest.version}`,
+          `Signature invalid for ${files.manifest.id}@${files.manifest.version}`,
         );
       }
-      console.log(`${manifest.id}@${manifest.version}: signature valid`);
+      if (!packContentsMatchManifest(files)) {
+        throw new Error(
+          `Content hash mismatch for ${files.manifest.id}@${files.manifest.version}`,
+        );
+      }
+      console.log(
+        `${files.manifest.id}@${files.manifest.version}: signature valid`,
+      );
       break;
     }
     case "inspect": {

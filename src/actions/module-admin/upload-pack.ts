@@ -7,6 +7,7 @@ import { getRequiredSession } from "@/data-access/session";
 import { hasPermission } from "@/lib/permissions";
 import { readPackArchive } from "@/lib/pack/inspect";
 import { verifyPackManifest } from "@/lib/pack/sign";
+import { packContentsMatchManifest } from "@/lib/pack/hash";
 import { installPackAction } from "./install-pack";
 
 const PACKS_DIR = resolve(process.env.PACKS_DIR ?? "packs");
@@ -17,13 +18,15 @@ const PACKS_DIR = resolve(process.env.PACKS_DIR ?? "packs");
  * evidence-upload S3 flow: the on-prem Compose deployment target has no S3
  * configured, and a pack install shouldn't depend on one.
  *
- * Verifies the archive structurally (readPackArchive) and its signature
- * (verifyPackManifest) itself, before ever calling installPackAction, so an
- * unsigned or corrupted upload is rejected without installPackAction's own
- * (separately real) checks ever running. installPackAction re-verifies both
- * anyway once called — that duplication is deliberate: it stays the single
- * place that trusts a file already sitting in PACKS_DIR (e.g. dropped there
- * by an on-prem admin without going through this action at all).
+ * Verifies the archive structurally (readPackArchive), its signature
+ * (verifyPackManifest), and that the extracted files match the signed
+ * contentHash (packContentsMatchManifest) itself, before ever calling
+ * installPackAction, so an unsigned, corrupted, or tampered upload is
+ * rejected without installPackAction's own (separately real) checks ever
+ * running. installPackAction re-verifies all three anyway once called —
+ * that duplication is deliberate: it stays the single place that trusts a
+ * file already sitting in PACKS_DIR (e.g. dropped there by an on-prem
+ * admin without going through this action at all).
  */
 export async function uploadPackAction(
   formData: FormData,
@@ -56,6 +59,10 @@ export async function uploadPackAction(
     if (!verifyPackManifest(files.manifest, licensePublicKeyPem)) {
       await unlink(storedPath).catch(() => {});
       return { success: false, error: "Signature invalid." };
+    }
+    if (!packContentsMatchManifest(files)) {
+      await unlink(storedPath).catch(() => {});
+      return { success: false, error: "Content hash mismatch." };
     }
   } catch {
     await unlink(storedPath).catch(() => {});

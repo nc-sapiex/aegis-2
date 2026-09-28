@@ -25,3 +25,18 @@ export function computeContentHash(files: Omit<PackFiles, "manifest">): string {
     .update(JSON.stringify(canonical), "utf8")
     .digest("hex");
 }
+
+/**
+ * The signature covers {id, version, contentHash} — not the file bodies.
+ * Install must recompute the hash from the extracted payload and compare,
+ * otherwise a tampered nodes.json still installs under a valid signature.
+ */
+export function packContentsMatchManifest(files: PackFiles): boolean {
+  const actual = computeContentHash({
+    modules: files.modules,
+    nodes: files.nodes,
+    questions: files.questions,
+    populationSchemas: files.populationSchemas,
+  });
+  return actual === files.manifest.contentHash;
+}
