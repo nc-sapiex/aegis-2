@@ -19,7 +19,7 @@ describe("processComplianceEscalation", () => {
     await createUser(two.id, ["CAE"]);
 
     const seen: string[] = [];
-    vi.doMock("@/actions/compliance/run-escalation-job", () => ({
+    vi.doMock("@/jobs/run-escalation-for-tenant", () => ({
       runEscalationJobInternal: vi.fn(async (tenantId: string) => {
         seen.push(tenantId);
         if (tenantId === one.id) throw new Error("simulated tenant failure");

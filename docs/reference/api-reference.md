@@ -4,14 +4,14 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `508c397` (sapiex/gracious-cannon-l0ko3z)
+> Source commit: `9e637c5` (cursor/critical-bug-management-2794)
 
 AEGIS has two callable surfaces.
 
 **HTTP endpoints** (10) are conventional routes under `/api`, used
 for file downloads, streamed exports and health checks.
 
-**Server actions** (101 exported
+**Server actions** (100 exported
 functions across 62 modules) are the primary surface. They are
 invoked directly from React components rather than over HTTP, so they have no
 URL — the function signature is the contract. Every one runs on the server and
@@ -139,7 +139,7 @@ Generate XLSX gap analysis report from IS audit checklists (R104).
 |---|---|---|---|
 | `compliance/acb-reporting.ts` | — | `generateAcbReport` | BoardReport, ComplianceItem |
 | `compliance/ace-processing.ts` | — | `processAceQuarterly`, `reviewAceItem` | ComplianceItem |
-| `compliance/run-escalation-job.ts` | yes | `runEscalationJob`, `runEscalationJobInternal` | ComplianceItem, NotificationQueue, User |
+| `compliance/run-escalation-job.ts` | — | `runEscalationJob` | — |
 | `compliance/submit-branch-response.ts` | — | `submitBranchResponse` | ComplianceItem |
 | `compliance/zac-review.ts` | — | `zacReviewCompliance` | ComplianceItem |
 
