@@ -104,4 +104,33 @@ describe("authorization gaps", () => {
 
     expect(ACTION_GUARD_ALLOWLIST.size).toBeLessThanOrEqual(1);
   });
+
+  it("no use-server export takes a tenantId argument", () => {
+    // Next.js exposes every export of a "use server" file as a public action.
+    // tenantId must come from the session (CLAUDE.md); a parameter is a
+    // client-supplied value and a cross-tenant write if the function trusts it.
+    const actionsRoot = join(process.cwd(), "src/actions");
+    const actionFiles = walk(actionsRoot).filter(
+      (f) =>
+        f.endsWith(".ts") &&
+        !f.endsWith(".test.ts") &&
+        !f.endsWith("schemas.ts"),
+    );
+
+    const TENANT_ID_PARAM =
+      /export\s+async\s+function\s+\w+\s*\([^)]*\btenantId\b/;
+
+    const offenders = actionFiles
+      .filter((path) => {
+        const content = readFileSync(path, "utf-8");
+        if (!/^["']use server["'];?$/m.test(content)) return false;
+        return TENANT_ID_PARAM.test(content);
+      })
+      .map((path) => relative(process.cwd(), path));
+
+    expect(
+      offenders,
+      `Server action(s) exporting a function that takes tenantId (move the worker out of the "use server" file):\n${offenders.join("\n")}`,
+    ).toEqual([]);
+  });
 });

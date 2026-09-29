@@ -77,7 +77,8 @@ describe("runEscalationJobInternal", () => {
     const tenant = await createTenant();
     const item = await seedOverdueComplianceItem(tenant.id, 45);
 
-    const { runEscalationJobInternal } = await import("../run-escalation-job");
+    const { runEscalationJobInternal } =
+      await import("@/jobs/run-escalation-for-tenant");
     const result = await runEscalationJobInternal(tenant.id);
 
     expect(result.success).toBe(true);
@@ -94,7 +95,8 @@ describe("runEscalationJobInternal", () => {
     await seedOverdueComplianceItem(one.id, 45);
     const untouched = await seedOverdueComplianceItem(two.id, 45);
 
-    const { runEscalationJobInternal } = await import("../run-escalation-job");
+    const { runEscalationJobInternal } =
+      await import("@/jobs/run-escalation-for-tenant");
     await runEscalationJobInternal(one.id);
 
     const after = await integrationOwner.complianceItem.findUniqueOrThrow({
@@ -106,7 +108,8 @@ describe("runEscalationJobInternal", () => {
 
   it("is a no-op for a tenant with no open items", async () => {
     const tenant = await createTenant();
-    const { runEscalationJobInternal } = await import("../run-escalation-job");
+    const { runEscalationJobInternal } =
+      await import("@/jobs/run-escalation-for-tenant");
     const result = await runEscalationJobInternal(tenant.id);
     expect(result.success).toBe(true);
   });

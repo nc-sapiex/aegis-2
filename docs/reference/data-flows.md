@@ -4,7 +4,7 @@
 > Produced by `scripts/generate-reference-docs.mjs` from `prisma/schema.prisma`
 > and the `src/` tree. Regenerate with `pnpm docs:reference`.
 >
-> Source commit: `508c397` (sapiex/gracious-cannon-l0ko3z)
+> Source commit: `9e637c5` (cursor/critical-bug-management-2794)
 
 Which processes read and write which tables.
 
@@ -23,7 +23,7 @@ reachability graph.
 | `admin` | 5 | `AuditCalendar`, `Branch`, `ReportTemplate`, `Zone` |
 | `audit-execution` | 6 | `AuditEngagement`, `AuditModule`, `AuditTeamMember`, `Branch`, `CashCheck`, `EngagementModule` |
 | `audit-plans` | 3 | `AuditEngagement`, `AuditPlan`, `Branch` |
-| `compliance` | 5 | `BoardReport`, `ComplianceItem`, `NotificationQueue`, `User` |
+| `compliance` | 5 | `BoardReport`, `ComplianceItem` |
 | `examination-questions` | 1 | `ExaminationQuestion` |
 | `loan-portfolio` | 3 | `AuditEngagement`, `AuditModule`, `PopulationRecord` |
 | `module-admin` | 8 | `AuditModule`, `ExaminationNode` |
@@ -44,6 +44,7 @@ reachability graph.
 | `notification-processor` | — | — |
 | `overdue-escalation` | yes | `NotificationQueue`, `Observation`, `User` |
 | `rbia-overdue-escalation` | yes | `BmResponseBatch`, `NotificationQueue`, `User` |
+| `run-escalation-for-tenant` | yes | `ComplianceItem`, `NotificationQueue`, `User` |
 | `snapshot-metrics` | — | `DashboardSnapshot` |
 | `verify-audit-chain` | yes | `AuditChainHead`, `AuditChainVerification`, `NotificationQueue`, `User` |
 | `weekly-digest` | yes | `NotificationQueue`, `Observation`, `User` |
@@ -60,15 +61,15 @@ Tables reached from the greatest number of domains — the ones where a schema c
 | `AuditModule` | 4 | `audit-execution`, `loan-portfolio`, `module-admin`, `rbia` |
 | `PopulationRecord` | 3 | `account-examination`, `loan-portfolio`, `sampling` |
 | `ObservationTimeline` | 3 | `(root)`, `observations`, `repeat-findings` |
-| `User` | 3 | `(root)`, `compliance`, `jobs` |
+| `ComplianceItem` | 3 | `compliance`, `jobs`, `observations` |
 | `ExaminationQuestion` | 2 | `account-examination`, `examination-questions` |
 | `ReportTemplate` | 2 | `admin`, `reports` |
 | `EngagementModule` | 2 | `audit-execution`, `rbia` |
 | `Evidence` | 2 | `(root)`, `rbia` |
 | `BoardReport` | 2 | `compliance`, `reports` |
-| `ComplianceItem` | 2 | `compliance`, `observations` |
-| `NotificationQueue` | 2 | `compliance`, `jobs` |
 | `ExaminationNode` | 2 | `module-admin`, `rbia` |
+| `BmResponseBatch` | 2 | `jobs`, `rbia` |
+| `User` | 2 | `(root)`, `jobs` |
 
 ### Domain access graph
 

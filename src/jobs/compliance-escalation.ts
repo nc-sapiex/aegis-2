@@ -13,10 +13,13 @@ import { logger } from "@/lib/logger";
  * endpoint.
  *
  * Distinct from processOverdueEscalation, which escalates Observations.
+ *
+ * The per-tenant worker is imported from a non-action module on purpose:
+ * it takes a tenantId, so it must never be an export of a `"use server"` file.
  */
 export async function processComplianceEscalation(): Promise<void> {
   const { runEscalationJobInternal } =
-    await import("@/actions/compliance/run-escalation-job");
+    await import("@/jobs/run-escalation-for-tenant");
 
   const tenants = await prismaSystem.tenant.findMany({
     select: { id: true, shortName: true },
