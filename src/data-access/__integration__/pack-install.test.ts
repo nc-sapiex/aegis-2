@@ -185,6 +185,26 @@ describe("installPack", () => {
   });
 
   it("reactivates the pack's module and PACK-origin nodes on reinstall after an uninstall", async () => {
+    const fxModule = await integrationOwner.auditModule.findFirstOrThrow({
+      where: { tenantId, code: "FX" },
+    });
+    await integrationOwner.examinationNode.create({
+      data: {
+        tenantId,
+        moduleId: fxModule.id,
+        code: "FX-B01",
+        name: "Bank-added FEMA checklist",
+        path: "FX/FX-B01",
+        depth: 1,
+        isLeaf: true,
+        weight: 1,
+        isCritical: false,
+        description: "Bank-added FEMA checklist",
+        origin: "BANK",
+        isActive: true,
+      },
+    });
+
     await integrationOwner.$transaction(async (tx) => {
       await setSessionContext(tx, {
         actor: { kind: "user", userId, tenantId },
@@ -196,6 +216,12 @@ describe("installPack", () => {
       where: { tenantId, code: "FX" },
     });
     expect(deactivatedModule?.isActive).toBe(false);
+
+    const bankAfterUninstall =
+      await integrationOwner.examinationNode.findFirstOrThrow({
+        where: { tenantId, code: "FX-B01" },
+      });
+    expect(bankAfterUninstall.isActive).toBe(true);
 
     const result = await installPack(
       tenantId,
@@ -220,6 +246,12 @@ describe("installPack", () => {
       where: { tenantId, code: "FX-01" },
     });
     expect(node?.isActive).toBe(true);
+
+    const bankAfterReinstall =
+      await integrationOwner.examinationNode.findFirstOrThrow({
+        where: { tenantId, code: "FX-B01" },
+      });
+    expect(bankAfterReinstall.isActive).toBe(true);
   });
 
   it("sets parentId from path so a nested housing-style tree can freeze", async () => {

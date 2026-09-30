@@ -54,6 +54,21 @@ beforeAll(async () => {
         origin: "PACK",
       },
     });
+    await integrationOwner.examinationNode.create({
+      data: {
+        tenantId,
+        moduleId: mod.id,
+        code: "FX-B01",
+        name: "Bank-added FEMA checklist",
+        path: "FX/FX-B01",
+        depth: 1,
+        isLeaf: true,
+        weight: 1,
+        isCritical: false,
+        description: "Bank-added FEMA checklist",
+        origin: "BANK",
+      },
+    });
   });
 });
 
@@ -88,5 +103,10 @@ describe("uninstallPack", () => {
       where: { tenantId, code: "FX-01" },
     });
     expect(node.isActive).toBe(false); // deactivated, still present — never deleted
+
+    const bankNode = await integrationOwner.examinationNode.findFirstOrThrow({
+      where: { tenantId, code: "FX-B01" },
+    });
+    expect(bankNode.isActive).toBe(true);
   });
 });
