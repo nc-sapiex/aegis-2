@@ -247,8 +247,9 @@ async function upsertPack(
   // A reinstall after an uninstall must undo uninstallPack's isActive:false —
   // otherwise the ledger row says installed but every module/node/question
   // stays dark, with no error anywhere (the bug this comment prevents).
-  // Scoped to origin: "PACK" for nodes/questions so a bank's own deliberate
-  // off-switch on its own BANK-origin content isn't silently overridden.
+  // Scoped to origin: "PACK" for nodes/questions: uninstall itself only
+  // deactivates PACK-origin rows, so BANK isActive is never part of this
+  // cycle (a bank's own off-switch on its own content stays put).
   if (isReinstall) {
     const reinstalledModuleIds = [...moduleIdByCode.values()];
     await tx.auditModule.updateMany({
@@ -294,12 +295,16 @@ export async function uninstallPack(
     select: { id: true },
   });
   const moduleIds = modules.map((m) => m.id);
+  // Spec §7.3: uninstall deactivates pack-owned content, never BANK rows
+  // living inside those modules. A later reinstall only flips PACK origin
+  // back on; if we deactivated BANK statements here they would stay dark
+  // and drop out of new engagement snapshots with no error.
   await tx.examinationNode.updateMany({
-    where: { tenantId, moduleId: { in: moduleIds } },
+    where: { tenantId, moduleId: { in: moduleIds }, origin: "PACK" },
     data: { isActive: false },
   });
   await tx.examinationQuestion.updateMany({
-    where: { tenantId, moduleId: { in: moduleIds } },
+    where: { tenantId, moduleId: { in: moduleIds }, origin: "PACK" },
     data: { isActive: false },
   });
   await tx.contentPackInstall.update({
