@@ -16,6 +16,7 @@ import {
   generateDownloadUrl,
   verifyUpload,
 } from "@/lib/s3";
+import { authorizeDownloadKey } from "@/lib/authorize-download";
 import {
   recordUploadIntent,
   consumeUploadIntent,
@@ -549,6 +550,13 @@ export async function getEvidenceDownloadUrl(evidenceId: string) {
       if (obsBranchId && !branchIds.includes(obsBranchId)) {
         return { success: false as const, error: "Evidence not found." };
       }
+    }
+
+    // Defense in depth: a row whose s3Key belongs to another tenant (the
+    // BM-confirm confused-deputy hole, or a hand-edited row) must not
+    // mint a GET URL. /api/download already applies this check.
+    if (!authorizeDownloadKey(evidence.s3Key, tenantId).ok) {
+      return { success: false as const, error: "Evidence not found." };
     }
 
     const downloadUrl = await generateDownloadUrl(evidence.s3Key);

@@ -14,6 +14,7 @@ import {
   generateUploadUrl,
   verifyUpload,
 } from "@/lib/s3";
+import { authorizeDownloadKey } from "@/lib/authorize-download";
 import { logger } from "@/lib/logger";
 import {
   RequestBmEvidenceUploadSchema,
@@ -154,9 +155,25 @@ export async function confirmBmEvidenceUpload(
   }
 
   const validated = parsed.data;
-  const db = prismaForTenant(tenantId);
 
   try {
+    // Bind the key to this tenant + action point before any S3 work.
+    // Auditee confirm uses UploadIntent for the same reason: the client
+    // supplies s3Key, and without a server-side check a BRANCH_HEAD can
+    // attach another tenant's object (or a report from this tenant) and
+    // then re-presign it via getEvidenceDownloadUrl. /api/download would
+    // have blocked the foreign key; this path must too.
+    if (
+      !isOwnBmEvidenceKey(validated.s3Key, tenantId, validated.actionPointId)
+    ) {
+      return {
+        success: false as const,
+        error: "The uploaded file is not recognised for this action point.",
+      };
+    }
+
+    const db = prismaForTenant(tenantId);
+
     // Verify file exists in S3
     const uploadResult = await verifyUpload(validated.s3Key);
     if (!uploadResult.exists) {
@@ -245,4 +262,21 @@ export async function confirmBmEvidenceUpload(
 
     return { success: false as const, error: errorMessage };
   }
+}
+
+/**
+ * Keys this action issues look like
+ * `${tenantId}/bm-evidence/${actionPointId}/${uuid}.${ext}`.
+ * Anything else — another tenant, another namespace, another action point —
+ * is a confused-deputy attempt and must not be persisted.
+ */
+function isOwnBmEvidenceKey(
+  s3Key: string,
+  tenantId: string,
+  actionPointId: string,
+): boolean {
+  const authz = authorizeDownloadKey(s3Key, tenantId);
+  if (!authz.ok || authz.namespace !== "bm-evidence") return false;
+  const segments = s3Key.split("/");
+  return segments[2] === actionPointId;
 }
