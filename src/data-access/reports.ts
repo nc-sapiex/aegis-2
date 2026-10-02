@@ -6,6 +6,7 @@ import type { AuthSession } from "@/lib/auth";
 import { withAuditedMutation, userActor } from "./audited-mutation";
 import {
   computeModuleComplianceScores,
+  CURRENT_SAMPLE_EXAM_RESPONSE,
   type ResponseTally,
 } from "@/lib/instance-scoring";
 
@@ -570,7 +571,11 @@ async function getReportModules(
         },
       }),
       db.accountExamResponse.findMany({
-        where: { tenantId, engagementId, isNotApplicable: false },
+        where: {
+          tenantId,
+          engagementId,
+          ...CURRENT_SAMPLE_EXAM_RESPONSE,
+        },
         select: { questionId: true, status: true },
       }),
     ]);

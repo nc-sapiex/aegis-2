@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   computeCompliancePercentage,
+  CURRENT_SAMPLE_EXAM_RESPONSE,
   mapComplianceToScoreLabel,
   computeModuleComplianceScores,
   isCompleteExclusiveNotApplicable,
@@ -397,5 +398,14 @@ describe("isRegisterComplete", () => {
         scoredCount: 0,
       }),
     ).toBe(false);
+  });
+});
+
+describe("CURRENT_SAMPLE_EXAM_RESPONSE", () => {
+  it("restricts official tallies to scored answers on the current sample", () => {
+    expect(CURRENT_SAMPLE_EXAM_RESPONSE).toEqual({
+      isNotApplicable: false,
+      record: { isSampled: true },
+    });
   });
 });

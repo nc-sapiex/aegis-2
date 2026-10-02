@@ -5,6 +5,7 @@ import { withAuditedMutation, userActor } from "./audited-mutation";
 import type { AuthSession as Session } from "@/lib/auth";
 import {
   computeModuleComplianceScores,
+  CURRENT_SAMPLE_EXAM_RESPONSE,
   isCompleteExclusiveNotApplicable,
   isRegisterComplete,
   type RegisterCellCounts,
@@ -102,9 +103,10 @@ export type { ResponseTally, QuestionComplianceResult };
  * Returns AccountExamResponse tallies grouped by questionId for a credit module.
  *
  * Fetches the engagement's snapshotted questions when present (live active
- * questions otherwise), then all AccountExamResponse records for this
- * engagement + those question IDs. Groups responses by questionId in a Map —
- * questions with zero responses get empty arrays.
+ * questions otherwise), then AccountExamResponse records for this
+ * engagement + those question IDs whose population row is still sampled.
+ * Groups responses by questionId in a Map — questions with zero responses
+ * get empty arrays.
  * Including empty arrays is critical for "Not Examined" display in the UI
  * and ensures computeModuleComplianceScores returns null (not 0%) for
  * unexamined questions.
@@ -139,15 +141,18 @@ export async function getQuestionResponseTallies(
 
   if (questionIds.length === 0) return tallyMap;
 
-  // Fetch all AccountExamResponse records for this engagement + these questions.
-  // isNotApplicable rows are excluded — same as an unanswered question, per
+  // Fetch AccountExamResponse rows for this engagement + these questions
+  // that still belong to the current sample. Re-generation only clears
+  // isSampled; leftover answers on desampled accounts must not enter the
+  // official compliance % (completeness already uses sampledIds only).
+  // N/A rows are excluded — same as an unanswered question, per
   // computeModuleComplianceScores' "Not Examined" handling.
   const responses = await db.accountExamResponse.findMany({
     where: {
       engagementId,
       questionId: { in: questionIds },
       tenantId,
-      isNotApplicable: false,
+      ...CURRENT_SAMPLE_EXAM_RESPONSE,
     },
     select: { questionId: true, status: true },
   });

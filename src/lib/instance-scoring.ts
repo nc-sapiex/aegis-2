@@ -41,6 +41,19 @@ export type QuestionComplianceResult = {
   violationCount: number;
 };
 
+/**
+ * Prisma `where` fragment for AccountExamResponse rows that still belong
+ * to the current sample. Completeness (`getRegisterCellCounts`) already
+ * restricts to `PopulationRecord.isSampled`; official tallies and report
+ * compliance must too. Re-generating a sample only flips `isSampled` and
+ * leaves prior answers in place — without this filter those leftovers
+ * blend into the frozen score and the XLSX/PDF module %.
+ */
+export const CURRENT_SAMPLE_EXAM_RESPONSE = {
+  isNotApplicable: false,
+  record: { isSampled: true },
+} as const;
+
 // ─── Core Functions ───────────────────────────────────────────────────────────
 
 /**
