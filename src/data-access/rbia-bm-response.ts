@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prismaForTenant } from "./prisma";
+import { requireBranchAssignment } from "./access-guards";
 import type { AuthSession as Session } from "@/lib/auth";
 import type {
   Severity,
@@ -87,6 +88,7 @@ export async function getBmResponseBatchForEngagement(
       engagement: {
         select: {
           id: true,
+          branchId: true,
           branch: { select: { name: true } },
           auditPlan: { select: { year: true, quarter: true } },
         },
@@ -95,6 +97,14 @@ export async function getBmResponseBatchForEngagement(
   });
 
   if (!batch) return null;
+
+  // BRANCH_HEAD is tenant-wide; this page is the official BM response
+  // surface. Hide another branch's batch rather than leak its APs.
+  const branchGuard = await requireBranchAssignment(
+    { userId: session.user.id, tenantId },
+    batch.engagement.branchId,
+  );
+  if (!branchGuard.ok) return null;
 
   // Build human-readable plan label from year + quarter
   const quarterLabels: Record<string, string> = {
