@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getRequiredSession } from "@/data-access/session";
+import { prismaForTenant } from "@/data-access/prisma";
+import { requireBranchAssignment } from "@/data-access/access-guards";
 import { withAuditedMutation, userActor } from "@/data-access/audited-mutation";
 import { hasPermission } from "@/lib/permissions";
 import { logger } from "@/lib/logger";
@@ -456,6 +458,8 @@ export async function promoteToObservation(
  * Security:
  * - Permission: action_point:bm_respond (BRANCH_HEAD only per locked decision)
  * - tenantId from session only
+ * - Branch assignment: BRANCH_HEAD is tenant-wide; the AP is not. Same
+ *   requireBranchAssignment gate as submitBranchResponse / signBhCertificate.
  * - Status guard: only ISSUED or BM_RESPONSE_DUE can be responded to
  *
  * @returns ActionResult with { id, status }
@@ -485,8 +489,34 @@ export async function submitBmResponse(
   }
 
   const validated = parsed.data;
+  const db = prismaForTenant(tenantId);
 
   try {
+    const existing = await db.actionPoint.findFirst({
+      where: { id: validated.actionPointId, tenantId },
+      select: { id: true, branchId: true },
+    });
+    if (!existing) {
+      return {
+        success: false,
+        error: "Action Point not found",
+        code: "NOT_FOUND",
+      };
+    }
+
+    // The BRANCH_HEAD role is tenant-wide; the action point is not.
+    const branchGuard = await requireBranchAssignment(
+      { userId: session.user.id, tenantId },
+      existing.branchId,
+    );
+    if (!branchGuard.ok) {
+      return {
+        success: false,
+        error: branchGuard.error,
+        code: "PERMISSION_DENIED",
+      };
+    }
+
     const updated = await withAuditedMutation(
       userActor(session),
       "action_point.bm_responded",
